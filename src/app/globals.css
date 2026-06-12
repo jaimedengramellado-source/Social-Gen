@@ -1,0 +1,155 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme {
+  /* Colors */
+  --color-background: #F8F7F4;
+  --color-foreground: #0D0D0D;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #0D0D0D;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #0D0D0D;
+  --color-primary: #7C3AED;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-hover: #6D28D9;
+  --color-primary-light: #EDE9FE;
+  --color-secondary: #F4F4F5;
+  --color-secondary-foreground: #0D0D0D;
+  --color-muted: #F4F4F5;
+  --color-muted-foreground: #6B6B6B;
+  --color-accent: #EDE9FE;
+  --color-accent-foreground: #7C3AED;
+  --color-destructive: #DC2626;
+  --color-destructive-foreground: #FFFFFF;
+  --color-success: #059669;
+  --color-success-foreground: #FFFFFF;
+  --color-warning: #D97706;
+  --color-warning-foreground: #FFFFFF;
+  --color-border: #E5E5E5;
+  --color-input: #E5E5E5;
+  --color-ring: #7C3AED;
+
+  /* Typography */
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Spacing & Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-popup: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+
+  /* Keyframes */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-shimmer: shimmer 2s infinite linear;
+  --animate-pulse-slow: pulse 3s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.3s ease-out forwards;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes triangle-spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+}
+
+/* Dark mode — global overrides */
+html.dark .bg-white,
+html.dark .bg-white\/70,
+html.dark .bg-white\/80 {
+  background-color: var(--color-card) !important;
+}
+html.dark .hover\:bg-white:hover,
+html.dark .hover\:bg-white\/95:hover {
+  background-color: var(--color-muted) !important;
+}
+html.dark .border-white\/40 {
+  border-color: var(--color-border) !important;
+}
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.dark select,
+html.dark textarea {
+  background-color: var(--color-muted) !important;
+  color: var(--color-foreground) !important;
+  border-color: var(--color-border) !important;
+}
+html.dark .divide-\[rgba\(0\,0\,0\,0\.04\)\] > * + *,
+html.dark .divide-\[rgba\(0\,0\,0\,0\.05\)\] > * + * {
+  border-color: var(--color-border) !important;
+}
+html.dark option {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+}
+html.dark ::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Base styles */
+*, *::before, *::after {
+  border-color: var(--color-border);
+}
+
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography helpers */
+.font-serif { font-family: var(--font-serif); }
+.font-sans { font-family: var(--font-sans); }
+
+/* Shimmer skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+  border-radius: var(--radius-md);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-muted-foreground); }
+
+/* Focus ring — solo elementos no-formulario */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
