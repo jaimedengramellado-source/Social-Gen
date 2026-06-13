@@ -6,7 +6,14 @@
       "Bash(xargs grep -l \"socialGen\\\\|social-gen\\\\|social_gen\\\\|SocialGen\")",
       "Bash(npm run *)",
       "PowerShell(Get-NetTCPConnection *)",
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "mcp__github__get_me",
+      "mcp__github__search_repositories",
+      "Bash(git init *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
