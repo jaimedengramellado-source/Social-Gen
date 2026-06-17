@@ -160,8 +160,8 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
 export interface PricingPlan {
   id: Plan;
   name: string;
-  price_monthly: number;
-  price_annual: number;
+  price_weekly: number;
+  price_annual_total: number;
   credits: number;
   features: string[];
   highlighted?: boolean;
@@ -171,11 +171,11 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "free",
     name: "100 seguidores",
-    price_monthly: 0,
-    price_annual: 0,
+    price_weekly: 0,
+    price_annual_total: 0,
     credits: 10,
     features: [
-      "10 créditos/mes",
+      "10 créditos/semana",
       "Generador de ideas",
       "Guiones básicos",
       "1 canal guardado",
@@ -184,11 +184,11 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "starter",
     name: "1.000 seguidores",
-    price_monthly: 19,
-    price_annual: 15,
+    price_weekly: 4.75,
+    price_annual_total: 205.83,
     credits: 100,
     features: [
-      "100 créditos/mes",
+      "100 créditos/semana",
       "Hook Comparator",
       "Biblioteca ilimitada",
       "5 canales guardados",
@@ -198,12 +198,12 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "pro",
     name: "100.000 seguidores",
-    price_monthly: 49,
-    price_annual: 39,
+    price_weekly: 12.25,
+    price_annual_total: 530.83,
     credits: 300,
     highlighted: true,
     features: [
-      "300 créditos/mes",
+      "300 créditos/semana",
       "Todo de Starter",
       "Explorar competidores",
       "Puntúa tus guiones",
@@ -214,11 +214,11 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "agency",
     name: "1.000.000 seguidores",
-    price_monthly: 99,
-    price_annual: 79,
+    price_weekly: 24.75,
+    price_annual_total: 1072.50,
     credits: 1000,
     features: [
-      "1000 créditos/mes",
+      "1000 créditos/semana",
       "Todo de Pro",
       "Multi-workspace",
       "API access",

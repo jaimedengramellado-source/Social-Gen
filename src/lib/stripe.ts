@@ -13,18 +13,18 @@ export function getStripeClient(): Stripe {
 // Keep backward compat export for webhook route that needs stripe directly
 export { Stripe };
 
-export const STRIPE_PRICE_IDS: Record<Plan, { monthly: string; annual: string }> = {
-  free: { monthly: "", annual: "" },
+export const STRIPE_PRICE_IDS: Record<Plan, { weekly: string; annual: string }> = {
+  free: { weekly: "", annual: "" },
   starter: {
-    monthly: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID ?? "",
+    weekly: process.env.STRIPE_STARTER_WEEKLY_PRICE_ID ?? "",
     annual: process.env.STRIPE_STARTER_ANNUAL_PRICE_ID ?? "",
   },
   pro: {
-    monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID ?? "",
+    weekly: process.env.STRIPE_PRO_WEEKLY_PRICE_ID ?? "",
     annual: process.env.STRIPE_PRO_ANNUAL_PRICE_ID ?? "",
   },
   agency: {
-    monthly: process.env.STRIPE_AGENCY_MONTHLY_PRICE_ID ?? "",
+    weekly: process.env.STRIPE_AGENCY_WEEKLY_PRICE_ID ?? "",
     annual: process.env.STRIPE_AGENCY_ANNUAL_PRICE_ID ?? "",
   },
 };
@@ -43,7 +43,7 @@ export const CREDIT_PACK_AMOUNTS: Record<string, number> = {
 
 export function getPlanFromPriceId(priceId: string): Plan | null {
   for (const [plan, prices] of Object.entries(STRIPE_PRICE_IDS)) {
-    if (prices.monthly === priceId || prices.annual === priceId) {
+    if (prices.weekly === priceId || prices.annual === priceId) {
       return plan as Plan;
     }
   }

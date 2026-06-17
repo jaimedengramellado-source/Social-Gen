@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { plan, billing = "monthly", packId } = body;
+  const { plan, billing = "weekly", packId } = body;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -37,11 +37,11 @@ export async function POST(request: NextRequest) {
 
   // Subscription
   const planPrices = STRIPE_PRICE_IDS[plan as Plan];
-  if (!planPrices || !planPrices[billing as "monthly" | "annual"]) {
+  if (!planPrices || !planPrices[billing as "weekly" | "annual"]) {
     return NextResponse.json({ error: "INVALID_PLAN" }, { status: 400 });
   }
 
-  const priceId = planPrices[billing as "monthly" | "annual"];
+  const priceId = planPrices[billing as "weekly" | "annual"];
 
   const { data: profile } = await supabase
     .from("profiles")

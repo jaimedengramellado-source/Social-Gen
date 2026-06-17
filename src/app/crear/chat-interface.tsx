@@ -22,6 +22,9 @@ type IdeaItem = {
   hook: string;
   content_style: string;
   viral_score: number;
+  why_viral?: string;
+  hook_type?: string;
+  differentiator?: string;
 };
 
 const PLACEHOLDERS = [
@@ -50,7 +53,7 @@ function scoreColor(score: number) {
   return { bg: "#fee2e2", text: "#991b1b", ring: "#ef4444" };
 }
 
-function IdeaCards({ ideas, onCreateScript }: { ideas: IdeaItem[]; onCreateScript?: (title: string) => void }) {
+function IdeaCards({ ideas, onCreateScript }: { ideas: IdeaItem[]; onCreateScript?: (idea: { title: string; hook?: string }) => void }) {
   const [saved, setSaved] = useState<Record<number, boolean>>({});
   const [saving, setSaving] = useState<Record<number, boolean>>({});
 
@@ -87,6 +90,12 @@ function IdeaCards({ ideas, onCreateScript }: { ideas: IdeaItem[]; onCreateScrip
                 <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--color-muted-foreground)" }}>
                   {idea.hook}
                 </p>
+                {idea.why_viral && (
+                  <p className="text-xs rounded-lg px-2.5 py-1.5 mt-2 leading-relaxed"
+                    style={{ color: "var(--color-primary)", backgroundColor: "var(--color-primary-light)" }}>
+                    {idea.why_viral}
+                  </p>
+                )}
               </div>
               {/* Viral score */}
               <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-black text-sm"
@@ -96,10 +105,18 @@ function IdeaCards({ ideas, onCreateScript }: { ideas: IdeaItem[]; onCreateScrip
             </div>
 
             <div className="flex items-center justify-between mt-3">
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-                {idea.content_style}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {idea.hook_type && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary)" }}>
+                    {idea.hook_type}
+                  </span>
+                )}
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+                  {idea.content_style}
+                </span>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleSave(idea, i)}
@@ -115,7 +132,7 @@ function IdeaCards({ ideas, onCreateScript }: { ideas: IdeaItem[]; onCreateScrip
                   {saving[i] ? "Guardando..." : saved[i] ? "Guardada" : "Guardar"}
                 </button>
                 <button
-                  onClick={() => onCreateScript?.(idea.title)}
+                  onClick={() => onCreateScript?.({ title: idea.title, hook: idea.hook })}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90"
                   style={{ backgroundColor: "var(--color-primary)" }}
                 >
@@ -166,7 +183,7 @@ function parseIdeas(content: string): IdeaItem[] | null {
 function MessageBubble({ msg, streaming, onCreateScript }: {
   msg: Message;
   streaming?: boolean;
-  onCreateScript?: (title: string) => void;
+  onCreateScript?: (idea: { title: string; hook?: string }) => void;
 }) {
   const isUser = msg.role === "user";
 
@@ -218,7 +235,7 @@ interface ChatInterfaceProps {
   initialMessages?: Message[];
   onSessionCreated: (id: string, title: string, messages: Message[]) => void;
   onSessionUpdated: (id: string, title: string) => void;
-  onCreateScript?: (title: string) => void;
+  onCreateScript?: (idea: { title: string; hook?: string }) => void;
 }
 
 export function ChatInterface({ profile, sessionId, initialMessages, onSessionCreated, onSessionUpdated, onCreateScript }: ChatInterfaceProps) {
@@ -485,12 +502,32 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
                   <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 animate-pulse rounded-full" />
                 </div>
               </div>
+            ) : isStreamingJSON ? (
+              <div className="space-y-3 w-full max-w-2xl">
+                <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "var(--color-muted-foreground)" }}>
+                  Generando ideas...
+                </p>
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="bg-white rounded-2xl border border-[var(--color-border)] p-4 animate-pulse">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3.5 rounded-full w-4/5" style={{ backgroundColor: "var(--color-muted)" }} />
+                        <div className="h-2.5 rounded-full w-full" style={{ backgroundColor: "var(--color-muted)" }} />
+                        <div className="h-2.5 rounded-full w-3/4" style={{ backgroundColor: "var(--color-muted)" }} />
+                      </div>
+                      <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--color-muted)" }} />
+                    </div>
+                    <div className="h-7 rounded-lg w-2/3 mt-3" style={{ backgroundColor: "var(--color-muted)" }} />
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="h-4 rounded-full w-16" style={{ backgroundColor: "var(--color-muted)" }} />
+                      <div className="h-7 rounded-lg w-24" style={{ backgroundColor: "var(--color-muted)" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="bg-white border border-[var(--color-border)] rounded-2xl rounded-bl-sm px-4 py-2">
-                {isStreamingJSON
-                  ? <p className="text-sm text-[var(--color-muted-foreground)]">Generando ideas...</p>
-                  : <TypingDots />
-                }
+                <TypingDots />
               </div>
             )}
           </div>

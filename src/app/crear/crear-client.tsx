@@ -327,7 +327,14 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
               initialMessages={activeMessages}
               onSessionCreated={handleSessionCreated}
               onSessionUpdated={handleSessionUpdated}
-              onCreateScript={(title) => { setMode("guided"); setNiche(title); }}
+              onCreateScript={(idea) => {
+                  setMode("guided");
+                  setAnswers(prev => ({ ...prev, angle: idea.title }));
+                  if (platform && niche.trim()) {
+                    if (!contentType) setContentType("mix");
+                    setStep("questions");
+                  }
+                }}
             />
           </div>
         </div>

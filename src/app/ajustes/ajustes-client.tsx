@@ -38,11 +38,13 @@ export function AjustesClient({ profile }: { profile: Profile }) {
     if (url) window.location.href = url;
   }
 
+  const [upgradeBilling, setUpgradeBilling] = useState<"weekly" | "annual">("weekly");
+
   async function handleUpgrade(planId: string) {
     const res = await fetch("/api/stripe/create-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: planId, billing: "monthly" }),
+      body: JSON.stringify({ plan: planId, billing: upgradeBilling }),
     });
     const { url } = await res.json();
     if (url) window.location.href = url;
@@ -131,7 +133,7 @@ export function AjustesClient({ profile }: { profile: Profile }) {
               </Badge>
             </div>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              {PLAN_CREDITS[profile.plan]} créditos/mes
+              {PLAN_CREDITS[profile.plan]} créditos/semana
             </p>
           </div>
           {profile.stripe_subscription_id && (
@@ -143,26 +145,51 @@ export function AjustesClient({ profile }: { profile: Profile }) {
 
         {profile.plan === "free" && (
           <div className="space-y-3">
-            <p className="text-sm font-medium">Actualizar a:</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {PRICING_PLANS.filter((p) => p.id !== "free").map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`rounded-xl border p-4 ${plan.highlighted ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]" : "border-[var(--color-border)]"}`}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Actualizar a:</p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setUpgradeBilling("weekly")}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${upgradeBilling === "weekly" ? "bg-[var(--color-foreground)] text-white" : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"}`}
                 >
-                  <p className="font-semibold text-sm mb-0.5">{plan.name}</p>
-                  <p className="text-lg font-bold mb-1">${plan.price_monthly}<span className="text-xs font-normal text-[var(--color-muted-foreground)]">/mes</span></p>
-                  <p className="text-xs text-[var(--color-muted-foreground)] mb-3">{plan.credits} créditos/mes</p>
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    variant={plan.highlighted ? "default" : "outline"}
-                    onClick={() => handleUpgrade(plan.id)}
+                  Semanal
+                </button>
+                <button
+                  onClick={() => setUpgradeBilling("annual")}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${upgradeBilling === "annual" ? "bg-[var(--color-foreground)] text-white" : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"}`}
+                >
+                  Anual <span className="text-[var(--color-success)] font-semibold">−17%</span>
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {PRICING_PLANS.filter((p) => p.id !== "free").map((plan) => {
+                const displayPrice = upgradeBilling === "weekly"
+                  ? `${plan.price_weekly.toFixed(2).replace(".", ",")}€`
+                  : `${(plan.price_annual_total / 52).toFixed(2).replace(".", ",")}€`;
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={`rounded-xl border p-4 ${plan.highlighted ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]" : "border-[var(--color-border)]"}`}
                   >
-                    Elegir
-                  </Button>
-                </div>
-              ))}
+                    <p className="font-semibold text-sm mb-0.5">{plan.name}</p>
+                    <p className="text-lg font-bold mb-0.5">{displayPrice}<span className="text-xs font-normal text-[var(--color-muted-foreground)]">/sem</span></p>
+                    {upgradeBilling === "annual" && (
+                      <p className="text-xs text-[var(--color-muted-foreground)] mb-1">{plan.price_annual_total.toFixed(2).replace(".", ",")}€/año</p>
+                    )}
+                    <p className="text-xs text-[var(--color-muted-foreground)] mb-3">{plan.credits} créditos/semana</p>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      variant={plan.highlighted ? "default" : "outline"}
+                      onClick={() => handleUpgrade(plan.id)}
+                    >
+                      Elegir
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
