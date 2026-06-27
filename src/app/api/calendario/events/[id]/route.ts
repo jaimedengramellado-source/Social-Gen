@@ -1,24 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { id } = await params;
   const body = await request.json();
-  const { title, description, scheduled_at, remind_before_minutes, script_id } = body;
+  const {
+    title,
+    description,
+    start_time,
+    end_time,
+    color,
+    scheduled_at,
+    remind_before_minutes,
+    remind_times,
+    script_id,
+  } = body;
+
+  const effectiveStartTime = start_time ?? scheduled_at;
+  const effectiveScheduledAt = scheduled_at ?? start_time;
 
   const { data, error } = await supabase
     .from("calendar_events")
     .update({
       title,
       description: description ?? null,
-      scheduled_at,
+      start_time: effectiveStartTime,
+      end_time: end_time ?? null,
+      color: color ?? "#1a73e8",
+      scheduled_at: effectiveScheduledAt,
       remind_before_minutes: remind_before_minutes ?? null,
-      script_id: script_id ?? null,
+      remind_times: remind_times ?? [],
+      // Reset sent offsets whenever reminders are changed, so cron re-fires
+      sent_reminder_offsets: [],
       reminder_sent: false,
+      script_id: script_id ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -30,7 +52,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json(data);
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });

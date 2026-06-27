@@ -11,7 +11,13 @@ import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
 import { PLATFORM_LABELS } from "@/types";
 import { timeAgo } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import type { Editor } from "@/components/ui/rich-text-editor";
 import type { Script, ScriptSection } from "@/types";
+import {
+  Bold, Italic, Underline as UnderlineIcon,
+  Heading2, Heading3, List, ListOrdered,
+} from "lucide-react";
 
 const PRIMARY = "var(--color-primary)";
 const ACCENT = "var(--color-accent)";
@@ -34,32 +40,6 @@ type ProjectRow = {
 type SaveStatus = "saved" | "saving" | "unsaved" | "error";
 type Selection = { type: "script"; id: string } | { type: "idea"; id: string; idea: IdeaRow } | null;
 
-function AutoTextarea({
-  value, onChange, placeholder, className = "", large = false,
-}: {
-  value: string; onChange: (v: string) => void;
-  placeholder?: string; className?: string; large?: boolean;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    const ta = ref.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = ta.scrollHeight + "px";
-  }, [value]);
-  return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={1}
-      className={`w-full resize-none overflow-hidden bg-transparent focus:outline-none leading-relaxed placeholder:text-[var(--color-muted-foreground)] ${large ? "text-2xl font-bold" : "text-sm"} ${className}`}
-      style={{ minHeight: large ? "2.5rem" : "1.5rem", ...(large ? { fontFamily: "var(--font-serif)" } : {}) }}
-    />
-  );
-}
-
 function fmtSaveTime(d: Date) {
   const diff = Math.floor((Date.now() - d.getTime()) / 1000);
   if (diff < 60) return "ahora mismo";
@@ -77,8 +57,9 @@ export function BibliotecaClient({
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selection, setSelection] = useState<Selection>(null);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
-  // Script editor state
+  const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   const [fullScript, setFullScript] = useState<Script | null>(null);
   const [loadingScript, setLoadingScript] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -114,6 +95,7 @@ export function BibliotecaClient({
 
   async function selectScript(id: string, scriptRow?: ScriptRow) {
     setSelection({ type: "script", id });
+    setMobilePanelOpen(true);
     setFullScript(null);
     setIsDirty(false);
     setLoadingScript(true);
@@ -136,6 +118,7 @@ export function BibliotecaClient({
 
   function selectIdea(idea: IdeaRow) {
     setSelection({ type: "idea", id: idea.id, idea });
+    setMobilePanelOpen(true);
     setFullScript(null);
     setIsDirty(false);
   }
@@ -185,7 +168,7 @@ export function BibliotecaClient({
     <div className="flex h-full">
 
       {/* ── Sidebar ── */}
-      <aside className="w-64 flex-shrink-0 flex flex-col border-r border-[var(--color-border)] bg-white overflow-hidden">
+      <aside className={`w-full md:w-64 flex-shrink-0 flex flex-col border-r border-[var(--color-border)] bg-white overflow-hidden ${mobilePanelOpen ? 'hidden md:flex' : ''}`}>
         <div className="p-4 border-b border-[var(--color-border)]">
           <Link
             href="/crear"
@@ -204,9 +187,8 @@ export function BibliotecaClient({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto py-2 pb-16 md:pb-2">
 
-          {/* Projects */}
           {filteredProjects.length === 0 && filteredOrphanScripts.length === 0 && filteredOrphanIdeas.length === 0 && (
             <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8 px-4">Sin contenido aún</p>
           )}
@@ -237,7 +219,6 @@ export function BibliotecaClient({
 
                 {isOpen && (
                   <div className="pl-4 pb-1">
-                    {/* Ideas inside project */}
                     {project.ideas.length > 0 && (
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] px-2 py-1.5">
@@ -263,7 +244,6 @@ export function BibliotecaClient({
                       </div>
                     )}
 
-                    {/* Scripts inside project */}
                     {project.scripts.length > 0 && (
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] px-2 py-1.5 mt-1">
@@ -294,7 +274,6 @@ export function BibliotecaClient({
             );
           })}
 
-          {/* Orphan scripts (created before project system) */}
           {filteredOrphanScripts.length > 0 && (
             <div>
               <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] px-4 py-2 mt-2">
@@ -319,7 +298,6 @@ export function BibliotecaClient({
             </div>
           )}
 
-          {/* Orphan saved ideas */}
           {filteredOrphanIdeas.length > 0 && (
             <div>
               <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] px-4 py-2 mt-2">
@@ -345,9 +323,16 @@ export function BibliotecaClient({
       </aside>
 
       {/* ── Main area ── */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className={`flex-1 flex-col overflow-hidden ${mobilePanelOpen ? 'flex' : 'hidden md:flex'}`}>
 
-        {/* Nothing selected */}
+        {/* Mobile back button */}
+        <button
+          onClick={() => { setMobilePanelOpen(false); }}
+          className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-[var(--color-border)] text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] bg-white flex-shrink-0"
+        >
+          <ChevronRight size={14} className="rotate-180" /> Volver
+        </button>
+
         {!selection && (
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: ACCENT }}>
@@ -363,7 +348,8 @@ export function BibliotecaClient({
         {/* ── Script editor ── */}
         {selection?.type === "script" && (
           <>
-            <div className="flex items-center justify-between px-8 py-2.5 border-b border-[var(--color-border)] bg-white flex-shrink-0">
+            {/* Save / share bar */}
+            <div className="flex items-center justify-between px-4 md:px-8 py-2 border-b border-[var(--color-border)] bg-white flex-shrink-0 gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
               <div className="flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
                 {saveStatus === "saving" && <><Loader2 size={12} className="animate-spin" /> Guardando…</>}
                 {saveStatus === "saved" && lastSaved && <><CheckCircle size={12} className="text-green-500" /> Guardado {fmtSaveTime(lastSaved)}</>}
@@ -390,13 +376,71 @@ export function BibliotecaClient({
                   <Link href={`/crear?script=${fullScript.id}`}
                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-80"
                     style={{ backgroundColor: PRIMARY }}>
-                    <ExternalLink size={11} /> Abrir editor
+                    <ExternalLink size={11} /> Abrir en IA
                   </Link>
                 )}
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto" style={{ backgroundColor: "#EBEBEB" }}>
+            {/* Format toolbar — Word/Google Docs style */}
+            <div
+              className="flex items-center gap-0.5 px-3 md:px-6 py-1.5 border-b border-[var(--color-border)] bg-white flex-shrink-0 overflow-x-auto"
+              style={{ scrollbarWidth: "none" }}
+              onMouseDown={e => e.preventDefault()}
+            >
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleBold().run()}
+                active={!!activeEditor?.isActive("bold")}
+                label="Negrita (Ctrl+B)"
+                disabled={!activeEditor}
+              ><Bold size={14} /></FmtBtn>
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleItalic().run()}
+                active={!!activeEditor?.isActive("italic")}
+                label="Cursiva (Ctrl+I)"
+                disabled={!activeEditor}
+              ><Italic size={14} /></FmtBtn>
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleUnderline().run()}
+                active={!!activeEditor?.isActive("underline")}
+                label="Subrayado (Ctrl+U)"
+                disabled={!activeEditor}
+              ><UnderlineIcon size={14} /></FmtBtn>
+              <div className="w-px h-5 mx-1" style={{ backgroundColor: "var(--color-border)" }} />
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                active={!!activeEditor?.isActive("heading", { level: 2 })}
+                label="Título"
+                disabled={!activeEditor}
+              ><Heading2 size={14} /></FmtBtn>
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleHeading({ level: 3 }).run()}
+                active={!!activeEditor?.isActive("heading", { level: 3 })}
+                label="Subtítulo"
+                disabled={!activeEditor}
+              ><Heading3 size={14} /></FmtBtn>
+              <div className="w-px h-5 mx-1" style={{ backgroundColor: "var(--color-border)" }} />
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleBulletList().run()}
+                active={!!activeEditor?.isActive("bulletList")}
+                label="Lista"
+                disabled={!activeEditor}
+              ><List size={14} /></FmtBtn>
+              <FmtBtn
+                onClick={() => activeEditor?.chain().focus().toggleOrderedList().run()}
+                active={!!activeEditor?.isActive("orderedList")}
+                label="Lista numerada"
+                disabled={!activeEditor}
+              ><ListOrdered size={14} /></FmtBtn>
+              {!activeEditor && (
+                <span className="ml-2 text-[11px] text-[var(--color-muted-foreground)]">
+                  Haz clic en una sección para empezar a editar
+                </span>
+              )}
+            </div>
+
+            {/* Document canvas */}
+            <div className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: "#EBEBEB" }}>
               {loadingScript && (
                 <div className="max-w-2xl mx-auto py-10 px-6">
                   <div className="bg-white rounded shadow-[0_2px_12px_rgba(0,0,0,0.10)] px-12 py-14 space-y-4">
@@ -413,88 +457,123 @@ export function BibliotecaClient({
                 </div>
               )}
               {!loadingScript && fullScript && (
-                <div className="max-w-2xl mx-auto py-10 px-6">
-                <div className="bg-white rounded shadow-[0_2px_12px_rgba(0,0,0,0.10)] px-12 py-14">
-                  <AutoTextarea
-                    value={editTitle}
-                    onChange={v => { setEditTitle(v); markDirty(); }}
-                    placeholder="Título del guion…"
-                    large
-                    className="mb-4"
-                  />
-                  <div className="flex flex-wrap items-center gap-2 mb-6">
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: ACCENT, color: PRIMARY }}>
-                      {PLATFORM_LABELS[fullScript.platform as keyof typeof PLATFORM_LABELS] || fullScript.platform}
-                    </span>
-                    {fullScript.niche && (
-                      <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
-                        {fullScript.niche}
+                <div className="max-w-2xl mx-auto py-6 md:py-10 px-3 md:px-6">
+                  <div className="bg-white rounded shadow-[0_2px_12px_rgba(0,0,0,0.10)] px-5 md:px-12 py-8 md:py-14">
+
+                    {/* Title */}
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={e => { setEditTitle(e.target.value); markDirty(); }}
+                      placeholder="Título del guion…"
+                      className="w-full text-2xl font-bold bg-transparent focus:outline-none leading-tight mb-4 placeholder:text-[var(--color-muted-foreground)]"
+                      style={{ fontFamily: "var(--font-serif)" }}
+                    />
+
+                    <div className="flex flex-wrap items-center gap-2 mb-6">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: ACCENT, color: PRIMARY }}>
+                        {PLATFORM_LABELS[fullScript.platform as keyof typeof PLATFORM_LABELS] || fullScript.platform}
                       </span>
-                    )}
-                    <ViralScoreBadge score={fullScript.viral_score} size="sm" />
-                    <span className="text-xs text-[var(--color-muted-foreground)]">{timeAgo(fullScript.created_at)}</span>
-                  </div>
-                  <div className="h-px bg-[var(--color-border)] mb-8" />
-
-                  <section className="mb-8">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">🎣 Hook</p>
-                    <div className="rounded-xl p-4 focus-within:ring-1 transition-all" style={{ backgroundColor: "var(--color-muted)" }}>
-                      <AutoTextarea value={editHook} onChange={v => { setEditHook(v); markDirty(); }} placeholder="Hook…" className="font-medium" />
+                      {fullScript.niche && (
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
+                          {fullScript.niche}
+                        </span>
+                      )}
+                      <ViralScoreBadge score={fullScript.viral_score} size="sm" />
+                      <span className="text-xs text-[var(--color-muted-foreground)]">{timeAgo(fullScript.created_at)}</span>
                     </div>
-                  </section>
 
-                  {fullScript.intro !== undefined && (
+                    <div className="h-px bg-[var(--color-border)] mb-8" />
+
+                    {/* Hook */}
                     <section className="mb-8">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Introducción</p>
-                      <AutoTextarea value={editIntro} onChange={v => { setEditIntro(v); markDirty(); }} placeholder="Introducción…"
-                        className="border-b border-[var(--color-border)] focus:border-[var(--color-foreground)] pb-1 transition-colors" />
-                    </section>
-                  )}
-
-                  {editSections.length > 0 && (
-                    <section className="mb-8 space-y-7">
-                      {editSections.map((sec, i) => (
-                        <div key={i}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <input type="text" value={sec.section}
-                              onChange={e => updateSection(i, "section", e.target.value)}
-                              className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] bg-transparent focus:outline-none border-b border-transparent focus:border-[var(--color-muted-foreground)] transition-colors" />
-                            {sec.timestamp && <span className="text-[10px] text-[var(--color-muted-foreground)] opacity-50">[{sec.timestamp}]</span>}
-                          </div>
-                          <AutoTextarea value={sec.content} onChange={v => updateSection(i, "content", v)}
-                            placeholder="Contenido de la sección…"
-                            className="border-b border-[var(--color-border)] focus:border-[var(--color-foreground)] pb-1 transition-colors" />
-                        </div>
-                      ))}
-                    </section>
-                  )}
-
-                  {fullScript.cta !== undefined && (
-                    <section className="mb-8">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">🎯 CTA</p>
-                      <div className="rounded-xl p-4 focus-within:ring-1 transition-all" style={{ backgroundColor: "var(--color-muted)" }}>
-                        <AutoTextarea value={editCta} onChange={v => { setEditCta(v); markDirty(); }} placeholder="Call to action…" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">🎣 Hook</p>
+                      <div className="rounded-xl p-4 transition-all" style={{ backgroundColor: "var(--color-muted)" }}>
+                        <RichTextEditor
+                          content={editHook}
+                          onChange={v => { setEditHook(v); markDirty(); }}
+                          placeholder="Hook…"
+                          onFocusEditor={setActiveEditor}
+                        />
                       </div>
                     </section>
-                  )}
 
-                  {fullScript.title_suggestions?.length > 0 && (
-                    <section className="mb-10">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Títulos alternativos</p>
-                      <ul className="space-y-1.5">
-                        {fullScript.title_suggestions.map((t, i) => (
-                          <li key={i} className="text-sm text-[var(--color-muted-foreground)] flex items-start gap-2">
-                            <span style={{ color: PRIMARY }}>·</span> {t}
-                          </li>
+                    {/* Intro */}
+                    {fullScript.intro !== undefined && (
+                      <section className="mb-8">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Introducción</p>
+                        <div className="border-b border-[var(--color-border)] pb-3">
+                          <RichTextEditor
+                            content={editIntro}
+                            onChange={v => { setEditIntro(v); markDirty(); }}
+                            placeholder="Introducción…"
+                            onFocusEditor={setActiveEditor}
+                          />
+                        </div>
+                      </section>
+                    )}
+
+                    {/* Main content sections */}
+                    {editSections.length > 0 && (
+                      <section className="mb-8 space-y-7">
+                        {editSections.map((sec, i) => (
+                          <div key={i}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <input
+                                type="text"
+                                value={sec.section}
+                                onChange={e => updateSection(i, "section", e.target.value)}
+                                className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] bg-transparent focus:outline-none border-b border-transparent focus:border-[var(--color-muted-foreground)] transition-colors"
+                              />
+                              {sec.timestamp && (
+                                <span className="text-[10px] text-[var(--color-muted-foreground)] opacity-50">[{sec.timestamp}]</span>
+                              )}
+                            </div>
+                            <div className="border-b border-[var(--color-border)] pb-3">
+                              <RichTextEditor
+                                content={sec.content}
+                                onChange={v => updateSection(i, "content", v)}
+                                placeholder="Contenido de la sección…"
+                                onFocusEditor={setActiveEditor}
+                              />
+                            </div>
+                          </div>
                         ))}
-                      </ul>
-                    </section>
-                  )}
+                      </section>
+                    )}
 
-                  <p className="text-xs text-[var(--color-muted-foreground)] text-center pb-4">
-                    Autoguardado cada 5 minutos · Ctrl+S para guardar ahora
-                  </p>
-                </div>
+                    {/* CTA */}
+                    {fullScript.cta !== undefined && (
+                      <section className="mb-8">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">🎯 CTA</p>
+                        <div className="rounded-xl p-4 transition-all" style={{ backgroundColor: "var(--color-muted)" }}>
+                          <RichTextEditor
+                            content={editCta}
+                            onChange={v => { setEditCta(v); markDirty(); }}
+                            placeholder="Call to action…"
+                            onFocusEditor={setActiveEditor}
+                          />
+                        </div>
+                      </section>
+                    )}
+
+                    {fullScript.title_suggestions?.length > 0 && (
+                      <section className="mb-10">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Títulos alternativos</p>
+                        <ul className="space-y-1.5">
+                          {fullScript.title_suggestions.map((t, i) => (
+                            <li key={i} className="text-sm text-[var(--color-muted-foreground)] flex items-start gap-2">
+                              <span style={{ color: PRIMARY }}>·</span> {t}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )}
+
+                    <p className="text-xs text-[var(--color-muted-foreground)] text-center pb-4">
+                      Autoguardado cada 5 min · Ctrl+S para guardar ahora · Selecciona texto para formatear
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -503,9 +582,9 @@ export function BibliotecaClient({
 
         {/* ── Idea view ── */}
         {selection?.type === "idea" && (
-          <div className="flex-1 overflow-y-auto" style={{ backgroundColor: "#EBEBEB" }}>
-            <div className="max-w-2xl mx-auto py-10 px-6">
-            <div className="bg-white rounded shadow-[0_2px_12px_rgba(0,0,0,0.10)] px-12 py-14">
+          <div className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: "#EBEBEB" }}>
+            <div className="max-w-2xl mx-auto py-6 md:py-10 px-3 md:px-6">
+            <div className="bg-white rounded shadow-[0_2px_12px_rgba(0,0,0,0.10)] px-5 md:px-12 py-8 md:py-14">
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: ACCENT }}>
                   <Lightbulb size={16} style={{ color: PRIMARY }} />
@@ -572,5 +651,30 @@ export function BibliotecaClient({
         )}
       </main>
     </div>
+  );
+}
+
+function FmtBtn({
+  onClick, active, label, disabled, children,
+}: {
+  onClick: () => void;
+  active: boolean;
+  label: string;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onMouseDown={e => { e.preventDefault(); onClick(); }}
+      title={label}
+      disabled={disabled}
+      className="w-7 h-7 flex items-center justify-center rounded-md transition-colors disabled:opacity-30"
+      style={{
+        backgroundColor: active ? "var(--color-primary-light)" : "transparent",
+        color: active ? "var(--color-primary)" : "var(--color-muted-foreground)",
+      }}
+    >
+      {children}
+    </button>
   );
 }

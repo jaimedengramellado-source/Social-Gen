@@ -13,7 +13,7 @@ export default async function CrearLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-background)" }}>
       <AppHeader />
-      <main>{children}</main>
+      <main className="pb-16 md:pb-0">{children}</main>
     </div>
   );
 }

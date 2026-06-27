@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
 
 @theme {
   /* Colors */
@@ -69,10 +70,18 @@
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes stream-reveal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   @keyframes triangle-spin {
     0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
+}
+
+.streaming-prose > * {
+  animation: stream-reveal 200ms ease forwards;
 }
 
 /* Dark mode — global overrides */
@@ -105,6 +114,17 @@ html.dark option {
 }
 html.dark ::-webkit-calendar-picker-indicator {
   filter: invert(1);
+}
+
+.prose {
+  --tw-prose-body: var(--color-foreground);
+  --tw-prose-headings: var(--color-foreground);
+  --tw-prose-bold: var(--color-foreground);
+  --tw-prose-links: var(--color-primary);
+  --tw-prose-code: var(--color-primary);
+  --tw-prose-bullets: var(--color-muted-foreground);
+  --tw-prose-counters: var(--color-muted-foreground);
+  --tw-prose-hr: var(--color-border);
 }
 
 /* Base styles */
@@ -152,4 +172,153 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   outline: none;
+}
+
+/* ── Tiptap / ProseMirror ── */
+.ProseMirror:focus { outline: none; }
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+
+.rich-editor h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+  color: var(--color-foreground);
+}
+.rich-editor h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.25rem;
+  color: var(--color-foreground);
+}
+.rich-editor h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.2rem;
+  color: var(--color-foreground);
+}
+.rich-editor p { margin: 0 0 0.4rem; }
+.rich-editor p:last-child { margin-bottom: 0; }
+.rich-editor ul { list-style: disc; padding-left: 1.25rem; margin: 0.4rem 0; }
+.rich-editor ol { list-style: decimal; padding-left: 1.25rem; margin: 0.4rem 0; }
+.rich-editor li { margin: 0.15rem 0; }
+.rich-editor strong { font-weight: 700; }
+.rich-editor em { font-style: italic; }
+.rich-editor u { text-decoration: underline; }
+
+/* Doc body: allow container to control font-family & font-size */
+.doc-body .rich-editor,
+.doc-body .ProseMirror {
+  font-size: inherit;
+  font-family: inherit;
+  line-height: inherit;
+}
+
+/* ── Google Docs editor ── */
+.gdocs-page .ProseMirror {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.15;
+  color: #000000;
+  outline: none;
+  min-height: 100%;
+}
+
+.gdocs-page .ProseMirror p {
+  margin: 0;
+  padding: 0;
+  min-height: 1.4em;
+}
+
+.gdocs-page .ProseMirror h1 {
+  font-size: 20pt;
+  font-weight: 400;
+  margin: 16px 0 4px;
+  line-height: 1.2;
+}
+.gdocs-page .ProseMirror h2 {
+  font-size: 16pt;
+  font-weight: 400;
+  margin: 14px 0 4px;
+  line-height: 1.2;
+}
+.gdocs-page .ProseMirror h3 {
+  font-size: 13pt;
+  font-weight: 700;
+  margin: 12px 0 4px;
+  line-height: 1.2;
+}
+
+.gdocs-page .ProseMirror ul {
+  padding-left: 24px;
+  list-style-type: disc;
+  margin: 4px 0;
+}
+.gdocs-page .ProseMirror ol {
+  padding-left: 24px;
+  list-style-type: decimal;
+  margin: 4px 0;
+}
+.gdocs-page .ProseMirror li { margin: 2px 0; }
+
+.gdocs-page .ProseMirror a {
+  color: #1155cc;
+  text-decoration: underline;
+}
+
+.gdocs-page .ProseMirror strong { font-weight: 700; }
+.gdocs-page .ProseMirror em { font-style: italic; }
+.gdocs-page .ProseMirror u { text-decoration: underline; }
+.gdocs-page .ProseMirror s { text-decoration: line-through; }
+
+.gdocs-page .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0;
+  border-radius: 2px;
+}
+.gdocs-page .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #1a73e8;
+  outline-offset: 1px;
+}
+
+/* Custom ResizableImage node view */
+.gdocs-page [data-node-view-wrapper] {
+  display: block;
+  user-select: none;
+}
+/* Prevent double outline when ProseMirror selects the wrapper */
+.gdocs-page [data-node-view-wrapper].ProseMirror-selectednode {
+  outline: none;
+}
+
+.gdocs-page .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9aa0a6;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Print styles */
+@media print {
+  * { visibility: hidden !important; }
+  .gdocs-page,
+  .gdocs-page * { visibility: visible !important; }
+  .gdocs-page {
+    position: fixed !important;
+    inset: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    padding: 48px 72px !important;
+    width: 100% !important;
+    min-height: unset !important;
+  }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
 import { checkAndDeductCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
 
+  const userContext = await fetchUserAIContext(supabase, user.id);
   const body = await request.json();
   const { platform, niche, nicheDescription, count = 10, answers } = body;
 
@@ -55,7 +56,7 @@ Genera ideas que REALMENTE funcionen para esta plataforma específica, con títu
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: SYSTEM_PROMPTS.ideas,
+      system: userContext + SYSTEM_PROMPTS.ideas,
       messages: [{ role: "user", content: userPrompt }],
     });
 

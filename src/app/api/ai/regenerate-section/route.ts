@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
 import { checkAndDeductCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
 
+  const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "regenerate_section");
   if (!credit.ok) {
     return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
@@ -42,7 +43,7 @@ Mejora el impacto sin perder el hilo narrativo con el resto del guion. Solo devu
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: 1000,
-      system: systemPrompt,
+      system: userContext + systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     });
 

@@ -230,11 +230,11 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
   // ── Not connected ──
   if (!connection) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
 
         {/* Platforms grid */}
         <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">Plataformas</p>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {/* YouTube */}
           <div className="relative rounded-2xl border border-[var(--color-border)] overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>

@@ -9,7 +9,12 @@ create table profiles (
   stripe_customer_id text,
   stripe_subscription_id text,
   onboarding_completed boolean default false,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  niche text,
+  tone text,
+  ai_instructions text,
+  main_platform text,
+  channel_name text
 );
 
 create table channels (
@@ -123,3 +128,30 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
+
+-- ============================================================
+-- Imágenes generadas con IA (Imagen 3 / Gemini 2.0 Flash)
+-- ============================================================
+
+CREATE TABLE generated_images (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  prompt TEXT NOT NULL,
+  model_used TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
+  parent_image_id UUID REFERENCES generated_images(id) ON DELETE SET NULL,
+  aspect_ratio TEXT DEFAULT '1:1',
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+ALTER TABLE generated_images ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users own their generated images"
+  ON generated_images FOR ALL USING (auth.uid() = user_id);
+
+-- ============================================================
+-- Bucket generated-images — ejecutar por separado en SQL Editor
+-- ============================================================
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('generated-images', 'generated-images', false);
+-- CREATE POLICY "Users upload own generated images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- CREATE POLICY "Users read own generated images" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- CREATE POLICY "Users delete own generated images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);

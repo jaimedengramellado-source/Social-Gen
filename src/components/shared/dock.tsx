@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon } from "lucide-react";
 import type { Profile } from "@/types";
 
 const BASE = 32;
@@ -20,7 +20,8 @@ interface DockItem {
 const ITEMS: DockItem[] = [
   { href: "/dashboard",  label: "Inicio",      type: "icon", Icon: LayoutDashboard },
   { href: "/crear",      label: "Crear con IA", type: "ia" },
-  { href: "/biblioteca", label: "Biblioteca",   type: "icon", Icon: FolderOpen },
+  { href: "/imagenes",   label: "Imágenes",    type: "icon", Icon: ImageIcon },
+  { href: "/documentos", label: "Documentos",   type: "icon", Icon: FolderOpen },
   { href: "/explorar",      label: "Explorar",       type: "icon", Icon: Search },
   { href: "/estadisticas",  label: "Estadísticas",   type: "icon", Icon: BarChart2 },
   { href: "/calendario",   label: "Calendario",     type: "icon", Icon: CalendarDays },

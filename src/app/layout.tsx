@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Inter } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/providers";
 
 const instrumentSerif = Instrument_Serif({
   weight: ["400"],
@@ -58,7 +59,7 @@ export default function RootLayout({
           color: "var(--color-foreground)",
         }}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

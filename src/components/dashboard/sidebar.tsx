@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Sparkles, Library, Telescope, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Sparkles, Library, Telescope, Settings, LogOut, Image as ImageIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { CreditsDisplay } from "@/components/shared/credits-display";
@@ -12,7 +12,8 @@ import type { Profile } from "@/types";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/crear", icon: Sparkles, label: "Crear" },
-  { href: "/biblioteca", icon: Library, label: "Biblioteca" },
+  { href: "/imagenes", icon: ImageIcon, label: "Imágenes" },
+  { href: "/documentos", icon: Library, label: "Documentos" },
   { href: "/explorar", icon: Telescope, label: "Explorar" },
   { href: "/ajustes", icon: Settings, label: "Ajustes" },
 ];

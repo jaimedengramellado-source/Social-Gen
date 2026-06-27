@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
 import { checkAndDeductCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
 
+  const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "analyze_channel");
   if (!credit.ok) {
     return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
@@ -40,7 +41,7 @@ Basándote en el nombre y nicho del canal, infiere sus patrones de contenido, qu
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: 2048,
-      system: SYSTEM_PROMPTS.analyzeChannel,
+      system: userContext + SYSTEM_PROMPTS.analyzeChannel,
       messages: [{ role: "user", content: userPrompt }],
     });
 

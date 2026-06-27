@@ -3,18 +3,53 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Send, Bookmark, BookmarkCheck, ArrowRight,
-  Plus, ArrowUp,
-  Lightbulb, FileText, Anchor, TrendingUp, Sparkles, Calendar, Hash,
+  Plus, ArrowUp, ImageIcon, FileText,
+  Lightbulb, Anchor, TrendingUp, Sparkles, Calendar, Hash,
+  Users, X, Check,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Profile } from "@/types";
-import { uploadChatImage } from "@/lib/upload";
+import { uploadChatImage, uploadChatFile } from "@/lib/upload";
+import { extractJSON } from "@/lib/utils";
+
+const CREATORS = [
+  {
+    id: "mrbeast",
+    handle: "@mrbeast",
+    name: "MrBeast",
+    description: "Retos extremos · Stakes altos · Producción masiva",
+    photo: "/creators/mrbeast.png",
+    color: "#FF0000",
+    initial: "M",
+  },
+  {
+    id: "stevejobs",
+    handle: "@stevejobs",
+    name: "Steve Jobs",
+    description: "Minimalismo · El porqué antes que el cómo · Reality distortion",
+    photo: "/creators/stevejobs.jpg",
+    color: "#555555",
+    initial: "S",
+  },
+  {
+    id: "traxnyc",
+    handle: "@traxnyc",
+    name: "TraxNYC",
+    description: "Joyería · Lujo urbano · NYC Diamond District",
+    photo: "/creators/traxnyc.webp",
+    color: "#C9A84C",
+    initial: "T",
+  },
+];
+
+type Creator = typeof CREATORS[number];
 
 type Message = {
   role: "user" | "assistant";
   content: string;
-  attachment?: { url: string; mime_type: string };
+  attachment?: { url: string; mime_type: string; name?: string };
+  creatorId?: string;
 };
 
 type IdeaItem = {
@@ -26,6 +61,19 @@ type IdeaItem = {
   hook_type?: string;
   differentiator?: string;
 };
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/\[(.+?)\]\([^)]*\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/[*_`~]/g, "");
+}
 
 const PLACEHOLDERS = [
   "Dame ideas para un vídeo de...",
@@ -147,6 +195,57 @@ function IdeaCards({ ideas, onCreateScript }: { ideas: IdeaItem[]; onCreateScrip
   );
 }
 
+function MentionDropdown({ creators, selectedIndex, onSelect }: {
+  creators: typeof CREATORS;
+  selectedIndex: number;
+  onSelect: (handle: string) => void;
+}) {
+  if (creators.length === 0) return null;
+  return (
+    <div
+      className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl border border-[var(--color-border)] overflow-hidden z-50"
+      style={{ boxShadow: "0 -4px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04)" }}
+    >
+      <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest"
+        style={{ color: "var(--color-muted-foreground)" }}>
+        Estilo de creador
+      </p>
+      {creators.map((c, i) => (
+        <button
+          key={c.id}
+          onMouseDown={e => { e.preventDefault(); onSelect(c.handle); }}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 pb-3 text-left transition-colors ${
+            i === selectedIndex ? "bg-[var(--color-primary-light)]" : "hover:bg-[var(--color-muted)]"
+          }`}
+        >
+          {c.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.photo} alt={c.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0"
+              style={{ backgroundColor: c.color }}
+            >
+              {c.initial}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight" style={{ color: "var(--color-foreground)" }}>
+              {c.handle}
+              <span className="ml-1.5 text-xs font-normal" style={{ color: "var(--color-muted-foreground)" }}>
+                {c.name}
+              </span>
+            </p>
+            <p className="text-xs mt-0.5 truncate" style={{ color: "var(--color-muted-foreground)" }}>
+              {c.description}
+            </p>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-1 py-2">
@@ -160,7 +259,23 @@ function TypingDots() {
   );
 }
 
-function AssistantAvatar() {
+function AssistantAvatar({ creator }: { creator?: Creator | null }) {
+  if (creator) {
+    return (
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border flex-shrink-0 mb-0.5"
+        style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)" }}>
+        {creator.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={creator.photo} alt={creator.name} className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+        ) : (
+          <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: creator.color }} />
+        )}
+        <span className="text-xs font-semibold leading-none" style={{ color: "var(--color-foreground)" }}>
+          {creator.name}
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="flex items-baseline gap-[0.05em] px-2 py-1 rounded-lg border flex-shrink-0 mb-0.5"
       style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)" }}>
@@ -172,12 +287,17 @@ function AssistantAvatar() {
 
 function parseIdeas(content: string): IdeaItem[] | null {
   try {
-    const trimmed = content.trim();
-    if (!trimmed.startsWith("{")) return null;
-    const parsed = JSON.parse(trimmed);
+    const cleaned = extractJSON(content);
+    if (!cleaned) return null;
+    const parsed = JSON.parse(cleaned);
     if (parsed.type === "ideas" && Array.isArray(parsed.ideas)) return parsed.ideas;
   } catch {}
   return null;
+}
+
+function looksLikeIdeasJSON(text: string): boolean {
+  const t = text.trimStart();
+  return t.startsWith("{") || t.startsWith("```");
 }
 
 function MessageBubble({ msg, streaming, onCreateScript }: {
@@ -186,13 +306,14 @@ function MessageBubble({ msg, streaming, onCreateScript }: {
   onCreateScript?: (idea: { title: string; hook?: string }) => void;
 }) {
   const isUser = msg.role === "user";
+  const creator = msg.creatorId ? CREATORS.find(c => c.id === msg.creatorId) ?? null : null;
 
   if (!isUser && !streaming) {
     const ideas = parseIdeas(msg.content);
     if (ideas) {
       return (
         <div className="flex items-end gap-2.5">
-          <AssistantAvatar />
+          <AssistantAvatar creator={creator} />
           <IdeaCards ideas={ideas} onCreateScript={onCreateScript} />
         </div>
       );
@@ -200,31 +321,32 @@ function MessageBubble({ msg, streaming, onCreateScript }: {
   }
 
   return (
-    <div className={`flex items-end gap-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
-      {!isUser && <AssistantAvatar />}
-      <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-        isUser
-          ? "text-white rounded-br-sm"
-          : "bg-white border border-[var(--color-border)] text-[var(--color-foreground)] rounded-bl-sm"
-      }`}
-        style={isUser ? { backgroundColor: "var(--color-primary)" } : {}}>
-        {isUser ? (
-          <>
-            {msg.attachment?.mime_type.startsWith("image/") && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={msg.attachment.url} alt="adjunto" className="rounded-xl max-w-full max-h-64 mb-2" />
-            )}
-            <p className="whitespace-pre-wrap">{msg.content}</p>
-          </>
-        ) : (
+    <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+      {!isUser && <AssistantAvatar creator={creator} />}
+      {isUser ? (
+        <div className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed text-white rounded-tr-sm"
+          style={{ backgroundColor: "var(--color-primary)" }}>
+          {msg.attachment?.mime_type.startsWith("image/") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={msg.attachment.url} alt="adjunto" className="rounded-xl max-w-full max-h-64 mb-2" />
+          ) : msg.attachment ? (
+            <div className="flex items-center gap-2 mb-2 px-2.5 py-1.5 rounded-xl bg-white/20">
+              <FileText size={13} className="flex-shrink-0" />
+              <span className="text-xs truncate">{msg.attachment.name || "Documento"}</span>
+            </div>
+          ) : null}
+          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+        </div>
+      ) : (
+        <div className="flex-1 min-w-0 text-sm leading-relaxed text-[var(--color-foreground)] pt-0.5 pr-4">
           <div className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
             {streaming && (
               <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 animate-pulse rounded-full" />
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -248,10 +370,17 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
   const [showMore, setShowMore] = useState(false);
   const [attachment, setAttachment] = useState<{ url: string; mime_type: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [activeCreator, setActiveCreator] = useState<Creator | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const currentSessionId = useRef<string | null>(sessionId);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -270,6 +399,22 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
     }
   }
 
+  async function handleDocSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert("Máximo 10 MB."); return; }
+    setUploading(true);
+    try {
+      const { url, mime_type } = await uploadChatFile(file);
+      setAttachment({ url, mime_type, name: file.name });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al subir el documento.");
+    } finally {
+      setUploading(false);
+      if (docInputRef.current) docInputRef.current.value = "";
+    }
+  }
+
   useEffect(() => {
     currentSessionId.current = sessionId;
     setMessages(initialMessages ?? []);
@@ -278,19 +423,67 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streaming]);
+  }, [messages]);
+
+  useEffect(() => {
+    if (!streaming) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 120) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [streaming]);
 
   useEffect(() => {
     const id = setInterval(() => setPlaceholderIdx(i => (i + 1) % PLACEHOLDERS.length), 3000);
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    function onDocClick(e: MouseEvent) {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [showAttachMenu]);
+
+  const filteredCreators = mentionQuery !== null
+    ? CREATORS.filter(c =>
+        c.handle.slice(1).startsWith(mentionQuery) ||
+        c.name.toLowerCase().includes(mentionQuery)
+      )
+    : [];
+
+  function completeMention(handle: string) {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const cursor = ta.selectionStart;
+    const before = input.slice(0, cursor);
+    const match = before.match(/@(\w*)$/);
+    if (!match) return;
+    const start = cursor - match[0].length;
+    const newVal = input.slice(0, start) + handle + " " + input.slice(cursor);
+    setInput(newVal);
+    setMentionQuery(null);
+    setTimeout(() => {
+      const newCursor = start + handle.length + 1;
+      ta.setSelectionRange(newCursor, newCursor);
+      ta.focus();
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
+    }, 0);
+  }
+
   async function send(content: string) {
-    if (!content.trim() || loading) return;
+    if ((!content.trim() && !attachment) || loading) return;
+    setMentionQuery(null);
     const userMsg: Message = {
       role: "user",
       content: content.trim(),
-      ...(attachment ? { attachment: { url: attachment.url, mime_type: attachment.mime_type } } : {}),
+      ...(attachment ? { attachment: { url: attachment.url, mime_type: attachment.mime_type, name: attachment.name } } : {}),
     };
     const history = [...messages, userMsg];
     setMessages(history);
@@ -300,11 +493,12 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
     setIsStreamingJSON(false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    let revealId: number | undefined;
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, creatorMode: activeCreator?.id ?? null }),
       });
 
       if (!res.ok || !res.body) {
@@ -312,23 +506,51 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
         return;
       }
 
+      let full = "";
+      let revealIdx = 0;
+      let networkDone = false;
+      let revealResolve!: () => void;
+      const revealComplete = new Promise<void>(r => { revealResolve = r; });
+
+      // Reveal word by word (up to 8 chars per tick) at 30ms — smooth within paragraphs
+      revealId = window.setInterval(() => {
+        if (revealIdx < full.length) {
+          let next = revealIdx + 1;
+          while (next < full.length && full[next] !== " " && full[next] !== "\n" && next - revealIdx < 8) {
+            next++;
+          }
+          revealIdx = next;
+          setStreaming(full.slice(0, revealIdx));
+        } else if (networkDone) {
+          window.clearInterval(revealId);
+          revealResolve();
+        }
+      }, 30);
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let full = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         full += decoder.decode(value, { stream: true });
-        const looksLikeJSON = full.trimStart().startsWith("{");
-        setIsStreamingJSON(looksLikeJSON);
-        if (!looksLikeJSON) setStreaming(full);
+        if (looksLikeIdeasJSON(full)) setIsStreamingJSON(true);
       }
 
-      const finalMessages = [...history, { role: "assistant" as const, content: full }];
+      networkDone = true;
+      await revealComplete; // let interval drain remaining text naturally
+
+      const finalMessages = [
+        ...history,
+        { role: "assistant" as const, content: full, ...(activeCreator ? { creatorId: activeCreator.id } : {}) },
+      ];
+      // Batch all three in one render: clear bubble, stop loading, show committed message
+      setStreaming("");
+      setLoading(false);
       setMessages(finalMessages);
       await saveSession(finalMessages, content.trim());
     } finally {
+      if (revealId !== undefined) window.clearInterval(revealId);
       setLoading(false);
       setStreaming("");
       setIsStreamingJSON(false);
@@ -363,6 +585,16 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionQuery !== null && filteredCreators.length > 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setMentionIndex(i => Math.min(i + 1, filteredCreators.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setMentionIndex(i => Math.max(i - 1, 0)); return; }
+      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+        e.preventDefault();
+        completeMention(filteredCreators[mentionIndex].handle);
+        return;
+      }
+      if (e.key === "Escape") { setMentionQuery(null); return; }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       send(input);
@@ -370,18 +602,29 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
   }
 
   function onInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+
+    const cursor = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, cursor);
+    const match = before.match(/@(\w*)$/);
+    if (match) {
+      setMentionQuery(match[1].toLowerCase());
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
   }
 
   const isEmpty = messages.length === 0 && !loading;
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6">
+      <div className="flex flex-col items-center justify-center h-full px-4 md:px-6 pb-16 md:pb-0">
         <h1
-          className="text-4xl md:text-5xl text-center mb-10 tracking-tight"
+          className="text-3xl md:text-5xl text-center mb-6 md:mb-10 tracking-tight"
           style={{
             fontFamily: "var(--font-instrument-serif)",
             color: "var(--color-foreground)",
@@ -390,27 +633,47 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
           ¿Qué puedo hacer por ti?
         </h1>
 
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
+        <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileSelect} />
+        <input type="file" ref={docInputRef} accept=".pdf,.txt,.md,.doc,.docx,.csv" className="hidden" onChange={handleDocSelect} />
 
-        <div className="w-full max-w-2xl bg-white rounded-3xl border border-[var(--color-border)] shadow-sm transition-shadow focus-within:border-[var(--color-muted-foreground)] focus-within:shadow-md">
+        <div className="relative w-full max-w-2xl">
+          {mentionQuery !== null && filteredCreators.length > 0 && (
+            <MentionDropdown creators={filteredCreators} selectedIndex={mentionIndex} onSelect={completeMention} />
+          )}
+          {activeCreator && (
+            <div className="flex items-center gap-2.5 px-4 py-2 mb-2 rounded-2xl border"
+              style={{ backgroundColor: "var(--color-primary-light)", borderColor: "rgba(124,58,237,0.25)" }}>
+              {activeCreator.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activeCreator.photo} alt={activeCreator.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: activeCreator.color }} />
+              )}
+              <p className="flex-1 text-xs font-medium" style={{ color: "var(--color-primary)" }}>
+                Creando con <span className="font-bold">{activeCreator.name}</span> · sus respuestas sonarán como él
+              </p>
+              <button
+                onClick={() => setActiveCreator(null)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold hover:bg-white/60 transition-colors"
+                style={{ color: "var(--color-primary)" }}
+              >
+                <X size={10} /> Salir
+              </button>
+            </div>
+          )}
+        <div className="bg-white rounded-3xl border border-[var(--color-border)] shadow-sm transition-shadow focus-within:border-[var(--color-muted-foreground)] focus-within:shadow-md">
           {attachment && (
             <div className="px-5 pt-4 flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={attachment.url} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-[var(--color-border)]" />
+              {attachment.mime_type.startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={attachment.url} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-[var(--color-border)]" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg border border-[var(--color-border)] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--color-muted)" }}>
+                  <FileText size={18} className="text-[var(--color-muted-foreground)]" />
+                </div>
+              )}
               <span className="text-xs text-[var(--color-muted-foreground)] truncate flex-1">{attachment.name}</span>
-              <button
-                onClick={() => setAttachment(null)}
-                className="text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-                aria-label="Quitar adjunto"
-              >
-                ✕
-              </button>
+              <button onClick={() => setAttachment(null)} className="text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]" aria-label="Quitar adjunto">✕</button>
             </div>
           )}
           <textarea
@@ -424,18 +687,65 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
             style={{ maxHeight: 200, scrollbarWidth: "none" }}
           />
           <div className="flex items-center justify-between px-3 pb-3">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
-              aria-label="Adjuntar archivo"
-            >
-              <Plus size={16} className="text-[var(--color-muted-foreground)]" />
-            </button>
+            <div ref={attachMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setShowAttachMenu(v => !v)}
+                disabled={uploading}
+                className="relative w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
+                aria-label="Adjuntar"
+              >
+                <Plus size={16} className="text-[var(--color-muted-foreground)]" />
+                {activeCreator && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+                    style={{ backgroundColor: activeCreator.color }} />
+                )}
+              </button>
+              {showAttachMenu && (
+                <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl border border-[var(--color-border)] shadow-lg py-1 min-w-[200px] z-20">
+                  <button
+                    onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                    style={{ color: "var(--color-foreground)" }}
+                  >
+                    <ImageIcon size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+                    Imagen
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                    style={{ color: "var(--color-foreground)" }}
+                  >
+                    <FileText size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+                    Documento
+                  </button>
+                  <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
+                  <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
+                    <Users size={11} /> Crear con creador
+                  </p>
+                  {CREATORS.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setActiveCreator(prev => prev?.id === c.id ? null : c); setShowAttachMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                      style={{ color: "var(--color-foreground)" }}
+                    >
+                      {c.photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.photo} alt={c.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
+                      )}
+                      <span className="flex-1">{c.name}</span>
+                      {activeCreator?.id === c.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => send(input)}
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && !attachment) || loading}
               className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-30 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "var(--color-foreground)" }}
               aria-label="Enviar"
@@ -443,6 +753,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
               <ArrowUp size={16} className="text-white" />
             </button>
           </div>
+        </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2 mt-6 max-w-2xl">
@@ -487,20 +798,18 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
     <div className="flex flex-col h-full">
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 pb-4">
         {messages.map((msg, i) => (
           <MessageBubble key={i} msg={msg} onCreateScript={onCreateScript} />
         ))}
 
         {loading && (
-          <div className="flex items-end gap-2.5">
-            <AssistantAvatar />
+          <div className="flex items-start gap-3">
+            <AssistantAvatar creator={activeCreator} />
             {streaming && !isStreamingJSON ? (
-              <div className="max-w-[78%] rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed bg-white border border-[var(--color-border)]">
-                <div className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{streaming}</ReactMarkdown>
-                  <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 animate-pulse rounded-full" />
-                </div>
+              <div className="flex-1 min-w-0 text-sm leading-relaxed text-[var(--color-foreground)] pt-0.5 pr-4">
+                <p className="whitespace-pre-wrap m-0">{stripMarkdown(streaming)}</p>
+                <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 animate-pulse rounded-full" />
               </div>
             ) : isStreamingJSON ? (
               <div className="space-y-3 w-full max-w-2xl">
@@ -526,7 +835,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
                 ))}
               </div>
             ) : (
-              <div className="bg-white border border-[var(--color-border)] rounded-2xl rounded-bl-sm px-4 py-2">
+              <div className="pt-0.5">
                 <TypingDots />
               </div>
             )}
@@ -536,10 +845,110 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
         <div ref={bottomRef} />
       </div>
 
+      {/* Creator mode banner */}
+      {activeCreator && (
+        <div className="flex items-center gap-2.5 px-4 py-2 border-t border-[var(--color-border)] flex-shrink-0"
+          style={{ backgroundColor: "var(--color-primary-light)" }}>
+          {activeCreator.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={activeCreator.photo} alt={activeCreator.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: activeCreator.color }} />
+          )}
+          <p className="flex-1 text-xs font-medium" style={{ color: "var(--color-primary)" }}>
+            Hablando con <span className="font-bold">{activeCreator.name}</span> · el creador ha tomado el chat
+          </p>
+          <button
+            onClick={() => setActiveCreator(null)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors hover:bg-white/60"
+            style={{ color: "var(--color-primary)" }}
+            aria-label="Salir del modo creador"
+          >
+            <X size={11} /> Salir
+          </button>
+        </div>
+      )}
+
       {/* Input bar */}
-      <div className="pt-3 border-t border-[var(--color-border)] flex-shrink-0">
+      <div className="pt-3 pb-16 md:pb-0 border-t border-[var(--color-border)] flex-shrink-0">
+        <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileSelect} />
+        <input type="file" ref={docInputRef} accept=".pdf,.txt,.md,.doc,.docx,.csv" className="hidden" onChange={handleDocSelect} />
+        <div className="relative">
+          {mentionQuery !== null && filteredCreators.length > 0 && (
+            <MentionDropdown creators={filteredCreators} selectedIndex={mentionIndex} onSelect={completeMention} />
+          )}
         <div className="bg-white rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden transition-shadow focus-within:border-[var(--color-muted-foreground)] focus-within:shadow-md">
+          {attachment && (
+            <div className="px-4 pt-3 flex items-center gap-2">
+              {attachment.mime_type.startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={attachment.url} alt="preview" className="w-10 h-10 rounded-lg object-cover border border-[var(--color-border)]" />
+              ) : (
+                <div className="w-10 h-10 rounded-lg border border-[var(--color-border)] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--color-muted)" }}>
+                  <FileText size={15} className="text-[var(--color-muted-foreground)]" />
+                </div>
+              )}
+              <span className="text-xs text-[var(--color-muted-foreground)] truncate flex-1">{attachment.name}</span>
+              <button onClick={() => setAttachment(null)} className="text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]" aria-label="Quitar adjunto">✕</button>
+            </div>
+          )}
           <div className="flex items-end gap-3 px-4 py-3">
+            <div ref={attachMenuRef} className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowAttachMenu(v => !v)}
+                disabled={uploading}
+                className="relative w-8 h-8 rounded-full border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-muted)] transition-colors disabled:opacity-40"
+                aria-label="Adjuntar"
+              >
+                <Plus size={14} className="text-[var(--color-muted-foreground)]" />
+                {activeCreator && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+                    style={{ backgroundColor: activeCreator.color }} />
+                )}
+              </button>
+              {showAttachMenu && (
+                <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl border border-[var(--color-border)] shadow-lg py-1 min-w-[200px] z-20">
+                  <button
+                    onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                    style={{ color: "var(--color-foreground)" }}
+                  >
+                    <ImageIcon size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+                    Imagen
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                    style={{ color: "var(--color-foreground)" }}
+                  >
+                    <FileText size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+                    Documento
+                  </button>
+                  <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
+                  <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
+                    <Users size={11} /> Crear con creador
+                  </p>
+                  {CREATORS.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setActiveCreator(prev => prev?.id === c.id ? null : c); setShowAttachMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                      style={{ color: "var(--color-foreground)" }}
+                    >
+                      {c.photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.photo} alt={c.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
+                      )}
+                      <span className="flex-1">{c.name}</span>
+                      {activeCreator?.id === c.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <textarea
               ref={textareaRef}
               value={input}
@@ -552,13 +961,14 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
             />
             <button
               onClick={() => send(input)}
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && !attachment) || loading}
               className="w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0 disabled:opacity-30 transition-opacity"
               style={{ backgroundColor: "var(--color-primary)" }}
             >
               <Send size={13} />
             </button>
           </div>
+        </div>
         </div>
         <div className="flex items-center justify-end mt-2 px-1 pb-1">
           <p className="text-[10px] text-[var(--color-muted-foreground)]">

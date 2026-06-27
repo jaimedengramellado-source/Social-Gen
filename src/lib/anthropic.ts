@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { Profile } from "@/types";
 
 let _client: Anthropic | null = null;
 
@@ -259,3 +260,29 @@ Responde ÚNICAMENTE con JSON válido:
   "content_gaps": "Qué no está cubierto por los vídeos existentes — la oportunidad de oro"
 }`,
 };
+
+export function buildUserContext(profile: Partial<Profile>): string {
+  const parts: string[] = [];
+  if (profile.main_platform) parts.push(`- Plataforma principal: ${profile.main_platform}`);
+  if (profile.channel_name) parts.push(`- Nombre del canal: ${profile.channel_name}`);
+  if (profile.niche) parts.push(`- Nicho: ${profile.niche}`);
+  if (profile.tone) parts.push(`- Tono y personalidad: ${profile.tone}`);
+  if (profile.ai_instructions) parts.push(`- Instrucciones adicionales: ${profile.ai_instructions}`);
+  if (parts.length === 0) return "";
+  return `## Contexto del creador\n${parts.join("\n")}\n\n`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchUserAIContext(supabase: any, userId: string): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("niche, tone, ai_instructions, main_platform, channel_name")
+      .eq("id", userId)
+      .single();
+    if (!data) return "";
+    return buildUserContext(data as Partial<Profile>);
+  } catch {
+    return "";
+  }
+}

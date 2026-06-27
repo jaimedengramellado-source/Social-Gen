@@ -80,11 +80,13 @@ export function ChatSidebar({ sessions, activeId, onSelect, onNew, onDelete, onR
       <div key={s.id} className="relative mx-2 mb-0.5" data-menu-root>
         <button
           onClick={() => !isEditing && onSelect(s.id)}
-          className="w-full text-left px-3 py-2 rounded-xl transition-all"
-          style={{ backgroundColor: activeId === s.id ? "var(--color-muted)" : "transparent" }}
+          className="w-full text-left px-3 py-2 rounded-xl transition-all hover:bg-black/[0.04]"
+          style={activeId === s.id
+            ? { backgroundColor: "var(--color-background)", boxShadow: "0 1px 3px rgba(0,0,0,0.10)", border: "1px solid var(--color-border)" }
+            : { border: "1px solid transparent" }}
         >
           <div className="flex items-start gap-2">
-            <MessageSquare size={13} className="mt-0.5 flex-shrink-0" style={{ color: "var(--color-muted-foreground)" }} />
+            <MessageSquare size={13} className="mt-0.5 flex-shrink-0" style={{ color: activeId === s.id ? "var(--color-primary)" : "var(--color-muted-foreground)" }} />
             <div className="min-w-0 flex-1 pr-6">
               {isEditing ? (
                 <input
@@ -158,13 +160,13 @@ export function ChatSidebar({ sessions, activeId, onSelect, onNew, onDelete, onR
   return (
     <div
       className="flex flex-col border-r border-[var(--color-border)] flex-shrink-0"
-      style={{ width: 240, backgroundColor: "var(--color-background)" }}
+      style={{ width: 240, backgroundColor: "#EEECEA" }}
     >
       {/* New chat button */}
       <div className="p-3 border-b border-[var(--color-border)]">
         <button
           onClick={onNew}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all hover:bg-[var(--color-muted)]"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all hover:bg-black/[0.05]"
           style={{ color: "var(--color-foreground)" }}
         >
           <Plus size={15} />

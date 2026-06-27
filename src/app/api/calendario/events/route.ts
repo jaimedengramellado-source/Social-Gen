@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     .from("calendar_events")
     .select("*")
     .eq("user_id", user.id)
-    .gte("scheduled_at", `${start}T00:00:00`)
-    .lte("scheduled_at", `${end}T23:59:59`)
-    .order("scheduled_at");
+    .gte("start_time", `${start}T00:00:00`)
+    .lte("start_time", `${end}T23:59:59`)
+    .order("start_time");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);
@@ -28,8 +28,24 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const body = await request.json();
-  const { title, description, scheduled_at, remind_before_minutes, script_id } = body;
-  if (!title || !scheduled_at) return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
+  const {
+    title,
+    description,
+    start_time,
+    end_time,
+    color,
+    scheduled_at,
+    remind_before_minutes,
+    remind_times,
+    script_id,
+  } = body;
+
+  const effectiveStartTime = start_time ?? scheduled_at;
+  const effectiveScheduledAt = scheduled_at ?? start_time;
+
+  if (!title || !effectiveStartTime) {
+    return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
+  }
 
   const { data, error } = await supabase
     .from("calendar_events")
@@ -37,8 +53,13 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       title,
       description: description ?? null,
-      scheduled_at,
+      start_time: effectiveStartTime,
+      end_time: end_time ?? null,
+      color: color ?? "#1a73e8",
+      scheduled_at: effectiveScheduledAt,
       remind_before_minutes: remind_before_minutes ?? null,
+      remind_times: remind_times ?? [],
+      sent_reminder_offsets: [],
       script_id: script_id ?? null,
     })
     .select("*")

@@ -14,6 +14,11 @@ export interface Profile {
   stripe_subscription_id: string | null;
   onboarding_completed: boolean;
   created_at: string;
+  niche: string | null;
+  tone: string | null;
+  ai_instructions: string | null;
+  main_platform: string | null;
+  channel_name: string | null;
 }
 
 export interface Channel {
@@ -139,6 +144,9 @@ export const CREDIT_COSTS = {
   analyze_channel: 2,
   analyze_idea: 2,
   score_script: 1,
+  generate_image: 2,
+  edit_image: 2,
+  image_variation: 1,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
@@ -167,6 +175,18 @@ export interface PricingPlan {
   highlighted?: boolean;
 }
 
+export interface GeneratedImage {
+  id: string;
+  user_id: string;
+  prompt: string;
+  model_used: "imagen-3" | "gemini-2.0-flash";
+  image_url: string;
+  storage_path: string;
+  parent_image_id: string | null;
+  aspect_ratio: string;
+  created_at: string;
+}
+
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "free",
@@ -190,7 +210,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     features: [
       "100 créditos/semana",
       "Hook Comparator",
-      "Biblioteca ilimitada",
+      "Documentos ilimitados",
       "5 canales guardados",
       "Modo Sorpréndeme",
     ],

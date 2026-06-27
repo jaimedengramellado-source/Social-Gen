@@ -171,7 +171,40 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 ---
 
-## 6. Bucket de imágenes del chat (chat-attachments)
+## 6. Google Gemini API (generación de imágenes)
+
+### 6.1 Obtener API Key
+1. Ir a [aistudio.google.com](https://aistudio.google.com) → Get API Key → Create API key
+2. Copiar la clave y añadirla a `.env.local`:
+```
+GOOGLE_GEMINI_API_KEY=AIza...
+```
+
+### 6.2 Bucket generated-images
+Ejecutar en SQL Editor de Supabase:
+
+```sql
+INSERT INTO storage.buckets (id, name, public) VALUES ('generated-images', 'generated-images', false);
+
+CREATE POLICY "Users upload own generated images"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users read own generated images"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users delete own generated images"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+```
+
+### 6.3 Tabla generated_images
+Ejecutar el bloque de `generated_images` del `supabase/schema.sql` en el SQL Editor (está al final del archivo).
+
+---
+
+## 7. Bucket de imágenes del chat (chat-attachments)
 
 Ejecutar en SQL Editor de Supabase:
 

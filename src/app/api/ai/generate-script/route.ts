@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
 import { checkAndDeductCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
 
+  const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "generate_script");
   if (!credit.ok) {
     return NextResponse.json(
@@ -46,7 +47,7 @@ Escribe el guion COMPLETO con el texto exacto a decir en cada sección.`;
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: 6000,
-      system: SYSTEM_PROMPTS.script,
+      system: userContext + SYSTEM_PROMPTS.script,
       messages: [{ role: "user", content: userPrompt }],
     });
 

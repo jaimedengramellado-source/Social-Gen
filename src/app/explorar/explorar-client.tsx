@@ -153,30 +153,32 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
 
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold mb-2">Explorar</h1>
-        <p className="text-base text-[var(--color-muted-foreground)]">Descubre vídeos trending y analiza cualquier canal de YouTube.</p>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-semibold mb-1 md:mb-2">Explorar</h1>
+        <p className="text-sm md:text-base text-[var(--color-muted-foreground)]">Descubre vídeos trending y analiza cualquier canal de YouTube.</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-8 bg-[var(--color-muted)] p-1 rounded-xl w-fit">
-        {(["buscar", "watchlist", "comparar", "ideas"] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="px-5 py-2 rounded-lg text-sm font-medium capitalize transition-colors"
-            style={{
-              backgroundColor: tab === t ? "#fff" : "transparent",
-              color: tab === t ? "var(--color-foreground)" : "var(--color-muted-foreground)",
-              boxShadow: tab === t ? "var(--shadow-card)" : "none",
-            }}
-          >
-            {t === "watchlist" ? `Watchlist (${watchlist.length})` : t === "comparar" ? `Comparar${compareIds.length ? ` (${compareIds.length})` : ""}` : t === "ideas" ? "💡 Ideas" : "Buscar"}
-          </button>
-        ))}
+      <div className="overflow-x-auto mb-6 md:mb-8" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-1 bg-[var(--color-muted)] p-1 rounded-xl w-fit min-w-0">
+          {(["buscar", "watchlist", "comparar", "ideas"] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="flex-shrink-0 whitespace-nowrap px-4 md:px-5 py-2 rounded-lg text-sm font-medium capitalize transition-colors"
+              style={{
+                backgroundColor: tab === t ? "#fff" : "transparent",
+                color: tab === t ? "var(--color-foreground)" : "var(--color-muted-foreground)",
+                boxShadow: tab === t ? "var(--shadow-card)" : "none",
+              }}
+            >
+              {t === "watchlist" ? `Watchlist (${watchlist.length})` : t === "comparar" ? `Comparar${compareIds.length ? ` (${compareIds.length})` : ""}` : t === "ideas" ? "💡 Ideas" : "Buscar"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── BUSCAR TAB ── */}
@@ -295,21 +297,21 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
             )
           )}
 
-          {/* Trending section — sidebar layout */}
+          {/* Trending section */}
           {!searched && (
-            <div className="flex gap-8">
-              {/* Filters sidebar */}
-              <aside className="w-56 flex-shrink-0 space-y-6">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+              {/* Filters — horizontal scroll on mobile, vertical sidebar on desktop */}
+              <aside className="md:w-56 md:flex-shrink-0 space-y-4 md:space-y-6">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">Tipo</p>
-                  <div className="flex flex-col gap-1.5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2 md:mb-3">Tipo</p>
+                  <div className="flex flex-row md:flex-col gap-1.5 overflow-x-auto pb-1 md:pb-0" style={{ scrollbarWidth: "none" }}>
                     {(["all", "long", "short"] as const).map(t => (
                       <button
                         key={t}
                         onClick={() => { setContentType(t); loadTrending(period, country, t, excludeKids, excludeMusic); }}
-                        className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        className="flex-shrink-0 md:w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
                         style={{
-                          backgroundColor: contentType === t ? YT_RED : "transparent",
+                          backgroundColor: contentType === t ? YT_RED : "var(--color-muted)",
                           color: contentType === t ? "#fff" : "var(--color-foreground)",
                         }}
                       >
@@ -320,15 +322,15 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
                 </div>
                 <div className="h-px bg-[var(--color-border)]" />
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">Período</p>
-                  <div className="flex flex-col gap-1.5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2 md:mb-3">Período</p>
+                  <div className="flex flex-row md:flex-col gap-1.5 overflow-x-auto pb-1 md:pb-0" style={{ scrollbarWidth: "none" }}>
                     {PERIODS.map(p => (
                       <button
                         key={p.key}
                         onClick={() => { setPeriod(p.key); loadTrending(p.key, country, contentType, excludeKids, excludeMusic); }}
-                        className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        className="flex-shrink-0 md:w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
                         style={{
-                          backgroundColor: period === p.key ? YT_RED : "transparent",
+                          backgroundColor: period === p.key ? YT_RED : "var(--color-muted)",
                           color: period === p.key ? "#fff" : "var(--color-foreground)",
                         }}
                       >
@@ -339,15 +341,15 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
                 </div>
                 <div className="h-px bg-[var(--color-border)]" />
                 <div>
-                  <div className="flex items-center gap-1.5 mb-3">
+                  <div className="flex items-center gap-1.5 mb-2 md:mb-3">
                     <Globe size={13} className="text-[var(--color-muted-foreground)]" />
                     <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">País</p>
                   </div>
                   <select
                     value={country}
                     onChange={e => { setCountry(e.target.value); loadTrending(period, e.target.value, contentType, excludeKids, excludeMusic); }}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-[var(--color-border)] bg-white focus:outline-none cursor-pointer"
-                    style={{ color: "var(--color-foreground)" }}
+                    className="w-full md:w-full px-3 py-2 rounded-lg text-sm border border-[var(--color-border)] bg-white focus:outline-none cursor-pointer"
+                    style={{ color: "var(--color-foreground)", maxWidth: "200px" }}
                   >
                     {COUNTRIES.map(c => (
                       <option key={c.code} value={c.code}>{c.label}</option>
@@ -356,8 +358,8 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
                 </div>
                 <div className="h-px bg-[var(--color-border)]" />
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">Excluir</p>
-                  <div className="flex flex-col gap-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2 md:mb-3">Excluir</p>
+                  <div className="flex flex-row md:flex-col gap-4 md:gap-3">
                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -365,7 +367,7 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
                         onChange={e => { setExcludeKids(e.target.checked); loadTrending(period, country, contentType, e.target.checked, excludeMusic); }}
                         style={{ accentColor: YT_RED }}
                       />
-                      <span className="text-sm text-[var(--color-foreground)]">Contenido infantil</span>
+                      <span className="text-sm text-[var(--color-foreground)] whitespace-nowrap">Infantil</span>
                     </label>
                     <label className="flex items-center gap-2.5 cursor-pointer select-none">
                       <input
@@ -374,7 +376,7 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
                         onChange={e => { setExcludeMusic(e.target.checked); loadTrending(period, country, contentType, excludeKids, e.target.checked); }}
                         style={{ accentColor: YT_RED }}
                       />
-                      <span className="text-sm text-[var(--color-foreground)]">Videoclips musicales</span>
+                      <span className="text-sm text-[var(--color-foreground)] whitespace-nowrap">Videoclips</span>
                     </label>
                   </div>
                 </div>
@@ -382,16 +384,16 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
 
               {/* Main content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-5">
+                <div className="flex items-center gap-2 mb-4 md:mb-5">
                   <Eye size={16} style={{ color: YT_RED }} />
                   <h2 className="text-base font-semibold">Vídeos más vistos</h2>
-                  <span className="text-sm text-[var(--color-muted-foreground)] ml-auto">
+                  <span className="text-xs md:text-sm text-[var(--color-muted-foreground)] ml-auto">
                     {COUNTRIES.find(c => c.code === country)?.label} · {PERIODS.find(p => p.key === period)?.label}
                   </span>
                 </div>
 
                 {trendingLoading ? (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                     {[0,1,2,3,4,5].map(i => <VideoCardSkeleton key={i} />)}
                   </div>
                 ) : trendingError ? (
@@ -404,7 +406,7 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
                     <p className="text-sm text-[var(--color-muted-foreground)]">Sin resultados para este filtro</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
                     {trending.map((v, i) => (
                       <TrendingVideoCard key={v.id} video={v} rank={i + 1} />
                     ))}

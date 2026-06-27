@@ -210,67 +210,218 @@ function AddTodoForm({ onAdd }: { onAdd: (t: Partial<Todo>) => void }) {
 }
 
 // ── MatrixView ────────────────────────────────────────────────────────────────
-const QUADRANTS = [
-  { label: "Hazlo ya",    sub: "Urgente · Importante",        bg: "#FEE2E2", border: "#FCA5A5", color: "#dc2626", textBg: "#dc262615", isUrgent: true,  isImportant: true  },
-  { label: "Planifícalo", sub: "No urgente · Importante",     bg: "#DBEAFE", border: "#93C5FD", color: "#2563eb", textBg: "#2563eb15", isUrgent: false, isImportant: true  },
-  { label: "Delégalo",    sub: "Urgente · Poco importante",   bg: "#FEF3C7", border: "#FCD34D", color: "#d97706", textBg: "#d9770615", isUrgent: true,  isImportant: false },
-  { label: "Elimínalo",   sub: "No urgente · Poco importante",bg: "#F3F4F6", border: "#D1D5DB", color: "#6b7280", textBg: "#6b728015", isUrgent: false, isImportant: false },
+const DOT_OFFSETS = [
+  { dx: 0, dy: 0 }, { dx: 14, dy: 0 }, { dx: -14, dy: 0 },
+  { dx: 0, dy: -13 }, { dx: 0, dy: 13 }, { dx: 10, dy: -10 },
+  { dx: -10, dy: -10 }, { dx: 10, dy: 10 }, { dx: -10, dy: 10 },
 ];
 
+const IMP_SHORT: Record<Importance, string> = {
+  muy_importante: "Muy imp.", importante: "Importante",
+  normal: "Normal", poco_importante: "Poco imp.",
+};
+const URG_SHORT: Record<Urgency, string> = {
+  baja: "Baja", media: "Media", alta: "Alta", muy_urgente: "Muy urg.",
+};
+
+const PLOT_H = 320;
+
 function MatrixView({ todos, onToggle }: { todos: Todo[]; onToggle: (id: string, v: boolean) => void }) {
+  const [hovered, setHovered] = useState<string | null>(null);
   const pending = todos.filter(t => !t.completed);
-  const isUrgent = (t: Todo) => t.urgency === "alta" || t.urgency === "muy_urgente";
-  const isImportant = (t: Todo) => t.importance === "muy_importante" || t.importance === "importante";
+
+  // X: baja=left → muy_urgente=right (12%–88%)
+  const xPct = (u: Urgency) => (URGENCY_VALS.indexOf(u) / 3) * 76 + 12;
+  // Y (CSS top%): muy_importante=top(12%) → poco_importante=bottom(88%)
+  // So visually: more important = higher up = correct single-quadrant direction
+  const yPct = (i: Importance) => (IMPORTANCE_VALS.indexOf(i) / 3) * 76 + 12;
+
+  const grouped = new Map<string, Todo[]>();
+  for (const t of pending) {
+    const k = `${t.urgency}-${t.importance}`;
+    if (!grouped.has(k)) grouped.set(k, []);
+    grouped.get(k)!.push(t);
+  }
 
   return (
-    <div className="space-y-3">
-      {/* Axis labels */}
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[11px] font-bold text-[var(--color-muted-foreground)] tracking-widest uppercase">↑ Importancia</span>
-        <span className="text-[11px] font-bold text-[var(--color-muted-foreground)] tracking-widest uppercase">Urgencia →</span>
+    <div className="space-y-2">
+      {/* Y axis title */}
+      <div className="text-[10px] font-semibold text-[var(--color-muted-foreground)] tracking-wider uppercase" style={{ paddingLeft: 72 }}>
+        ↑ Importancia
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {QUADRANTS.map(q => {
-          const tasks = pending.filter(t => isUrgent(t) === q.isUrgent && isImportant(t) === q.isImportant);
-          return (
-            <div key={q.label} className="rounded-2xl p-4 min-h-[160px] flex flex-col"
-              style={{ backgroundColor: q.bg, border: `2px solid ${q.border}` }}>
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="text-sm font-black" style={{ color: q.color }}>{q.label}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: q.color + "99" }}>{q.sub}</p>
-                </div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: q.color + "20", color: q.color }}>
-                  {tasks.length}
-                </span>
-              </div>
-
-              {/* Tasks */}
-              <div className="flex-1 space-y-1.5">
-                {tasks.length === 0 ? (
-                  <p className="text-xs text-center py-6" style={{ color: q.color + "60" }}>Sin tareas</p>
-                ) : tasks.map(t => (
-                  <button key={t.id} onClick={() => onToggle(t.id, true)}
-                    className="w-full text-left text-xs px-3 py-2 rounded-xl flex items-center gap-2 group transition-colors bg-white/70 hover:bg-white border border-white/40">
-                    <span className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 transition-colors group-hover:bg-white/80"
-                      style={{ borderColor: q.color }} />
-                    <span className="truncate flex-1 font-medium" style={{ color: "#1a1a2e" }}>{t.title}</span>
-                    <span className="text-[9px] flex-shrink-0 font-semibold" style={{ color: q.color + "99" }}>
-                      {URGENCY_LABEL[t.urgency]}
-                    </span>
-                  </button>
-                ))}
-              </div>
+      <div className="flex gap-0">
+        {/* Y tick labels */}
+        <div style={{ width: 72, flexShrink: 0, position: "relative", height: PLOT_H }}>
+          {IMPORTANCE_VALS.map(imp => (
+            <div key={imp} style={{
+              position: "absolute",
+              top: `${yPct(imp)}%`,
+              right: 10,
+              transform: "translateY(-50%)",
+              fontSize: 9,
+              color: "var(--color-muted-foreground)",
+              textAlign: "right",
+              whiteSpace: "nowrap",
+            }}>
+              {IMP_SHORT[imp]}
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* Plot column */}
+        <div className="flex-1 flex flex-col">
+          {/* Plot area */}
+          <div className="relative" style={{
+            height: PLOT_H,
+            borderLeft: "2px solid var(--color-border)",
+            borderBottom: "2px solid var(--color-border)",
+            backgroundColor: "#f8f7f4",
+            overflow: "visible",
+          }}>
+            {/* Horizontal gridlines at each importance level */}
+            {IMPORTANCE_VALS.map(imp => (
+              <div key={imp} style={{
+                position: "absolute",
+                top: `${yPct(imp)}%`,
+                left: 0, right: 0, height: 1,
+                backgroundColor: "var(--color-border)",
+                opacity: 0.45,
+              }} />
+            ))}
+            {/* Vertical gridlines at each urgency level */}
+            {URGENCY_VALS.map(u => (
+              <div key={u} style={{
+                position: "absolute",
+                left: `${xPct(u)}%`,
+                top: 0, bottom: 0, width: 1,
+                backgroundColor: "var(--color-border)",
+                opacity: 0.45,
+              }} />
+            ))}
+
+            {/* Dots */}
+            {[...grouped.values()].flatMap(tasks =>
+              tasks.map((t, idx) => {
+                const off = DOT_OFFSETS[idx] ?? { dx: ((idx % 3) - 1) * 14, dy: (Math.floor(idx / 3) - 1) * 13 };
+                const x = xPct(t.urgency);
+                const y = yPct(t.importance);
+                const isHov = hovered === t.id;
+                const below = y < 28;
+                const farRight = x > 70;
+
+                return (
+                  <div key={t.id}
+                    onMouseEnter={() => setHovered(t.id)}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={() => onToggle(t.id, true)}
+                    style={{
+                      position: "absolute",
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      transform: `translate(calc(-50% + ${off.dx}px), calc(-50% + ${off.dy}px))`,
+                      zIndex: isHov ? 50 : 10,
+                      cursor: "pointer",
+                    }}>
+                    <div style={{
+                      width: isHov ? 16 : 11,
+                      height: isHov ? 16 : 11,
+                      borderRadius: "50%",
+                      backgroundColor: URGENCY_COLOR[t.urgency],
+                      border: "2.5px solid white",
+                      boxShadow: isHov
+                        ? `0 0 0 3px ${URGENCY_COLOR[t.urgency]}35, 0 2px 10px rgba(0,0,0,0.2)`
+                        : "0 1px 3px rgba(0,0,0,0.15)",
+                      transition: "width 0.12s ease, height 0.12s ease, box-shadow 0.12s ease",
+                    }} />
+
+                    {isHov && (
+                      <div style={{
+                        position: "absolute",
+                        ...(below ? { top: "calc(100% + 10px)" } : { bottom: "calc(100% + 10px)" }),
+                        ...(farRight ? { right: 0 } : { left: "50%", transform: "translateX(-50%)" }),
+                        backgroundColor: "white",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        minWidth: 170,
+                        maxWidth: 240,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)",
+                        pointerEvents: "none",
+                        whiteSpace: "nowrap",
+                      }}>
+                        <p className="text-xs font-semibold leading-tight" style={{ color: "var(--color-foreground)", whiteSpace: "normal" }}>
+                          {t.title}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                            style={{ backgroundColor: URGENCY_COLOR[t.urgency] }}>
+                            {URGENCY_LABEL[t.urgency]}
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[var(--color-border)] text-[var(--color-muted-foreground)]">
+                            {IMPORTANCE_LABEL[t.importance]}
+                          </span>
+                        </div>
+                        {t.due_date && (
+                          <p className={`text-[9px] mt-1.5 flex items-center gap-1 ${isOverdue(t.due_date) ? "text-red-500 font-medium" : "text-[var(--color-muted-foreground)]"}`}>
+                            <CalendarDays size={9} />
+                            {fmtDate(t.due_date)}{isOverdue(t.due_date) ? " · Vencida" : ""}
+                          </p>
+                        )}
+                        {t.category && (
+                          <p className="text-[9px] text-[var(--color-muted-foreground)] mt-1 flex items-center gap-1">
+                            <Tag size={9} /> {t.category}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+
+            {pending.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-sm text-[var(--color-muted-foreground)]">Sin tareas pendientes</p>
+              </div>
+            )}
+          </div>
+
+          {/* X tick labels */}
+          <div className="relative" style={{ height: 20, marginTop: 6 }}>
+            {URGENCY_VALS.map(u => (
+              <div key={u} style={{
+                position: "absolute",
+                left: `${xPct(u)}%`,
+                transform: "translateX(-50%)",
+                fontSize: 9,
+                color: "var(--color-muted-foreground)",
+                whiteSpace: "nowrap",
+              }}>
+                {URG_SHORT[u]}
+              </div>
+            ))}
+          </div>
+
+          {/* X axis title */}
+          <div className="text-center text-[10px] font-semibold tracking-wider uppercase text-[var(--color-muted-foreground)]" style={{ marginTop: 4 }}>
+            Urgencia →
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 justify-center flex-wrap mt-1">
+        {URGENCY_VALS.map(u => (
+          <div key={u} className="flex items-center gap-1.5">
+            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: URGENCY_COLOR[u], flexShrink: 0 }} />
+            <span className="text-[10px] text-[var(--color-muted-foreground)]">{URGENCY_LABEL[u]}</span>
+          </div>
+        ))}
       </div>
 
       <p className="text-[10px] text-center text-[var(--color-muted-foreground)]">
-        Haz clic en una tarea para marcarla como completada
+        Pasa el cursor sobre un punto para ver los detalles · Haz clic para completar
       </p>
     </div>
   );

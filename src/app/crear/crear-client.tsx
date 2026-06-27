@@ -19,8 +19,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Share2, BookmarkPlus, Check, Sparkles, ListChecks } from "lucide-react";
+import { ArrowLeft, Share2, BookmarkPlus, Check, Sparkles, ListChecks, Library } from "lucide-react";
 import type { Platform, Idea, Script, Channel, Profile, HookVariants } from "@/types";
+import { useToast } from "@/components/ui/toast";
 
 type Mode = "guided" | "chat";
 type Step = "platform" | "content_type" | "questions" | "ideas" | "hook-compare" | "script";
@@ -58,6 +59,7 @@ interface CrearClientProps {
 
 export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
   const searchParams = useSearchParams();
+  const { toast } = useToast();
 
   const [mode, setMode] = useState<Mode>("chat");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -221,6 +223,15 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
       if (s.hooks_variants) { setHookVariants(s.hooks_variants); if (!selectedHook) setStep("hook-compare"); }
       if (selectedHook) s.hook = selectedHook;
       setScript(s);
+      toast({
+        title: "Guion guardado en Documentos",
+        description: s.title,
+        actions: [
+          { label: "Ver en Documentos", href: "/documentos" },
+          { label: "Seguir aquí", onClick: () => {} },
+        ],
+        duration: 9000,
+      });
     }
   }
 
@@ -312,15 +323,17 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
       {/* ── Chat mode ── */}
       {mode === "chat" && (
         <div className="flex flex-1 min-h-0">
-          <ChatSidebar
-            sessions={chatSessions}
-            activeId={activeSessionId}
-            onSelect={handleSelectSession}
-            onNew={handleNewChat}
-            onDelete={handleDeleteSession}
-            onRename={handleRenameSession}
-          />
-          <div className="flex-1 min-h-0 px-6 py-4">
+          <div className="hidden md:flex">
+            <ChatSidebar
+              sessions={chatSessions}
+              activeId={activeSessionId}
+              onSelect={handleSelectSession}
+              onNew={handleNewChat}
+              onDelete={handleDeleteSession}
+              onRename={handleRenameSession}
+            />
+          </div>
+          <div className="flex-1 min-h-0 px-4 md:px-6 py-4">
             <ChatInterface
               profile={profile}
               sessionId={activeSessionId}
@@ -633,15 +646,20 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3 pt-2">
+                    <div className="flex items-center gap-3 pt-2 flex-wrap">
                       <Button onClick={handleSaveScript} disabled={saved} variant={saved ? "secondary" : "default"}>
                         <BookmarkPlus className="w-4 h-4" />{saved ? "Guardado" : "Guardar guion"}
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <a href="/documentos">
+                          <Library className="w-4 h-4" /> Abrir en Documentos
+                        </a>
                       </Button>
                       <Button variant="outline" onClick={handleCopyShare}>
                         {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                         {copied ? "Copiado" : "Compartir"}
                       </Button>
-                      <Button variant="ghost" onClick={resetGuided}>Crear otro →</Button>
+                      <Button variant="ghost" onClick={resetGuided}>Seguir iterando →</Button>
                     </div>
                   </div>
                 ) : null}

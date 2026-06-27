@@ -54,7 +54,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} />
 
       {/* ── Greeting ── */}
@@ -76,7 +76,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
 
       {/* ── Primary CTA ── */}
       <div
-        className="mb-6 p-6 rounded-2xl border-2 bg-white flex items-center justify-between gap-6"
+        className="mb-6 p-5 md:p-6 rounded-2xl border-2 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:gap-6"
         style={{ borderColor: YT_RED, boxShadow: "0 4px 24px rgba(255,0,0,0.08)" }}
       >
         <div>
@@ -87,7 +87,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
         </div>
         <Link
           href="/crear"
-          className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white whitespace-nowrap transition-opacity hover:opacity-80"
+          className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-3 rounded-xl text-sm font-semibold text-white whitespace-nowrap transition-opacity hover:opacity-80"
           style={{ backgroundColor: YT_RED }}
         >
           <Plus size={15} /> Nuevo guion
@@ -164,7 +164,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold">Guiones recientes</h2>
             <Link
-              href="/biblioteca"
+              href="/documentos"
               className="flex items-center gap-1 text-xs font-medium hover:underline"
               style={{ color: YT_RED }}
             >
