@@ -36,8 +36,16 @@ export async function POST(request: NextRequest) {
       generationConfig: { responseModalities: ["IMAGE", "TEXT"] } as any,
     });
 
+    const RATIO_HINT: Record<string, string> = {
+      "16:9": "Generate in widescreen horizontal format (16:9 aspect ratio, landscape).",
+      "9:16": "Generate in vertical portrait format (9:16 aspect ratio, tall).",
+      "4:3": "Generate in standard horizontal format (4:3 aspect ratio).",
+      "1:1": "Generate in square format (1:1 aspect ratio).",
+    };
+    const fullPrompt = `${prompt} ${RATIO_HINT[aspectRatio] ?? ""}`.trim();
+
     const result = await model.generateContent([
-      { text: prompt },
+      { text: fullPrompt },
     ]);
 
     const parts = result.response.candidates?.[0]?.content?.parts ?? [];

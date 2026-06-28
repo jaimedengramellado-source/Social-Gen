@@ -143,3 +143,11 @@ vite.config.ts.timestamp-*
 .vite/
 .vercel
 .env*
+
+# Screenshots de prueba / Claude
+check-*.png
+mobile-*.png
+desktop-*.png
+dev-output.txt
+.playwright-mcp/
+.claude/settings.local.json

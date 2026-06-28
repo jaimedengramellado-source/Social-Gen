@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Send, Bookmark, BookmarkCheck, ArrowRight,
-  Plus, ArrowUp, ImageIcon, FileText,
+  Plus, ArrowUp, ImageIcon, FileText, Clapperboard,
   Lightbulb, Anchor, TrendingUp, Sparkles, Calendar, Hash,
-  Users, X, Check,
+  Users, X, Check, ExternalLink, Loader2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -74,6 +74,8 @@ function stripMarkdown(text: string): string {
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/[*_`~]/g, "");
 }
+
+const GUIDED_SCRIPT_PROMPT = "__GUIDED_SCRIPT__";
 
 const PLACEHOLDERS = [
   "Dame ideas para un vídeo de...",
@@ -285,6 +287,13 @@ function AssistantAvatar({ creator }: { creator?: Creator | null }) {
   );
 }
 
+type QuestionItem = {
+  question: string;
+  options: string[];
+  allow_custom?: boolean;
+  placeholder?: string;
+};
+
 function parseIdeas(content: string): IdeaItem[] | null {
   try {
     const cleaned = extractJSON(content);
@@ -295,20 +304,126 @@ function parseIdeas(content: string): IdeaItem[] | null {
   return null;
 }
 
-function looksLikeIdeasJSON(text: string): boolean {
+function parseQuestion(content: string): QuestionItem | null {
+  try {
+    const cleaned = extractJSON(content);
+    if (!cleaned) return null;
+    const parsed = JSON.parse(cleaned);
+    if (parsed.type === "question" && typeof parsed.question === "string") return parsed as QuestionItem;
+  } catch {}
+  return null;
+}
+
+function looksLikeStructuredJSON(text: string): boolean {
   const t = text.trimStart();
   return t.startsWith("{") || t.startsWith("```");
 }
 
-function MessageBubble({ msg, streaming, onCreateScript }: {
+function QuestionCard({ item, onAnswer }: { item: QuestionItem; onAnswer: (a: string) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [custom, setCustom] = useState("");
+  const done = selected !== null;
+
+  function pick(opt: string) {
+    if (done) return;
+    setSelected(opt);
+    onAnswer(opt);
+  }
+
+  function submitCustom() {
+    if (!custom.trim() || done) return;
+    setSelected(custom.trim());
+    onAnswer(custom.trim());
+  }
+
+  return (
+    <div
+      className="rounded-2xl border p-4 max-w-sm w-full"
+      style={{ backgroundColor: "white", borderColor: "var(--color-border)", boxShadow: "var(--shadow-card)" }}
+    >
+      <p className="text-sm font-semibold mb-3" style={{ color: "var(--color-foreground)" }}>
+        {item.question}
+      </p>
+      {item.options.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {item.options.map(opt => (
+            <button
+              key={opt}
+              onClick={() => pick(opt)}
+              disabled={done}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:cursor-default"
+              style={{
+                borderColor: selected === opt ? "var(--color-primary)" : "var(--color-border)",
+                backgroundColor: selected === opt ? "var(--color-primary)" : "var(--color-muted)",
+                color: selected === opt ? "white" : "var(--color-foreground)",
+                opacity: done && selected !== opt ? 0.4 : 1,
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+      {item.allow_custom && !done && (
+        <div className="flex gap-2 mt-1">
+          <input
+            type="text"
+            value={custom}
+            onChange={e => setCustom(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && submitCustom()}
+            placeholder={item.placeholder ?? "Escribe tu respuesta..."}
+            className="flex-1 text-xs px-3 py-2 rounded-xl outline-none border"
+            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)" }}
+          />
+          <button
+            onClick={submitCustom}
+            disabled={!custom.trim()}
+            className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-30 transition-opacity"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageBubble({ msg, streaming, onCreateScript, onExport, onAnswer }: {
   msg: Message;
   streaming?: boolean;
   onCreateScript?: (idea: { title: string; hook?: string }) => void;
+  onExport?: (content: string, title: string) => Promise<void>;
+  onAnswer?: (answer: string) => void;
 }) {
   const isUser = msg.role === "user";
   const creator = msg.creatorId ? CREATORS.find(c => c.id === msg.creatorId) ?? null : null;
+  const [exportState, setExportState] = useState<"idle" | "exporting" | "done">("idle");
+
+  async function handleBtnExport() {
+    if (exportState !== "idle" || !onExport) return;
+    setExportState("exporting");
+    try {
+      const firstLine = msg.content.split("\n").find(l => l.trim()) ?? "";
+      const title = firstLine.replace(/^#+\s*/, "").slice(0, 80) || "Contenido generado";
+      await onExport(msg.content, title);
+      setExportState("done");
+      setTimeout(() => setExportState("idle"), 3000);
+    } catch {
+      setExportState("idle");
+    }
+  }
 
   if (!isUser && !streaming) {
+    const question = parseQuestion(msg.content);
+    if (question) {
+      return (
+        <div className="flex items-end gap-2.5">
+          <AssistantAvatar creator={creator} />
+          <QuestionCard item={question} onAnswer={onAnswer ?? (() => {})} />
+        </div>
+      );
+    }
     const ideas = parseIdeas(msg.content);
     if (ideas) {
       return (
@@ -335,16 +450,45 @@ function MessageBubble({ msg, streaming, onCreateScript }: {
               <span className="text-xs truncate">{msg.attachment.name || "Documento"}</span>
             </div>
           ) : null}
-          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+          {msg.content && msg.content !== "__GUIDED_SCRIPT__" && (
+            <p className="whitespace-pre-wrap">{msg.content}</p>
+          )}
+          {msg.content === "__GUIDED_SCRIPT__" && (
+            <p className="whitespace-pre-wrap">Quiero crear un guion</p>
+          )}
         </div>
       ) : (
-        <div className="flex-1 min-w-0 text-sm leading-relaxed text-[var(--color-foreground)] pt-0.5 pr-4">
-          <div className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-            {streaming && (
-              <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 animate-pulse rounded-full" />
-            )}
+        <div className="flex-1 min-w-0 pt-0.5 pr-4">
+          <div className="text-sm leading-relaxed text-[var(--color-foreground)]">
+            <div className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+              {streaming && (
+                <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 animate-pulse rounded-full" />
+              )}
+            </div>
           </div>
+          {!streaming && !isUser && msg.content.length > 80 && onExport && (
+            <div className="mt-2">
+              <button
+                onClick={handleBtnExport}
+                disabled={exportState === "exporting"}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all hover:shadow-sm disabled:opacity-60"
+                style={{
+                  borderColor: exportState === "done" ? "var(--color-success)" : "var(--color-border)",
+                  color: exportState === "done" ? "var(--color-success)" : "var(--color-muted-foreground)",
+                  backgroundColor: "white",
+                }}
+              >
+                {exportState === "exporting" ? (
+                  <><Loader2 size={11} className="animate-spin" /> Guardando...</>
+                ) : exportState === "done" ? (
+                  <><Check size={11} /> Guardado en Documentos</>
+                ) : (
+                  <><ExternalLink size={11} /> Exportar a Documentos</>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -355,12 +499,12 @@ interface ChatInterfaceProps {
   profile: Profile;
   sessionId: string | null;
   initialMessages?: Message[];
-  onSessionCreated: (id: string, title: string, messages: Message[]) => void;
-  onSessionUpdated: (id: string, title: string) => void;
-  onCreateScript?: (idea: { title: string; hook?: string }) => void;
+  projectId?: string | null;
+  onSessionCreated: (id: string, title: string, messages: Message[], projectId: string | null) => void;
+  onSessionUpdated: (id: string) => void;
 }
 
-export function ChatInterface({ profile, sessionId, initialMessages, onSessionCreated, onSessionUpdated, onCreateScript }: ChatInterfaceProps) {
+export function ChatInterface({ profile, sessionId, initialMessages, projectId, onSessionCreated, onSessionUpdated }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -374,13 +518,44 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
   const [activeCreator, setActiveCreator] = useState<Creator | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [exportedDoc, setExportedDoc] = useState<{ id: string; title: string } | null>(null);
   const currentSessionId = useRef<string | null>(sessionId);
+  const sessionTitleRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!exportedDoc) return;
+    const t = setTimeout(() => setExportedDoc(null), 8000);
+    return () => clearTimeout(t);
+  }, [exportedDoc]);
+
+  async function handleExportMessage(content: string, title: string): Promise<void> {
+    const res = await fetch("/api/documents/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, title }),
+    });
+    if (!res.ok) throw new Error("Export failed");
+    const data = await res.json() as { id: string; title: string };
+    setExportedDoc(data);
+  }
+
+  function handleCreateScriptFromIdea(idea: { title: string; hook?: string }) {
+    const lines = [
+      "Escribe un guion completo listo para grabar para este vídeo:",
+      "",
+      `**${idea.title}**`,
+      ...(idea.hook ? [`Hook de apertura sugerido: "${idea.hook}"`] : []),
+      "",
+      "Incluye: hook (0-3 segundos), intro que engancha, desarrollo con 2-3 bloques de contenido con timestamps, y CTA final potente.",
+    ];
+    send(lines.join("\n"));
+  }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -417,8 +592,10 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
 
   useEffect(() => {
     currentSessionId.current = sessionId;
+    sessionTitleRef.current = null;
     setMessages(initialMessages ?? []);
     setStreaming("");
+    setActiveCreator(null);
   }, [sessionId, initialMessages]);
 
   useEffect(() => {
@@ -507,20 +684,24 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
       }
 
       let full = "";
+      let cleanFull = "";
       let revealIdx = 0;
       let networkDone = false;
+      let pendingDocExport: { id: string; title: string } | null = null;
       let revealResolve!: () => void;
       const revealComplete = new Promise<void>(r => { revealResolve = r; });
 
-      // Reveal word by word (up to 8 chars per tick) at 30ms — smooth within paragraphs
+      // Reveal word by word (up to 8 chars per tick) at 30ms.
+      // Uses cleanFull once available so the __DOC_EXPORT__ marker never appears.
       revealId = window.setInterval(() => {
-        if (revealIdx < full.length) {
+        const text = cleanFull || full;
+        if (revealIdx < text.length) {
           let next = revealIdx + 1;
-          while (next < full.length && full[next] !== " " && full[next] !== "\n" && next - revealIdx < 8) {
+          while (next < text.length && text[next] !== " " && text[next] !== "\n" && next - revealIdx < 8) {
             next++;
           }
           revealIdx = next;
-          setStreaming(full.slice(0, revealIdx));
+          setStreaming(text.slice(0, revealIdx));
         } else if (networkDone) {
           window.clearInterval(revealId);
           revealResolve();
@@ -534,20 +715,41 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
         const { done, value } = await reader.read();
         if (done) break;
         full += decoder.decode(value, { stream: true });
-        if (looksLikeIdeasJSON(full)) setIsStreamingJSON(true);
+        // If AI output text before a tool call, discard everything and restart
+        const rollbackIdx = full.indexOf("\n__ROLLBACK__");
+        if (rollbackIdx !== -1) {
+          full = full.slice(rollbackIdx + "\n__ROLLBACK__".length);
+          revealIdx = 0;
+          setStreaming("");
+          setIsStreamingJSON(false);
+        }
+        if (looksLikeStructuredJSON(full)) setIsStreamingJSON(true);
       }
 
+      // Process export marker before revealing completes
       networkDone = true;
-      await revealComplete; // let interval drain remaining text naturally
+      const DOC_EXPORT_MARKER = "\n__DOC_EXPORT__:";
+      const markerIdx = full.indexOf(DOC_EXPORT_MARKER);
+      if (markerIdx !== -1) {
+        try { pendingDocExport = JSON.parse(full.slice(markerIdx + DOC_EXPORT_MARKER.length)); } catch {}
+        cleanFull = full.slice(0, markerIdx);
+        if (revealIdx > markerIdx) revealIdx = markerIdx;
+      } else {
+        cleanFull = full;
+      }
 
+      await revealComplete;
+
+      const displayContent = cleanFull;
       const finalMessages = [
         ...history,
-        { role: "assistant" as const, content: full, ...(activeCreator ? { creatorId: activeCreator.id } : {}) },
+        { role: "assistant" as const, content: displayContent, ...(activeCreator ? { creatorId: activeCreator.id } : {}) },
       ];
       // Batch all three in one render: clear bubble, stop loading, show committed message
       setStreaming("");
       setLoading(false);
       setMessages(finalMessages);
+      if (pendingDocExport) setExportedDoc(pendingDocExport);
       await saveSession(finalMessages, content.trim());
     } finally {
       if (revealId !== undefined) window.clearInterval(revealId);
@@ -559,20 +761,19 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
   }
 
   async function saveSession(finalMessages: Message[], firstUserMessage: string) {
-    const title = firstUserMessage.length > 45
-      ? firstUserMessage.slice(0, 45) + "…"
-      : firstUserMessage;
-
     if (!currentSessionId.current) {
+      const raw = firstUserMessage.trim();
+      const title = raw.length > 45 ? raw.slice(0, 45) + "…" : raw;
+      sessionTitleRef.current = title;
       const res = await fetch("/api/chat/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, messages: finalMessages }),
+        body: JSON.stringify({ title, messages: finalMessages, project_id: projectId ?? null }),
       });
       const data = await res.json();
       if (data.session) {
         currentSessionId.current = data.session.id;
-        onSessionCreated(data.session.id, title, finalMessages);
+        onSessionCreated(data.session.id, title, finalMessages, projectId ?? null);
       }
     } else {
       await fetch(`/api/chat/sessions/${currentSessionId.current}`, {
@@ -580,7 +781,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: finalMessages }),
       });
-      onSessionUpdated(currentSessionId.current, title);
+      onSessionUpdated(currentSessionId.current);
     }
   }
 
@@ -719,6 +920,14 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
                     <FileText size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
                     Documento
                   </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); send(GUIDED_SCRIPT_PROMPT); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-primary-light)] transition-colors text-left font-semibold"
+                    style={{ color: "var(--color-primary)" }}
+                  >
+                    <Clapperboard size={13} className="flex-shrink-0" />
+                    Guiado
+                  </button>
                   <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
                   <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
                     <Users size={11} /> Crear con creador
@@ -800,7 +1009,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
       {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 pb-4">
         {messages.map((msg, i) => (
-          <MessageBubble key={i} msg={msg} onCreateScript={onCreateScript} />
+          <MessageBubble key={i} msg={msg} onCreateScript={handleCreateScriptFromIdea} onExport={handleExportMessage} onAnswer={send} />
         ))}
 
         {loading && (
@@ -845,6 +1054,33 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
         <div ref={bottomRef} />
       </div>
 
+      {/* Export notification */}
+      {exportedDoc && (
+        <div className="flex justify-center px-4 py-2 flex-shrink-0">
+          <div className="flex items-center gap-2.5 px-4 py-2 bg-white rounded-full border shadow-md text-sm max-w-sm w-full"
+            style={{ borderColor: "var(--color-border)" }}>
+            <Check size={13} className="flex-shrink-0" style={{ color: "var(--color-success)" }} />
+            <span className="flex-1 truncate text-xs" style={{ color: "var(--color-foreground)" }}>
+              Guardado en Documentos
+            </span>
+            <a
+              href={`/documentos/${exportedDoc.id}`}
+              className="text-xs font-semibold hover:underline flex-shrink-0"
+              style={{ color: "var(--color-primary)" }}
+            >
+              Abrir →
+            </a>
+            <button
+              onClick={() => setExportedDoc(null)}
+              className="flex-shrink-0 hover:opacity-70 transition-opacity"
+              aria-label="Cerrar"
+            >
+              <X size={12} style={{ color: "var(--color-muted-foreground)" }} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Creator mode banner */}
       {activeCreator && (
         <div className="flex items-center gap-2.5 px-4 py-2 border-t border-[var(--color-border)] flex-shrink-0"
@@ -877,7 +1113,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
           {mentionQuery !== null && filteredCreators.length > 0 && (
             <MentionDropdown creators={filteredCreators} selectedIndex={mentionIndex} onSelect={completeMention} />
           )}
-        <div className="bg-white rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden transition-shadow focus-within:border-[var(--color-muted-foreground)] focus-within:shadow-md">
+        <div className="bg-white rounded-2xl border border-[var(--color-border)] shadow-sm transition-shadow focus-within:border-[var(--color-muted-foreground)] focus-within:shadow-md">
           {attachment && (
             <div className="px-4 pt-3 flex items-center gap-2">
               {attachment.mime_type.startsWith("image/") ? (
@@ -924,6 +1160,14 @@ export function ChatInterface({ profile, sessionId, initialMessages, onSessionCr
                   >
                     <FileText size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
                     Documento
+                  </button>
+                  <button
+                    onClick={() => { setShowAttachMenu(false); send(GUIDED_SCRIPT_PROMPT); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-primary-light)] transition-colors text-left font-semibold"
+                    style={{ color: "var(--color-primary)" }}
+                  >
+                    <Clapperboard size={13} className="flex-shrink-0" />
+                    Guiado
                   </button>
                   <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
                   <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>

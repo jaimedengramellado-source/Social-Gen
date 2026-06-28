@@ -7,13 +7,12 @@ export async function GET() {
   if (!user) return new Response("Unauthorized", { status: 401 });
 
   const { data } = await supabase
-    .from("chat_sessions")
-    .select("id, title, project_id, created_at, updated_at")
+    .from("chat_projects")
+    .select("id, title, created_at, updated_at")
     .eq("user_id", user.id)
-    .order("updated_at", { ascending: false })
-    .limit(100);
+    .order("created_at", { ascending: false });
 
-  return Response.json({ sessions: data ?? [] });
+  return Response.json({ projects: data ?? [] });
 }
 
 export async function POST(request: NextRequest) {
@@ -21,19 +20,15 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const { title, messages, project_id } = await request.json();
+  const body = await request.json().catch(() => ({}));
+  const title = typeof body.title === "string" ? body.title.trim().slice(0, 80) || "Nuevo proyecto" : "Nuevo proyecto";
 
   const { data, error } = await supabase
-    .from("chat_sessions")
-    .insert({
-      user_id: user.id,
-      title: title || "Nueva conversación",
-      messages: messages ?? [],
-      ...(project_id ? { project_id } : {}),
-    })
+    .from("chat_projects")
+    .insert({ user_id: user.id, title })
     .select()
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ session: data });
+  return Response.json({ project: data });
 }

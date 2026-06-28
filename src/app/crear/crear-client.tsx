@@ -11,7 +11,7 @@ import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
 import { ChatInterface } from "./chat-interface";
 import { ChatSidebar } from "./chat-sidebar";
-import type { ChatSession } from "./chat-sidebar";
+import type { ChatSession, ChatProject } from "./chat-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,8 +63,11 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
 
   const [mode, setMode] = useState<Mode>("chat");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [chatProjects, setChatProjects] = useState<ChatProject[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeMessages, setActiveMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [pendingEditProjectId, setPendingEditProjectId] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("platform");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [contentType, setContentType] = useState<string | null>(null);
@@ -100,6 +103,10 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
       .then(r => r.json())
       .then(d => { if (d.sessions) setChatSessions(d.sessions); })
       .catch(() => {});
+    fetch("/api/chat/projects")
+      .then(r => r.json())
+      .then(d => { if (d.projects) setChatProjects(d.projects); })
+      .catch(() => {});
   }, []);
 
   async function handleSelectSession(id: string) {
@@ -115,6 +122,13 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
   function handleNewChat() {
     setActiveSessionId(null);
     setActiveMessages([]);
+    setActiveProjectId(null);
+  }
+
+  function handleNewChatInProject(projectId: string) {
+    setActiveSessionId(null);
+    setActiveMessages([]);
+    setActiveProjectId(projectId);
   }
 
   async function handleDeleteSession(id: string) {
@@ -131,20 +145,51 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
-    } catch {
-    }
+    } catch {}
   }
 
-  function handleSessionCreated(id: string, title: string, messages: { role: "user" | "assistant"; content: string }[]) {
+  function handleSessionCreated(id: string, title: string, messages: { role: "user" | "assistant"; content: string }[], projectId: string | null) {
     const now = new Date().toISOString();
-    setChatSessions(prev => [{ id, title, created_at: now, updated_at: now }, ...prev]);
+    setChatSessions(prev => [{ id, title, project_id: projectId, created_at: now, updated_at: now }, ...prev]);
     setActiveSessionId(id);
     setActiveMessages(messages);
   }
 
-  function handleSessionUpdated(id: string, title: string) {
+  function handleSessionUpdated(id: string) {
     const now = new Date().toISOString();
-    setChatSessions(prev => prev.map(s => s.id === id ? { ...s, title, updated_at: now } : s));
+    setChatSessions(prev => prev.map(s => s.id === id ? { ...s, updated_at: now } : s));
+  }
+
+  async function handleCreateProject() {
+    const res = await fetch("/api/chat/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (data.project) {
+      const now = new Date().toISOString();
+      const project: ChatProject = { ...data.project, created_at: data.project.created_at ?? now, updated_at: data.project.updated_at ?? now };
+      setChatProjects(prev => [project, ...prev]);
+      setPendingEditProjectId(project.id);
+    }
+  }
+
+  async function handleDeleteProject(id: string) {
+    await fetch(`/api/chat/projects/${id}`, { method: "DELETE" });
+    setChatProjects(prev => prev.filter(p => p.id !== id));
+    setChatSessions(prev => prev.map(s => s.project_id === id ? { ...s, project_id: null } : s));
+  }
+
+  async function handleRenameProject(id: string, title: string) {
+    setChatProjects(prev => prev.map(p => p.id === id ? { ...p, title } : p));
+    try {
+      await fetch(`/api/chat/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+    } catch {}
   }
 
   useEffect(() => {
@@ -323,14 +368,22 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
       {/* ── Chat mode ── */}
       {mode === "chat" && (
         <div className="flex flex-1 min-h-0">
-          <div className="hidden md:flex">
+          <div className="hidden md:flex p-2 pr-0">
             <ChatSidebar
               sessions={chatSessions}
+              projects={chatProjects}
               activeId={activeSessionId}
+              pendingEditProjectId={pendingEditProjectId}
+              profile={profile}
               onSelect={handleSelectSession}
               onNew={handleNewChat}
+              onNewInProject={handleNewChatInProject}
               onDelete={handleDeleteSession}
               onRename={handleRenameSession}
+              onCreateProject={handleCreateProject}
+              onDeleteProject={handleDeleteProject}
+              onRenameProject={handleRenameProject}
+              onPendingEditHandled={() => setPendingEditProjectId(null)}
             />
           </div>
           <div className="flex-1 min-h-0 px-4 md:px-6 py-4">
@@ -338,16 +391,9 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
               profile={profile}
               sessionId={activeSessionId}
               initialMessages={activeMessages}
+              projectId={activeProjectId}
               onSessionCreated={handleSessionCreated}
               onSessionUpdated={handleSessionUpdated}
-              onCreateScript={(idea) => {
-                  setMode("guided");
-                  setAnswers(prev => ({ ...prev, angle: idea.title }));
-                  if (platform && niche.trim()) {
-                    if (!contentType) setContentType("mix");
-                    setStep("questions");
-                  }
-                }}
             />
           </div>
         </div>

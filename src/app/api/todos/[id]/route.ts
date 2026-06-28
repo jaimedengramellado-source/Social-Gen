@@ -10,7 +10,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.title !== undefined)      updates.title = body.title;
-  if (body.completed !== undefined)  updates.completed = body.completed;
+  if (body.completed !== undefined) {
+    updates.completed = body.completed;
+    updates.completed_at = body.completed ? new Date().toISOString() : null;
+  }
   if (body.urgency !== undefined)    updates.urgency = body.urgency;
   if (body.importance !== undefined) updates.importance = body.importance;
   if (body.due_date !== undefined)   updates.due_date = body.due_date;

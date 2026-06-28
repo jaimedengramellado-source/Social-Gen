@@ -46,6 +46,23 @@ export function truncate(str: string, maxLength: number): string {
   return str.slice(0, maxLength) + "…";
 }
 
+export async function downloadImageFromUrl(url: string, filename = "imagen.png") {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
 export function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
   const minutes = Math.floor(diff / 60000);

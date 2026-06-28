@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     sourceImageBase64,
     sourceMimeType = "image/jpeg",
     aspectRatio = "1:1",
+    maskBase64,
   } = body;
 
   const credit = await checkAndDeductCredits(user.id, "edit_image");
@@ -73,10 +74,35 @@ export async function POST(request: NextRequest) {
       generationConfig: { responseModalities: ["IMAGE", "TEXT"] } as any,
     });
 
-    const result = await model.generateContent([
-      { inlineData: { mimeType: mimeType, data: base64Image } },
-      { text: editPrompt },
-    ]);
+    const RATIO_HINT: Record<string, string> = {
+      "16:9": "Output in widescreen horizontal format (16:9 aspect ratio, landscape).",
+      "9:16": "Output in vertical portrait format (9:16 aspect ratio, tall).",
+      "4:3": "Output in standard horizontal format (4:3 aspect ratio).",
+      "1:1": "Output in square format (1:1 aspect ratio).",
+    };
+    const ratioHint = RATIO_HINT[aspectRatio] ?? "";
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contents: any[] = maskBase64
+      ? [
+          { inlineData: { mimeType: mimeType, data: base64Image } },
+          { inlineData: { mimeType: "image/png", data: maskBase64 } },
+          {
+            text: `Edit ONLY the region marked with WHITE pixels in the mask (second image). Do NOT modify anything outside that region. Keep everything else exactly as it is. Apply this change to the white region: ${editPrompt}`,
+          },
+        ]
+      : [
+          { inlineData: { mimeType: mimeType, data: base64Image } },
+          { text: `${editPrompt} ${ratioHint}`.trim() },
+        ];
+
+    let result;
+    try {
+      result = await model.generateContent(contents);
+    } catch (geminiErr) {
+      console.error("edit-image gemini error:", geminiErr);
+      return NextResponse.json({ error: "AI_ERROR", detail: String(geminiErr) }, { status: 500 });
+    }
 
     const parts = result.response.candidates?.[0]?.content?.parts ?? [];
     const imagePart = parts.find(
@@ -85,6 +111,8 @@ export async function POST(request: NextRequest) {
     );
 
     if (!imagePart?.inlineData?.data) {
+      const responseText = parts.find((p: any) => p.text)?.text ?? "";
+      console.error("edit-image: no image in response. Text:", responseText, "Candidates:", JSON.stringify(result.response.candidates?.map(c => c.finishReason)));
       return NextResponse.json({ error: "NO_IMAGE_IN_RESPONSE" }, { status: 500 });
     }
 
