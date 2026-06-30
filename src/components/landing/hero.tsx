@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const HERO_PLACEHOLDERS = [
+  "Describe tu canal o tema… ej: recetas veganas para universitarios sin dinero",
+  "Ej: finanzas personales para millennials que viven al día",
+  "Ej: fitness en casa para madres sin tiempo libre",
+  "Ej: desarrollo personal para emprendedores que siempre fracasan",
+  "Ej: tecnología y gadgets para gente que no entiende de tecnología",
+];
 
 function LogoLoader({ size = 48 }: { size?: number }) {
   const triangleSize = size * 0.38;
@@ -37,6 +45,14 @@ export function LandingHero() {
   const words = ["La", "plataforma", "de", "los", "creadores", "de", "contenido", "virales"];
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPlaceholderIdx(i => (i + 1) % HERO_PLACEHOLDERS.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, []);
   const [result, setResult] = useState<{
     hook: string;
     intro: string;
@@ -143,7 +159,7 @@ export function LandingHero() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe tu canal o tema… ej: recetas veganas para universitarios sin dinero"
+              placeholder={HERO_PLACEHOLDERS[placeholderIdx]}
               rows={2}
               className="flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-[var(--color-muted-foreground)]"
               style={{ fontFamily: "var(--font-sans)" }}
@@ -310,7 +326,7 @@ export function LandingHero() {
 
                   {/* Lock overlay */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center"
-                    style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 30%)" }}
+                    style={{ background: "linear-gradient(to bottom, transparent 0%, var(--color-card) 30%)" }}
                   >
                     <div className="mt-8 text-center px-6">
                       <p className="text-sm font-semibold text-[var(--color-foreground)] mb-1">

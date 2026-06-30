@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Zap, ArrowRight, TrendingUp, FileText, Plus, Sparkles, Eye } from "lucide-react";
+import { Zap, ArrowRight, TrendingUp, FileText, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
 import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
@@ -24,6 +24,8 @@ interface DashboardClientProps {
     created_at: string;
     status: string;
   }[];
+  totalScripts: number;
+  totalIdeas: number;
 }
 
 function greeting() {
@@ -33,16 +35,19 @@ function greeting() {
   return "Buenas noches";
 }
 
-export function DashboardClient({ profile, recentIdeas, recentScripts }: DashboardClientProps) {
+export function DashboardClient({ profile, recentIdeas, recentScripts, totalScripts, totalIdeas }: DashboardClientProps) {
   const router = useRouter();
   const [sorprendiendome, setSorprendiendome] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [sorpresas, setSorpresas] = useState<Idea[]>([]);
 
   const firstName = profile.full_name?.split(" ")[0] || "creador";
-  const avgScore = recentScripts.length
-    ? Math.round(recentScripts.reduce((s, r) => s + (r.viral_score || 0), 0) / recentScripts.length)
-    : null;
+  const avgScore = (() => {
+    if (!recentScripts.length) return null;
+    const sum = recentScripts.reduce((s, r) => s + (r.viral_score || 0), 0);
+    if (sum === 0) return null;
+    return Math.round(sum / recentScripts.length);
+  })();
 
   async function handleSorprendeme() {
     setSorprendiendome(true);
@@ -77,7 +82,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
       {/* ── Primary CTA ── */}
       <div
         className="mb-6 p-5 md:p-6 rounded-2xl border-2 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:gap-6"
-        style={{ borderColor: YT_RED, boxShadow: "0 4px 24px rgba(255,0,0,0.08)" }}
+        style={{ borderColor: YT_RED, boxShadow: "0 4px 24px rgba(124,58,237,0.10)" }}
       >
         <div>
           <p className="text-base font-semibold mb-1">Crea tu próximo guion viral</p>
@@ -97,8 +102,8 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
       {/* ── Stats ── */}
       <div className="grid grid-cols-3 gap-3 mb-8">
         {[
-          { label: "Guiones creados", value: recentScripts.length.toString(), icon: FileText },
-          { label: "Ideas guardadas", value: recentIdeas.length.toString(), icon: Sparkles },
+          { label: "Guiones creados", value: totalScripts.toString(), icon: FileText },
+          { label: "Ideas guardadas", value: totalIdeas.toString(), icon: Sparkles },
           { label: "Viral score medio", value: avgScore !== null ? `${avgScore}` : "—", icon: TrendingUp },
         ].map(({ label, value, icon: Icon }) => (
           <div
@@ -187,7 +192,6 @@ export function DashboardClient({ profile, recentIdeas, recentScripts }: Dashboa
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <ViralScoreBadge score={script.viral_score} size="sm" />
-                    <Eye size={14} className="text-[var(--color-muted-foreground)]" />
                   </div>
                 </div>
               </Link>

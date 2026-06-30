@@ -62,7 +62,7 @@ export function CalendarGrid({
   useEffect(() => {
     if (scrollRef.current) {
       const minsNow = minutesOfDay(new Date());
-      const scrollTo = Math.max(0, (minsNow / 60) * HOUR_HEIGHT - HOUR_HEIGHT * 2);
+      const scrollTo = Math.max(8 * HOUR_HEIGHT, (minsNow / 60) * HOUR_HEIGHT - HOUR_HEIGHT * 2);
       scrollRef.current.scrollTop = scrollTo;
     }
   }, []);
@@ -268,7 +268,7 @@ export function CalendarGrid({
                 className="absolute left-0 right-0 pointer-events-none"
                 style={{
                   top: h * HOUR_HEIGHT,
-                  borderTop: h === 0 ? "none" : "1px solid rgba(0,0,0,0.07)",
+                  borderTop: h === 0 ? "none" : "1px solid var(--cal-line-main)",
                 }}
               />
             ))}
@@ -280,7 +280,7 @@ export function CalendarGrid({
                 className="absolute left-0 right-0 pointer-events-none"
                 style={{
                   top: h * HOUR_HEIGHT + HOUR_HEIGHT / 2,
-                  borderTop: "1px dashed rgba(0,0,0,0.04)",
+                  borderTop: "1px dashed var(--cal-line-dashed)",
                 }}
               />
             ))}
@@ -292,7 +292,7 @@ export function CalendarGrid({
                 className="absolute top-0 bottom-0 pointer-events-none"
                 style={{
                   left: `${(i / 7) * 100}%`,
-                  borderLeft: "1px solid rgba(0,0,0,0.07)",
+                  borderLeft: "1px solid var(--cal-line-main)",
                 }}
               />
             ))}
@@ -305,7 +305,7 @@ export function CalendarGrid({
                 style={{
                   left: `${(col / 7) * 100}%`,
                   width: `${100 / 7}%`,
-                  backgroundColor: "rgba(0,0,0,0.015)",
+                  backgroundColor: "var(--cal-weekend-tint)",
                 }}
               />
             ))}

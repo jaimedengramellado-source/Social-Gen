@@ -19,7 +19,7 @@ interface DockItem {
 
 const ITEMS: DockItem[] = [
   { href: "/dashboard",  label: "Inicio",      type: "icon", Icon: LayoutDashboard },
-  { href: "/crear",      label: "Crear con IA", type: "ia" },
+  { href: "/crear",      label: "Crear",        type: "ia" },
   { href: "/imagenes",   label: "Imágenes",    type: "icon", Icon: ImageIcon },
   { href: "/documentos", label: "Documentos",   type: "icon", Icon: FolderOpen },
   { href: "/explorar",      label: "Explorar",       type: "icon", Icon: Search },
@@ -116,15 +116,15 @@ export function Dock({ profile }: { profile?: Profile | null }) {
                 <span
                   className="absolute inset-0 rounded-xl"
                   style={{
-                    background: item.type === "ia"
-                      ? "var(--color-primary)"
-                      : active
-                      ? "rgba(255,255,255,0.18)"
+                    background: active
+                      ? item.type === "ia"
+                        ? "var(--color-primary)"
+                        : "rgba(255,255,255,0.18)"
                       : "rgba(255,255,255,0.07)",
-                    boxShadow: item.type === "ia"
-                      ? "0 2px 12px rgba(124,58,237,0.45)"
-                      : active
-                      ? "inset 0 1px 0 rgba(255,255,255,0.15)"
+                    boxShadow: active
+                      ? item.type === "ia"
+                        ? "0 2px 12px rgba(124,58,237,0.45)"
+                        : "inset 0 1px 0 rgba(255,255,255,0.15)"
                       : undefined,
                   }}
                 />

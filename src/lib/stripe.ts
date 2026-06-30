@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 import { Plan } from "@/types";
 
+export const CREDITS_PER_EUR = 10;
+
 let _stripe: Stripe | null = null;
 
 export function getStripeClient(): Stripe {

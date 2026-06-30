@@ -466,7 +466,7 @@ function MatrixView({ todos, onToggle }: { todos: Todo[]; onToggle: (id: string,
             height: PLOT_H,
             borderLeft: "2px solid var(--color-border)",
             borderBottom: "2px solid var(--color-border)",
-            backgroundColor: "#f8f7f4",
+            backgroundColor: "var(--color-background)",
             overflow: "visible",
           }}>
             {/* Heatmap — urgencia (→derecha) × importancia (→arriba) */}

@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, Share2, BookmarkPlus, Check, Sparkles, ListChecks, Library } from "lucide-react";
+import { ArrowLeft, Share2, BookmarkPlus, Check, Sparkles, ListChecks, Library, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Platform, Idea, Script, Channel, Profile, HookVariants } from "@/types";
 import { useToast } from "@/components/ui/toast";
 
@@ -86,6 +86,7 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saving" | "saved" | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const trending = searchParams.get("trending");
@@ -176,9 +177,14 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
   }
 
   async function handleDeleteProject(id: string) {
-    await fetch(`/api/chat/projects/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/chat/projects/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast({ title: "Error al eliminar el proyecto", description: "Inténtalo de nuevo." });
+      return;
+    }
     setChatProjects(prev => prev.filter(p => p.id !== id));
     setChatSessions(prev => prev.map(s => s.project_id === id ? { ...s, project_id: null } : s));
+    if (activeProjectId === id) setActiveProjectId(null);
   }
 
   async function handleRenameProject(id: string, title: string) {
@@ -368,23 +374,35 @@ export function CrearClient({ profile, defaultChannel }: CrearClientProps) {
       {/* ── Chat mode ── */}
       {mode === "chat" && (
         <div className="flex flex-1 min-h-0">
-          <div className="hidden md:flex p-2 pr-0">
-            <ChatSidebar
-              sessions={chatSessions}
-              projects={chatProjects}
-              activeId={activeSessionId}
-              pendingEditProjectId={pendingEditProjectId}
-              profile={profile}
-              onSelect={handleSelectSession}
-              onNew={handleNewChat}
-              onNewInProject={handleNewChatInProject}
-              onDelete={handleDeleteSession}
-              onRename={handleRenameSession}
-              onCreateProject={handleCreateProject}
-              onDeleteProject={handleDeleteProject}
-              onRenameProject={handleRenameProject}
-              onPendingEditHandled={() => setPendingEditProjectId(null)}
-            />
+          <div className="hidden md:flex p-2 pr-0 relative">
+            {!sidebarCollapsed && (
+              <ChatSidebar
+                sessions={chatSessions}
+                projects={chatProjects}
+                activeId={activeSessionId}
+                pendingEditProjectId={pendingEditProjectId}
+                profile={profile}
+                onSelect={handleSelectSession}
+                onNew={handleNewChat}
+                onNewInProject={handleNewChatInProject}
+                onDelete={handleDeleteSession}
+                onRename={handleRenameSession}
+                onCreateProject={handleCreateProject}
+                onDeleteProject={handleDeleteProject}
+                onRenameProject={handleRenameProject}
+                onPendingEditHandled={() => setPendingEditProjectId(null)}
+              />
+            )}
+            <button
+              onClick={() => setSidebarCollapsed(v => !v)}
+              title={sidebarCollapsed ? "Expandir panel" : "Contraer panel"}
+              className="absolute top-4 -right-3 z-10 flex items-center justify-center w-6 h-6 rounded-full border shadow-sm transition-colors hover:bg-[var(--color-muted)]"
+              style={{ background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+            >
+              {sidebarCollapsed
+                ? <PanelLeftOpen size={12} />
+                : <PanelLeftClose size={12} />}
+            </button>
           </div>
           <div className="flex-1 min-h-0 px-4 md:px-6 py-4">
             <ChatInterface

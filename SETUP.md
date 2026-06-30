@@ -41,79 +41,47 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 
 ## 3. Configurar Stripe
 
-### 3.1 Crear cuenta
-1. Ir a [stripe.com](https://stripe.com) → activar modo Test
+### 3.1 Cuenta
+Stripe ya está en **live mode**. No usar test keys.
 
-### 3.2 Crear productos y precios
-En Stripe Dashboard → Products → Add product:
+### 3.2 Productos y precios (ya creados en live mode)
 
-**Plan Starter** — $19/mes
-- Crear producto "Social Gen Starter"
-- Price: $19.00, recurring monthly
-- Copiar Price ID: `STRIPE_STARTER_MONTHLY_PRICE_ID`
+| Env var | Price ID | Descripción |
+|---|---|---|
+| `STRIPE_STARTER_WEEKLY_PRICE_ID` | `price_1TnxbhLTq2Nj2Fq3zGQVHrHZ` | 4,75 €/semana |
+| `STRIPE_STARTER_ANNUAL_PRICE_ID` | `price_1TnxbiLTq2Nj2Fq3DaijbIJG` | 205,83 €/año |
+| `STRIPE_PRO_WEEKLY_PRICE_ID` | `price_1TnxbjLTq2Nj2Fq3qAk2OG9e` | 12,25 €/semana |
+| `STRIPE_PRO_ANNUAL_PRICE_ID` | `price_1TnxbjLTq2Nj2Fq3BDA3Zfrz` | 530,83 €/año |
+| `STRIPE_AGENCY_WEEKLY_PRICE_ID` | `price_1TnxbkLTq2Nj2Fq3dYSClgGv` | 24,75 €/semana |
+| `STRIPE_AGENCY_ANNUAL_PRICE_ID` | `price_1TnxblLTq2Nj2Fq3tyNZwQUU` | 1.072,50 €/año |
+| `STRIPE_PACK_50_PRICE_ID` | `price_1TnxbmLTq2Nj2Fq3gx0ShRs8` | 9 € one-time |
+| `STRIPE_PACK_150_PRICE_ID` | `price_1TnxbmLTq2Nj2Fq3t37zeaQm` | 19 € one-time |
+| `STRIPE_PACK_500_PRICE_ID` | `price_1TnxbnLTq2Nj2Fq3I2xeRpU3` | 49 € one-time |
 
-**Plan Starter Anual** — $15/mes (facturado $180/año)
-- Price: $180.00, recurring yearly
-- Copiar Price ID: `STRIPE_STARTER_ANNUAL_PRICE_ID`
-
-**Plan Pro** — $49/mes
-- Crear producto "Social Gen Pro"
-- Price: $49.00, recurring monthly
-- Copiar Price ID: `STRIPE_PRO_MONTHLY_PRICE_ID`
-
-**Plan Pro Anual** — $39/mes (facturado $468/año)
-- Price: $468.00, recurring yearly
-- Copiar Price ID: `STRIPE_PRO_ANNUAL_PRICE_ID`
-
-**Plan Agency** — $99/mes
-- Crear producto "Social Gen Agency"
-- Price: $99.00, recurring monthly
-- Copiar Price ID: `STRIPE_AGENCY_MONTHLY_PRICE_ID`
-
-**Plan Agency Anual** — $79/mes (facturado $948/año)
-- Price: $948.00, recurring yearly
-- Copiar Price ID: `STRIPE_AGENCY_ANNUAL_PRICE_ID`
-
-**Pack 50 créditos** — $9 (one-time)
-- Crear producto "Social Gen Pack 50"
-- Price: $9.00, one-time
-- Copiar Price ID: `STRIPE_PACK_50_PRICE_ID`
-
-**Pack 150 créditos** — $19 (one-time)
-- Crear producto "Social Gen Pack 150"
-- Price: $19.00, one-time
-- Copiar Price ID: `STRIPE_PACK_150_PRICE_ID`
-
-**Pack 500 créditos** — $49 (one-time)
-- Crear producto "Social Gen Pack 500"
-- Price: $49.00, one-time
-- Copiar Price ID: `STRIPE_PACK_500_PRICE_ID`
-
-### 3.3 Configurar Webhook
+### 3.3 Configurar Webhook (live)
 1. Stripe Dashboard → Developers → Webhooks → Add endpoint
 2. URL: `https://tu-dominio.com/api/stripe/webhook`
-   - En local: usar [Stripe CLI](https://stripe.com/docs/stripe-cli) → `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 3. Seleccionar eventos:
    - `checkout.session.completed`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_succeeded`
-4. Copiar Signing Secret: `STRIPE_WEBHOOK_SECRET`
+4. Copiar Signing Secret → `STRIPE_WEBHOOK_SECRET`
 
-### 3.4 Copiar claves Stripe
+### 3.4 Claves Stripe (live)
 ```
-STRIPE_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_STARTER_MONTHLY_PRICE_ID=price_...
-STRIPE_STARTER_ANNUAL_PRICE_ID=price_...
-STRIPE_PRO_MONTHLY_PRICE_ID=price_...
-STRIPE_PRO_ANNUAL_PRICE_ID=price_...
-STRIPE_AGENCY_MONTHLY_PRICE_ID=price_...
-STRIPE_AGENCY_ANNUAL_PRICE_ID=price_...
-STRIPE_PACK_50_PRICE_ID=price_...
-STRIPE_PACK_150_PRICE_ID=price_...
-STRIPE_PACK_500_PRICE_ID=price_...
+STRIPE_STARTER_WEEKLY_PRICE_ID=price_1TnxbhLTq2Nj2Fq3zGQVHrHZ
+STRIPE_STARTER_ANNUAL_PRICE_ID=price_1TnxbiLTq2Nj2Fq3DaijbIJG
+STRIPE_PRO_WEEKLY_PRICE_ID=price_1TnxbjLTq2Nj2Fq3qAk2OG9e
+STRIPE_PRO_ANNUAL_PRICE_ID=price_1TnxbjLTq2Nj2Fq3BDA3Zfrz
+STRIPE_AGENCY_WEEKLY_PRICE_ID=price_1TnxbkLTq2Nj2Fq3dYSClgGv
+STRIPE_AGENCY_ANNUAL_PRICE_ID=price_1TnxblLTq2Nj2Fq3tyNZwQUU
+STRIPE_PACK_50_PRICE_ID=price_1TnxbmLTq2Nj2Fq3gx0ShRs8
+STRIPE_PACK_150_PRICE_ID=price_1TnxbmLTq2Nj2Fq3t37zeaQm
+STRIPE_PACK_500_PRICE_ID=price_1TnxbnLTq2Nj2Fq3I2xeRpU3
 ```
 
 ---
@@ -204,7 +172,33 @@ Ejecutar el bloque de `generated_images` del `supabase/schema.sql` en el SQL Edi
 
 ---
 
-## 7. Bucket de imágenes del chat (chat-attachments)
+## 7. Bucket de avatares de perfil
+
+Ejecutar en SQL Editor de Supabase:
+
+```sql
+-- Crear bucket público (las URLs de avatar se usan en <img> sin autenticación)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true);
+
+-- Policy: el usuario autenticado puede subir/actualizar su propio avatar
+CREATE POLICY "Users upload own avatar"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users update own avatar"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Policy: cualquiera puede leer avatares (bucket público)
+CREATE POLICY "Public read avatars"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars');
+```
+
+---
+
+## 8. Bucket de imágenes del chat (chat-attachments)
 
 Ejecutar en SQL Editor de Supabase:
 

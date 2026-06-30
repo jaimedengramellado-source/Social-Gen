@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp list *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -f .env.local ] && cp .env.local .env.local.bak && echo 'SessionStart: .env.local backed up' || true",
+            "shell": "bash"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); echo \"$input\" | grep -q 'vercel env pull' && [ -f .env.local ] && cp .env.local .env.local.bak && echo 'Pre-pull backup: .env.local -> .env.local.bak' || true",
+            "shell": "bash"
+          }
+        ]
+      }
+    ]
+  }
+}

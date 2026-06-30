@@ -10,7 +10,6 @@ interface GDocsDocumentAreaProps {
 
 export function GDocsDocumentArea({ editor, zoom }: GDocsDocumentAreaProps) {
   const scale = zoom / 100;
-  // The visible area the scaled page occupies
   const pageW = 816;
   const pagePad = 96;
   const pageMinH = 1056;
@@ -22,10 +21,9 @@ export function GDocsDocumentArea({ editor, zoom }: GDocsDocumentAreaProps) {
         flex: 1,
         overflowY: "auto",
         overflowX: "auto",
-        backgroundColor: "#F0F4F8",
+        backgroundColor: "var(--color-background)",
       }}
     >
-      {/* Compensating wrapper: takes the visual space of the scaled page */}
       <div
         style={{
           margin: "0 auto",
@@ -44,7 +42,7 @@ export function GDocsDocumentArea({ editor, zoom }: GDocsDocumentAreaProps) {
             minHeight: `${pageMinH}px`,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
-            backgroundColor: "white",
+            backgroundColor: "var(--color-card)",
             boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
             padding: `${pagePad}px`,
             boxSizing: "border-box",
@@ -55,7 +53,6 @@ export function GDocsDocumentArea({ editor, zoom }: GDocsDocumentAreaProps) {
           <EditorContent editor={editor} />
         </div>
       </div>
-      {/* Spacer so scrolling works with the absolute-positioned page */}
       <div style={{ height: `${pageMinH * scale + 40}px`, width: "1px", display: "block", margin: "0 auto" }} />
     </div>
   );

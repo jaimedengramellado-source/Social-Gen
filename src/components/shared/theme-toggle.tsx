@@ -19,6 +19,11 @@ const DARK: Record<string, string> = {
   "--color-primary-light": "#2D1B69",
   "--color-accent": "#2D1B69",
   "--color-accent-foreground": "#A78BFA",
+  "--cal-line-main": "rgba(255,255,255,0.07)",
+  "--cal-line-dashed": "rgba(255,255,255,0.04)",
+  "--cal-weekend-tint": "rgba(255,255,255,0.025)",
+  "--destructive-muted": "rgba(220,38,38,0.15)",
+  "--destructive-muted-border": "rgba(220,38,38,0.30)",
 };
 
 export function applyTheme(dark: boolean) {

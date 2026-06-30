@@ -659,7 +659,7 @@ export function DocumentosClient({
             </div>
 
             {/* Document canvas */}
-            <div className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: "#F0F4F9" }}>
+            <div className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: "var(--color-background)" }}>
               {loadingScript && (
                 <div className="py-6 md:py-10 px-2 md:px-6 mx-auto" style={{ maxWidth: "816px" }}>
                   <div className="bg-white space-y-4" style={{ padding: "clamp(24px, 5vw, 72px) clamp(16px, 8vw, 96px)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
@@ -808,7 +808,7 @@ export function DocumentosClient({
 
         {/* ── Idea view ── */}
         {selection?.type === "idea" && (
-          <div className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: "#F0F4F9" }}>
+          <div className="flex-1 overflow-y-auto pb-16 md:pb-0" style={{ backgroundColor: "var(--color-background)" }}>
             <div className="py-6 md:py-10 px-2 md:px-6 mx-auto" style={{ maxWidth: "816px" }}>
               <div className="bg-white" style={{ padding: "clamp(24px, 5vw, 72px) clamp(16px, 8vw, 96px)", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }}>
                 <div className="flex items-start gap-3 mb-3">

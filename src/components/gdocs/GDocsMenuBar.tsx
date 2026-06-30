@@ -37,7 +37,6 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
   const [hasFile, setHasFile] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Save editor selection before the dialog steals focus
   const savedSelection = useRef<Selection | null>(null);
 
   useEffect(() => {
@@ -57,7 +56,6 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
   }
 
   function openImageDialog() {
-    // Save selection NOW, before the dialog steals focus
     savedSelection.current = editor.state.selection;
     setOpenMenu(null);
     setImageUrl("");
@@ -77,12 +75,11 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
   }
 
   function restoreSelectionAndInsert(fn: () => void) {
-    // Restore saved selection so the image lands at the right spot
     if (savedSelection.current) {
       try {
         const tr = editor.state.tr.setSelection(savedSelection.current);
         editor.view.dispatch(tr);
-      } catch { /* selection might be stale if doc changed */ }
+      } catch { /* selection might be stale */ }
     }
     editor.view.focus();
     fn();
@@ -92,9 +89,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
     const url = imageUrl.trim();
     if (!url) return;
     closeImageDialog();
-    restoreSelectionAndInsert(() => {
-      editor.commands.setImage({ src: url });
-    });
+    restoreSelectionAndInsert(() => { editor.commands.setImage({ src: url }); });
   }
 
   async function uploadAndInsert() {
@@ -109,9 +104,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
       if (!res.ok) throw new Error(await res.text() || "Error al subir");
       const { url } = await res.json() as { url: string };
       closeImageDialog();
-      restoreSelectionAndInsert(() => {
-        editor.commands.setImage({ src: url });
-      });
+      restoreSelectionAndInsert(() => { editor.commands.setImage({ src: url }); });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Error al subir");
     } finally {
@@ -211,8 +204,8 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
         data-gdocs-menubar
         style={{
           height: "36px",
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
+          backgroundColor: "var(--color-card)",
+          borderBottom: "1px solid var(--color-border)",
           display: "flex",
           alignItems: "center",
           padding: "0 4px",
@@ -229,8 +222,8 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
               padding: "4px 12px",
               fontSize: "13px",
               fontFamily: "Arial, sans-serif",
-              color: "#202124",
-              backgroundColor: openMenu === menu.name ? "#f1f3f4" : "transparent",
+              color: "var(--color-foreground)",
+              backgroundColor: openMenu === menu.name ? "var(--color-muted)" : "transparent",
               border: "none",
               borderRadius: "4px",
               cursor: "pointer",
@@ -238,7 +231,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
               display: "flex",
               alignItems: "center",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
             onMouseLeave={e => { if (openMenu !== menu.name) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
           >
             {menu.name}
@@ -246,7 +239,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
         ))}
       </div>
 
-      {/* Dropdown — fixed to escape overflow clipping */}
+      {/* Dropdown */}
       {activeMenuDef && (
         <div
           data-gdocs-menubar
@@ -254,8 +247,8 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
             position: "fixed",
             top: dropdownPos.top,
             left: dropdownPos.left,
-            backgroundColor: "white",
-            border: "1px solid #e0e0e0",
+            backgroundColor: "var(--color-card)",
+            border: "1px solid var(--color-border)",
             borderRadius: "4px",
             boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
             minWidth: "220px",
@@ -265,7 +258,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
         >
           {activeMenuDef.items.map((item, i) =>
             item.divider ? (
-              <div key={i} style={{ height: "1px", backgroundColor: "#e0e0e0", margin: "4px 0" }} />
+              <div key={i} style={{ height: "1px", backgroundColor: "var(--color-border)", margin: "4px 0" }} />
             ) : (
               <button
                 key={i}
@@ -279,18 +272,18 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
                   padding: "6px 24px 6px 16px",
                   fontSize: "13px",
                   fontFamily: "Arial, sans-serif",
-                  color: item.disabled ? "#9aa0a6" : "#202124",
+                  color: item.disabled ? "var(--color-muted-foreground)" : "var(--color-foreground)",
                   backgroundColor: "transparent",
                   border: "none",
                   cursor: item.disabled ? "default" : "pointer",
                   textAlign: "left",
                 }}
-                onMouseEnter={e => { if (!item.disabled) (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+                onMouseEnter={e => { if (!item.disabled) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
               >
                 <span>{item.label}</span>
                 {item.shortcut && (
-                  <span style={{ fontSize: "12px", color: "#5f6368", marginLeft: "24px" }}>{item.shortcut}</span>
+                  <span style={{ fontSize: "12px", color: "var(--color-muted-foreground)", marginLeft: "24px" }}>{item.shortcut}</span>
                 )}
               </button>
             )
@@ -298,7 +291,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
         </div>
       )}
 
-      {/* ── Image insertion dialog ── */}
+      {/* Image insertion dialog */}
       {imageOpen && (
         <div
           style={{
@@ -314,8 +307,9 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
         >
           <div
             style={{
-              backgroundColor: "white",
+              backgroundColor: "var(--color-card)",
               borderRadius: "8px",
+              border: "1px solid var(--color-border)",
               boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
               width: "440px",
               maxWidth: "calc(100vw - 32px)",
@@ -323,14 +317,14 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
             }}
           >
             {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px", borderBottom: "1px solid #e0e0e0" }}>
-              <span style={{ fontSize: "15px", fontWeight: 500, fontFamily: "Arial, sans-serif", color: "#202124" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px", borderBottom: "1px solid var(--color-border)" }}>
+              <span style={{ fontSize: "15px", fontWeight: 500, fontFamily: "Arial, sans-serif", color: "var(--color-foreground)" }}>
                 Insertar imagen
               </span>
               <button
                 onClick={closeImageDialog}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%", border: "none", backgroundColor: "transparent", cursor: "pointer", color: "#5f6368" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%", border: "none", backgroundColor: "transparent", cursor: "pointer", color: "var(--color-muted-foreground)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
               >
                 <X size={16} />
@@ -338,7 +332,7 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: "flex", borderBottom: "1px solid #e0e0e0" }}>
+            <div style={{ display: "flex", borderBottom: "1px solid var(--color-border)" }}>
               {([
                 ["url", "Desde URL", <Link2 size={14} key="l" />],
                 ["upload", "Subir imagen", <ImageIcon size={14} key="i" />],
@@ -355,10 +349,10 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
                     padding: "10px",
                     fontSize: "13px",
                     fontFamily: "Arial, sans-serif",
-                    color: imageTab === tab ? "#1a73e8" : "#5f6368",
+                    color: imageTab === tab ? "var(--color-primary)" : "var(--color-muted-foreground)",
                     backgroundColor: "transparent",
                     border: "none",
-                    borderBottom: imageTab === tab ? "2px solid #1a73e8" : "2px solid transparent",
+                    borderBottom: imageTab === tab ? "2px solid var(--color-primary)" : "2px solid transparent",
                     cursor: "pointer",
                     fontWeight: imageTab === tab ? 500 : 400,
                   }}
@@ -384,20 +378,21 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
                       padding: "8px 12px",
                       fontSize: "13px",
                       fontFamily: "Arial, sans-serif",
-                      border: "1px solid #dadce0",
+                      border: "1px solid var(--color-border)",
                       borderRadius: "4px",
                       outline: "none",
-                      color: "#202124",
+                      color: "var(--color-foreground)",
+                      backgroundColor: "var(--color-muted)",
                       boxSizing: "border-box",
                     }}
-                    onFocus={e => { e.target.style.borderColor = "#1a73e8"; }}
-                    onBlur={e => { e.target.style.borderColor = "#dadce0"; }}
+                    onFocus={e => { e.target.style.borderColor = "var(--color-primary)"; }}
+                    onBlur={e => { e.target.style.borderColor = "var(--color-border)"; }}
                   />
                   {imageUrl.trim() && (
                     <img
                       src={imageUrl}
                       alt="Vista previa"
-                      style={{ maxHeight: "160px", objectFit: "contain", borderRadius: "4px", border: "1px solid #e0e0e0" }}
+                      style={{ maxHeight: "160px", objectFit: "contain", borderRadius: "4px", border: "1px solid var(--color-border)" }}
                       onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                       onLoad={e => { (e.target as HTMLImageElement).style.display = "block"; }}
                     />
@@ -415,17 +410,17 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
                       justifyContent: "center",
                       gap: "8px",
                       padding: "24px",
-                      border: `2px dashed ${hasFile ? "#1a73e8" : "#dadce0"}`,
+                      border: `2px dashed ${hasFile ? "var(--color-primary)" : "var(--color-border)"}`,
                       borderRadius: "6px",
                       cursor: "pointer",
-                      backgroundColor: hasFile ? "#e8f0fe22" : "#fafafa",
+                      backgroundColor: hasFile ? "var(--color-primary-light)" : "var(--color-muted)",
                       transition: "all 0.15s",
                     }}
-                    onMouseEnter={e => { if (!hasFile) (e.currentTarget as HTMLElement).style.borderColor = "#1a73e8"; }}
-                    onMouseLeave={e => { if (!hasFile) (e.currentTarget as HTMLElement).style.borderColor = "#dadce0"; }}
+                    onMouseEnter={e => { if (!hasFile) (e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary)"; }}
+                    onMouseLeave={e => { if (!hasFile) (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)"; }}
                   >
-                    <ImageIcon size={28} color={hasFile ? "#1a73e8" : "#9aa0a6"} />
-                    <span style={{ fontSize: "13px", fontFamily: "Arial, sans-serif", color: hasFile ? "#1a73e8" : "#5f6368", textAlign: "center" }}>
+                    <ImageIcon size={28} color={hasFile ? "var(--color-primary)" : "var(--color-muted-foreground)"} />
+                    <span style={{ fontSize: "13px", fontFamily: "Arial, sans-serif", color: hasFile ? "var(--color-primary)" : "var(--color-muted-foreground)", textAlign: "center" }}>
                       {hasFile
                         ? fileInputRef.current?.files?.[0]?.name ?? "Archivo seleccionado"
                         : <>Haz clic para seleccionar<br /><span style={{ fontSize: "11px" }}>JPG, PNG, GIF, WebP · máx. 5 MB</span></>
@@ -444,12 +439,12 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
                     <img
                       src={uploadPreview}
                       alt="Vista previa"
-                      style={{ maxHeight: "160px", objectFit: "contain", borderRadius: "4px", border: "1px solid #e0e0e0" }}
+                      style={{ maxHeight: "160px", objectFit: "contain", borderRadius: "4px", border: "1px solid var(--color-border)" }}
                     />
                   )}
 
                   {uploadError && (
-                    <p style={{ fontSize: "12px", color: "#d93025", fontFamily: "Arial, sans-serif", margin: 0 }}>
+                    <p style={{ fontSize: "12px", color: "var(--color-destructive)", fontFamily: "Arial, sans-serif", margin: 0 }}>
                       {uploadError}
                     </p>
                   )}
@@ -461,8 +456,8 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "0 20px 16px" }}>
               <button
                 onClick={closeImageDialog}
-                style={{ padding: "8px 20px", fontSize: "13px", fontFamily: "Arial, sans-serif", color: "#444746", backgroundColor: "transparent", border: "1px solid #dadce0", borderRadius: "4px", cursor: "pointer" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#f8f9fa"; }}
+                style={{ padding: "8px 20px", fontSize: "13px", fontFamily: "Arial, sans-serif", color: "var(--color-foreground)", backgroundColor: "transparent", border: "1px solid var(--color-border)", borderRadius: "4px", cursor: "pointer" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
               >
                 Cancelar
@@ -478,15 +473,15 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
                   fontSize: "13px",
                   fontFamily: "Arial, sans-serif",
                   color: "white",
-                  backgroundColor: "#1a73e8",
+                  backgroundColor: "var(--color-primary)",
                   border: "none",
                   borderRadius: "4px",
                   cursor: insertBtnDisabled ? "not-allowed" : "pointer",
                   opacity: insertBtnDisabled ? 0.5 : 1,
-                  transition: "opacity 0.15s, background-color 0.15s",
+                  transition: "opacity 0.15s, filter 0.15s",
                 }}
-                onMouseEnter={e => { if (!insertBtnDisabled) (e.currentTarget as HTMLElement).style.backgroundColor = "#1557b0"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#1a73e8"; }}
+                onMouseEnter={e => { if (!insertBtnDisabled) (e.currentTarget as HTMLElement).style.filter = "brightness(0.9)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = "none"; }}
               >
                 {uploading && <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />}
                 {uploading ? "Subiendo…" : "Insertar"}

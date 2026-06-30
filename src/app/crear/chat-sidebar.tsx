@@ -108,6 +108,7 @@ export function ChatSidebar({
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingProjectValue, setEditingProjectValue] = useState("");
   const [openMenuId, setOpenMenuId]             = useState<string | null>(null);
+  const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -130,7 +131,10 @@ export function ChatSidebar({
   }, [pendingEditProjectId, projects, onPendingEditHandled]);
 
   useEffect(() => {
-    if (!openMenuId) return;
+    if (!openMenuId) {
+      setConfirmDeleteProjectId(null);
+      return;
+    }
     function close(e: MouseEvent) {
       if (!(e.target as HTMLElement).closest("[data-menu-root]")) setOpenMenuId(null);
     }
@@ -185,8 +189,11 @@ export function ChatSidebar({
 
     return (
       <div key={s.id} className="relative mb-0.5" data-menu-root>
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => !isEditing && onSelect(s.id)}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isEditing) onSelect(s.id); } }}
           className={`sidebar-item group${active ? " active" : ""}`}
         >
           {/* Type icon */}
@@ -230,14 +237,14 @@ export function ChatSidebar({
           {!isEditing && (
             <button
               onClick={e => { e.stopPropagation(); setOpenMenuId(menuOpen ? null : `s-${s.id}`); }}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: 4, opacity: 0, transition: "opacity 0.15s", flexShrink: 0 }}
-              className="group-hover:opacity-100"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: 4, transition: "opacity 0.15s", flexShrink: 0 }}
+              className="opacity-0 group-hover:opacity-100"
               aria-label="Opciones"
             >
               <i className="ti ti-dots" style={{ fontSize: 14 }} />
             </button>
           )}
-        </button>
+        </div>
 
         {menuOpen && (
           <div style={{ position: "absolute", right: 8, top: "100%", background: "var(--surface-1)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "4px 0", zIndex: 30, minWidth: 130 }}>
@@ -331,19 +338,21 @@ export function ChatSidebar({
             </button>
           </div>
             {projects.map(project => {
-              const isExpanded   = expandedProjects.has(project.id);
+              const isExpanded    = expandedProjects.has(project.id);
               const isEditingProj = editingProjectId === project.id;
-              const projMenuOpen = openMenuId === `p-${project.id}`;
+              const isConfirming  = confirmDeleteProjectId === project.id;
               const projectSessions = sessions
                 .filter(s => s.project_id === project.id)
                 .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
               return (
-                <div key={project.id} className="mb-0.5" data-menu-root>
-                  <button
+                <div key={project.id} className="mb-0.5">
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => !isEditingProj && toggleProject(project.id)}
-                    className={`sidebar-item group`}
-                    style={{ position: "relative" }}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isEditingProj) toggleProject(project.id); } }}
+                    className="sidebar-item group"
                   >
                     {/* Folder icon */}
                     <span style={{ width: 26, height: 26, borderRadius: 6, background: "var(--bg-pro)", color: "var(--text-pro)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -372,50 +381,53 @@ export function ChatSidebar({
                       )}
                     </div>
 
-                    {/* Chevron + menu */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                    {/* Actions + chevron */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
                       {!isEditingProj && (
-                        <button
-                          onClick={e => { e.stopPropagation(); setOpenMenuId(projMenuOpen ? null : `p-${project.id}`); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 3, borderRadius: 4, opacity: 0, transition: "opacity 0.15s" }}
-                          className="group-hover:opacity-100"
-                        >
-                          <i className="ti ti-dots" style={{ fontSize: 13 }} />
-                        </button>
+                        <>
+                          <button
+                            onClick={e => { e.stopPropagation(); if (!isExpanded) toggleProject(project.id); setEditingProjectId(project.id); setEditingProjectValue(project.title); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 3, borderRadius: 4, display: "inline-flex", alignItems: "center", transition: "opacity 0.15s" }}
+                            className="opacity-0 group-hover:opacity-100"
+                            aria-label="Renombrar proyecto"
+                          >
+                            <i className="ti ti-pencil" style={{ fontSize: 12 }} />
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setConfirmDeleteProjectId(isConfirming ? null : project.id); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 4, display: "inline-flex", alignItems: "center", transition: "opacity 0.15s, color 0.15s", color: isConfirming ? "#DC2626" : "var(--text-muted)" }}
+                            className={isConfirming ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
+                            aria-label="Eliminar proyecto"
+                          >
+                            <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                          </button>
+                        </>
                       )}
                       <i
                         className="ti ti-chevron-right"
                         style={{ fontSize: 13, color: "var(--text-muted)", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}
                       />
                     </div>
-                  </button>
+                  </div>
 
-                  {/* Project context menu */}
-                  {projMenuOpen && (
-                    <div style={{ position: "absolute", right: 8, background: "var(--surface-1)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "4px 0", zIndex: 30, minWidth: 150 }}>
+                  {/* Inline delete confirmation */}
+                  {isConfirming && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px 5px 10px", borderRadius: "var(--radius)", background: "var(--destructive-muted)", margin: "1px 0 2px", border: "0.5px solid var(--destructive-muted-border)" }}>
+                      <p style={{ fontSize: 12, color: "var(--color-destructive)", flex: 1, margin: 0 }}>
+                        Los chats se moverán al inicio.
+                      </p>
                       <button
-                        onClick={e => { e.stopPropagation(); if (!isExpanded) toggleProject(project.id); setEditingProjectId(project.id); setEditingProjectValue(project.title); setOpenMenuId(null); }}
-                        style={{ width: "100%", textAlign: "left", padding: "6px 12px", fontSize: 12, color: "var(--text-primary)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                        onClick={e => { e.stopPropagation(); onDeleteProject(project.id); setConfirmDeleteProjectId(null); }}
+                        style={{ fontSize: 11, color: "#fff", background: "var(--color-destructive)", border: "none", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontWeight: 500, flexShrink: 0 }}
                       >
-                        <i className="ti ti-pencil" style={{ fontSize: 13 }} /> Renombrar
+                        Eliminar
                       </button>
                       <button
-                        onClick={e => { e.stopPropagation(); onNewInProject(project.id); setOpenMenuId(null); }}
-                        style={{ width: "100%", textAlign: "left", padding: "6px 12px", fontSize: 12, color: "var(--text-primary)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                        onClick={e => { e.stopPropagation(); setConfirmDeleteProjectId(null); }}
+                        style={{ background: "none", border: "none", padding: "3px 4px", cursor: "pointer", color: "var(--color-destructive)", opacity: 0.6, flexShrink: 0, display: "inline-flex", alignItems: "center" }}
+                        aria-label="Cancelar"
                       >
-                        <i className="ti ti-plus" style={{ fontSize: 13 }} /> Nuevo chat
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); onDeleteProject(project.id); setOpenMenuId(null); }}
-                        style={{ width: "100%", textAlign: "left", padding: "6px 12px", fontSize: 12, color: "#DC2626", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                      >
-                        <i className="ti ti-trash" style={{ fontSize: 13 }} /> Eliminar proyecto
+                        <i className="ti ti-x" style={{ fontSize: 12 }} />
                       </button>
                     </div>
                   )}

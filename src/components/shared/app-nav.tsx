@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon, Sparkles } from "lucide-react";
 
 const ITEMS = [
   { href: "/dashboard",    label: "Inicio",       Icon: LayoutDashboard },
@@ -11,7 +11,7 @@ const ITEMS = [
   { href: "/explorar",     label: "Explorar",     Icon: Search },
   { href: "/estadisticas", label: "Estadísticas", Icon: BarChart2 },
   { href: "/calendario",   label: "Calendario",   Icon: CalendarDays },
-  { href: "/todos",        label: "To Do",        Icon: ListTodo },
+  { href: "/todos",        label: "Tareas",       Icon: ListTodo },
   { href: "/ajustes",      label: "Mi cuenta",    Icon: UserCircle2 },
 ];
 
@@ -21,18 +21,20 @@ export function AppNav() {
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
+  const crearActive = pathname.startsWith("/crear");
+
   return (
     <nav className="flex items-center gap-1">
       <Link
         href="/crear"
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 hover:scale-105"
         style={{
-          backgroundColor: "var(--color-primary)",
-          color: "white",
-          boxShadow: pathname.startsWith("/crear") ? "0 2px 10px rgba(124,58,237,0.4)" : undefined,
+          backgroundColor: crearActive ? "var(--color-primary)" : "transparent",
+          color: crearActive ? "white" : "var(--color-primary)",
+          boxShadow: crearActive ? "0 2px 10px rgba(124,58,237,0.4)" : undefined,
         }}
       >
-        <span style={{ fontSize: 11, letterSpacing: "-0.02em" }}>IA</span>
+        <Sparkles size={14} strokeWidth={1.8} />
         Crear
       </Link>
 

@@ -196,7 +196,7 @@ export function GDocsEditor(props: GDocsEditorProps) {
   if (!editor) return null;
 
   return (
-    <div className="flex flex-col overflow-hidden" style={{ height: "100%", backgroundColor: "white" }}>
+    <div className="flex flex-col overflow-hidden" style={{ height: "100%", backgroundColor: "var(--color-card)" }}>
       <GDocsHeader title={title} onTitleChange={handleTitleChange} saveState={saveState} scriptId={scriptId} editor={editor} />
       <GDocsMenuBar editor={editor} />
       <GDocsToolbar editor={editor} zoom={zoom} onZoomChange={setZoom} />

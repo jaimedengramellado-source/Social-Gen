@@ -51,6 +51,8 @@ export default function LandingPage() {
           </p>
           <div className="flex gap-6">
             <Link href="/pricing" className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">Precios</Link>
+            <Link href="/terminos" className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">Términos</Link>
+            <Link href="/privacidad" className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">Privacidad</Link>
             <Link href="/login" className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">Entrar</Link>
           </div>
         </div>

@@ -91,6 +91,7 @@ html.dark .bg-white\/80 {
   background-color: var(--color-card) !important;
 }
 html.dark .hover\:bg-white:hover,
+html.dark .hover\:bg-white\/70:hover,
 html.dark .hover\:bg-white\/95:hover {
   background-color: var(--color-muted) !important;
 }
@@ -145,9 +146,19 @@ html.dark ::-webkit-calendar-picker-indicator {
   --border: #E5E5E5;
   --border-strong: #C4C4C4;
   --radius: 8px;
+
+  /* Calendar grid lines */
+  --cal-line-main: rgba(0,0,0,0.07);
+  --cal-line-dashed: rgba(0,0,0,0.04);
+  --cal-weekend-tint: rgba(0,0,0,0.015);
+
+  /* Destructive subtle */
+  --destructive-muted: #FEF2F2;
+  --destructive-muted-border: #FECACA;
 }
 
 html.dark {
+  /* Design system tokens */
   --surface-1: #0F0F13;
   --surface-2: #1A1A22;
   --text-primary: #F0EFE9;
@@ -163,6 +174,32 @@ html.dark {
   --fill-primary: #7C3AED;
   --border: #2A2A38;
   --border-strong: #3D3D4F;
+
+  /* Tailwind color tokens (CSS fallback — inline script also sets these) */
+  --color-background: #0F0F13;
+  --color-foreground: #F0EFE9;
+  --color-card: #1A1A22;
+  --color-card-foreground: #F0EFE9;
+  --color-popover: #1A1A22;
+  --color-popover-foreground: #F0EFE9;
+  --color-muted: #1E1E28;
+  --color-muted-foreground: #8A8A9A;
+  --color-border: #2A2A38;
+  --color-input: #2A2A38;
+  --color-secondary: #1E1E28;
+  --color-secondary-foreground: #F0EFE9;
+  --color-primary-light: #2D1B69;
+  --color-accent: #2D1B69;
+  --color-accent-foreground: #A78BFA;
+
+  /* Calendar grid lines */
+  --cal-line-main: rgba(255,255,255,0.07);
+  --cal-line-dashed: rgba(255,255,255,0.04);
+  --cal-weekend-tint: rgba(255,255,255,0.025);
+
+  /* Destructive subtle (delete confirmation backgrounds) */
+  --destructive-muted: rgba(220, 38, 38, 0.15);
+  --destructive-muted-border: rgba(220, 38, 38, 0.30);
 }
 
 /* ── Sidebar primitives ── */
@@ -219,6 +256,10 @@ body {
   background-size: 200% 100%;
   animation: shimmer 2s infinite linear;
   border-radius: var(--radius-md);
+}
+html.dark .skeleton {
+  background: linear-gradient(90deg, #1A1A22 25%, #252532 50%, #1A1A22 75%);
+  background-size: 200% 100%;
 }
 
 /* Scrollbar */
@@ -289,7 +330,7 @@ select:focus-visible {
   font-family: Arial, sans-serif;
   font-size: 11pt;
   line-height: 1.15;
-  color: #000000;
+  color: var(--color-foreground);
   outline: none;
   min-height: 100%;
 }

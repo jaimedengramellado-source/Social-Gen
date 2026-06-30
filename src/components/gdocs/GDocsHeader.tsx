@@ -96,8 +96,8 @@ ${editor.getHTML()}
     <header
       style={{
         height: "56px",
-        borderBottom: "1px solid #e0e0e0",
-        backgroundColor: "white",
+        borderBottom: "1px solid var(--color-border)",
+        backgroundColor: "var(--color-card)",
         display: "flex",
         alignItems: "center",
         padding: "0 12px",
@@ -134,36 +134,36 @@ ${editor.getHTML()}
               padding: "4px 6px",
               outline: "none",
               backgroundColor: "transparent",
-              color: "#202124",
+              color: "var(--color-foreground)",
               minWidth: "40px",
               maxWidth: "400px",
               width: `${Math.max(120, (title || "Sin título").length * 11)}px`,
               transition: "border-color 0.15s, background-color 0.15s",
             }}
-            onMouseEnter={e => { (e.target as HTMLInputElement).style.borderColor = "#dadce0"; }}
+            onMouseEnter={e => { (e.target as HTMLInputElement).style.borderColor = "var(--color-border)"; }}
             onMouseLeave={e => { if (document.activeElement !== e.target) (e.target as HTMLInputElement).style.borderColor = "transparent"; }}
-            onFocus={e => { e.target.style.borderColor = "#4285F4"; e.target.style.backgroundColor = "#e8f0fe22"; }}
+            onFocus={e => { e.target.style.borderColor = "var(--color-primary)"; e.target.style.backgroundColor = "var(--color-muted)"; }}
             onBlur={e => { e.target.style.borderColor = "transparent"; e.target.style.backgroundColor = "transparent"; }}
           />
         </div>
 
         <div className="hidden md:flex items-center gap-0.5">
-          <button title="Destacar" style={iconBtnStyle}><Star size={16} color="#5f6368" /></button>
-          <button title="Mover" style={iconBtnStyle}><Folder size={16} color="#5f6368" /></button>
+          <button title="Destacar" style={iconBtnStyle}><Star size={16} color="var(--color-muted-foreground)" /></button>
+          <button title="Mover" style={iconBtnStyle}><Folder size={16} color="var(--color-muted-foreground)" /></button>
         </div>
 
         <div className="hidden md:flex" style={{ alignItems: "center", gap: "4px" }}>
           {saveState === "saving" && (
-            <><Loader2 size={14} color="#5f6368" style={{ animation: "spin 1s linear infinite" }} /><span style={saveTextStyle}>Guardando…</span></>
+            <><Loader2 size={14} color="var(--color-muted-foreground)" style={{ animation: "spin 1s linear infinite" }} /><span style={saveTextStyle}>Guardando…</span></>
           )}
           {saveState === "saved" && (
-            <><CheckCircle size={14} color="#1a73e8" /><span style={saveTextStyle}>Guardado</span></>
+            <><CheckCircle size={14} color="var(--color-primary)" /><span style={saveTextStyle}>Guardado</span></>
           )}
           {saveState === "idle" && (
-            <><Cloud size={14} color="#5f6368" /><span style={{ ...saveTextStyle, color: "#5f6368" }}>Guardado</span></>
+            <><Cloud size={14} color="var(--color-muted-foreground)" /><span style={{ ...saveTextStyle, color: "var(--color-muted-foreground)" }}>Guardado</span></>
           )}
           {saveState === "error" && (
-            <><AlertCircle size={14} color="#d93025" /><span style={{ ...saveTextStyle, color: "#d93025" }}>Error al guardar</span></>
+            <><AlertCircle size={14} color="var(--color-destructive)" /><span style={{ ...saveTextStyle, color: "var(--color-destructive)" }}>Error al guardar</span></>
           )}
         </div>
       </div>
@@ -179,16 +179,16 @@ ${editor.getHTML()}
             gap: "6px",
             padding: "7px 14px",
             borderRadius: "4px",
-            border: "1px solid #dadce0",
-            backgroundColor: shareOpen ? "#f8f9fa" : "white",
+            border: "1px solid var(--color-border)",
+            backgroundColor: shareOpen ? "var(--color-muted)" : "var(--color-card)",
             fontSize: "14px",
             fontWeight: 500,
-            color: "#444746",
+            color: "var(--color-foreground)",
             cursor: "pointer",
             fontFamily: "Arial, sans-serif",
           }}
-          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = "#f8f9fa")}
-          onMouseLeave={e => { if (!shareOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "white"; }}
+          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)")}
+          onMouseLeave={e => { if (!shareOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-card)"; }}
         >
           <Share2 size={15} />
           {copied ? "¡Copiado!" : "Compartir"}
@@ -200,7 +200,7 @@ ${editor.getHTML()}
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            backgroundColor: "#7C3AED",
+            backgroundColor: "var(--color-primary)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -212,7 +212,7 @@ ${editor.getHTML()}
         </div>
       </div>
 
-      {/* Share/export dropdown — fixed position to avoid overflow clipping */}
+      {/* Share/export dropdown */}
       {shareOpen && (
         <div
           data-gdocs-share
@@ -220,8 +220,8 @@ ${editor.getHTML()}
             position: "fixed",
             top: sharePos.top,
             left: sharePos.left,
-            backgroundColor: "white",
-            border: "1px solid #e0e0e0",
+            backgroundColor: "var(--color-card)",
+            border: "1px solid var(--color-border)",
             borderRadius: "8px",
             boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
             minWidth: "220px",
@@ -229,36 +229,19 @@ ${editor.getHTML()}
             zIndex: 9999,
           }}
         >
-          <div style={{ padding: "4px 16px 8px", borderBottom: "1px solid #f0f0f0", marginBottom: "4px" }}>
-            <p style={{ fontSize: "11px", color: "#5f6368", fontFamily: "Arial, sans-serif", margin: 0 }}>
+          <div style={{ padding: "4px 16px 8px", borderBottom: "1px solid var(--color-border)", marginBottom: "4px" }}>
+            <p style={{ fontSize: "11px", color: "var(--color-muted-foreground)", fontFamily: "Arial, sans-serif", margin: 0 }}>
               Exportar documento
             </p>
           </div>
 
-          <ExportItem
-            icon={<Printer size={15} />}
-            label="PDF / Imprimir"
-            description="Ctrl+P"
-            onClick={exportPDF}
-          />
-          <ExportItem
-            icon={<Download size={15} />}
-            label="Página web (.html)"
-            onClick={exportHTML}
-          />
-          <ExportItem
-            icon={<FileText size={15} />}
-            label="Texto sin formato (.txt)"
-            onClick={exportText}
-          />
+          <ExportItem icon={<Printer size={15} />} label="PDF / Imprimir" description="Ctrl+P" onClick={exportPDF} />
+          <ExportItem icon={<Download size={15} />} label="Página web (.html)" onClick={exportHTML} />
+          <ExportItem icon={<FileText size={15} />} label="Texto sin formato (.txt)" onClick={exportText} />
 
-          <div style={{ height: "1px", backgroundColor: "#f0f0f0", margin: "4px 0" }} />
+          <div style={{ height: "1px", backgroundColor: "var(--color-border)", margin: "4px 0" }} />
 
-          <ExportItem
-            icon={<Copy size={15} />}
-            label="Copiar enlace"
-            onClick={copyLink}
-          />
+          <ExportItem icon={<Copy size={15} />} label="Copiar enlace" onClick={copyLink} />
         </div>
       )}
     </header>
@@ -284,18 +267,18 @@ function ExportItem({
         padding: "7px 16px",
         fontSize: "13px",
         fontFamily: "Arial, sans-serif",
-        color: "#202124",
+        color: "var(--color-foreground)",
         backgroundColor: "transparent",
         border: "none",
         cursor: "pointer",
         textAlign: "left",
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
     >
-      <span style={{ color: "#5f6368", display: "flex", flexShrink: 0 }}>{icon}</span>
+      <span style={{ color: "var(--color-muted-foreground)", display: "flex", flexShrink: 0 }}>{icon}</span>
       <span style={{ flex: 1 }}>{label}</span>
-      {description && <span style={{ fontSize: "12px", color: "#5f6368" }}>{description}</span>}
+      {description && <span style={{ fontSize: "12px", color: "var(--color-muted-foreground)" }}>{description}</span>}
     </button>
   );
 }
@@ -334,7 +317,7 @@ const iconBtnStyle: React.CSSProperties = {
 
 const saveTextStyle: React.CSSProperties = {
   fontSize: "12px",
-  color: "#1a73e8",
+  color: "var(--color-primary)",
   fontFamily: "Arial, sans-serif",
   whiteSpace: "nowrap",
 };

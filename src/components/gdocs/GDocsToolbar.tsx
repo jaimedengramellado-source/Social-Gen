@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import {
-  Undo2, Redo2, Printer, Minus, Plus, ChevronDown,
+  Undo2, Redo2, Printer, Minus, Plus,
   Bold, Italic, Underline, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, IndentDecrease, IndentIncrease,
-  Link as LinkIcon, Image as ImageIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 
 interface GDocsToolbarProps {
@@ -19,12 +19,6 @@ interface GDocsToolbarProps {
 const FONTS = ["Arial", "Times New Roman", "Courier New", "Georgia", "Verdana", "Trebuchet MS"];
 const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72];
 const ZOOM_OPTS = [50, 75, 90, 100, 125, 150, 200];
-const LINE_SPACINGS = [
-  { label: "1.0", value: "1" },
-  { label: "1.15", value: "1.15" },
-  { label: "1.5", value: "1.5" },
-  { label: "2.0", value: "2" },
-];
 const PARA_STYLES = [
   { label: "Texto normal", value: "paragraph" },
   { label: "Título 1", value: "h1" },
@@ -32,8 +26,10 @@ const PARA_STYLES = [
   { label: "Título 3", value: "h3" },
 ];
 
+void SIZES;
+
 function Sep() {
-  return <div style={{ width: "1px", height: "20px", backgroundColor: "#e0e0e0", margin: "0 4px", flexShrink: 0 }} />;
+  return <div style={{ width: "1px", height: "20px", backgroundColor: "var(--color-border)", margin: "0 4px", flexShrink: 0 }} />;
 }
 
 function TBtn({
@@ -60,8 +56,8 @@ function TBtn({
         padding: "0 4px",
         borderRadius: "4px",
         border: "none",
-        backgroundColor: active ? "#e8f0fe" : "transparent",
-        color: active ? "#1a73e8" : "#444746",
+        backgroundColor: active ? "var(--color-primary-light)" : "transparent",
+        color: active ? "var(--color-primary)" : "var(--color-foreground)",
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.4 : 1,
         fontSize: "13px",
@@ -69,7 +65,7 @@ function TBtn({
         gap: "2px",
         ...style,
       }}
-      onMouseEnter={e => { if (!disabled && !active) (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+      onMouseEnter={e => { if (!disabled && !active) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
       onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
     >
       {children}
@@ -92,7 +88,7 @@ function StyledSelect({ value, onChange, options, width = "auto" }: {
         height: "28px",
         fontSize: "13px",
         fontFamily: "Arial, sans-serif",
-        color: "#444746",
+        color: "var(--color-foreground)",
         border: "1px solid transparent",
         borderRadius: "4px",
         backgroundColor: "transparent",
@@ -103,11 +99,11 @@ function StyledSelect({ value, onChange, options, width = "auto" }: {
         appearance: "none",
         WebkitAppearance: "none",
         paddingRight: "16px",
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235f6368'/%3E%3C/svg%3E\")",
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8a9a'/%3E%3C/svg%3E\")",
         backgroundRepeat: "no-repeat",
         backgroundPosition: "right 4px center",
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#dadce0"; (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)"; (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "transparent"; (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
     >
       {options.map(opt => (
@@ -121,7 +117,6 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
   const [fontSizeInput, setFontSizeInput] = useState("11");
   const fontSizeRef = useRef("11");
 
-  // Sync font size from editor selection
   useEffect(() => {
     if (!editor) return;
     const update = () => {
@@ -162,8 +157,8 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
     <div
       style={{
         height: "40px",
-        backgroundColor: "white",
-        borderBottom: "1px solid #e0e0e0",
+        backgroundColor: "var(--color-card)",
+        borderBottom: "1px solid var(--color-border)",
         display: "flex",
         alignItems: "center",
         padding: "0 8px",
@@ -188,14 +183,12 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
       {/* Zoom */}
       <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
         <TBtn onClick={() => onZoomChange(Math.max(25, zoom - 10))} title="Reducir zoom"><Minus size={13} /></TBtn>
-        <div style={{ position: "relative" }}>
-          <StyledSelect
-            value={String(ZOOM_OPTS.includes(zoom) ? zoom : zoom)}
-            onChange={v => onZoomChange(parseInt(v))}
-            options={ZOOM_OPTS.map(z => ({ label: `${z}%`, value: String(z) }))}
-            width="68px"
-          />
-        </div>
+        <StyledSelect
+          value={String(ZOOM_OPTS.includes(zoom) ? zoom : zoom)}
+          onChange={v => onZoomChange(parseInt(v))}
+          options={ZOOM_OPTS.map(z => ({ label: `${z}%`, value: String(z) }))}
+          width="68px"
+        />
         <TBtn onClick={() => onZoomChange(Math.min(400, zoom + 10))} title="Aumentar zoom"><Plus size={13} /></TBtn>
       </div>
 
@@ -220,7 +213,7 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
           height: "28px",
           fontSize: "13px",
           fontFamily: currentFont + ", Arial, sans-serif",
-          color: "#444746",
+          color: "var(--color-foreground)",
           border: "1px solid transparent",
           borderRadius: "4px",
           backgroundColor: "transparent",
@@ -229,7 +222,7 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
           width: "130px",
           cursor: "pointer",
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#dadce0"; (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)"; (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "transparent"; (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
       >
         {FONTS.map(f => <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>)}
@@ -253,11 +246,11 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
             textAlign: "center",
             fontSize: "13px",
             fontFamily: "Arial, sans-serif",
-            border: "1px solid #dadce0",
+            border: "1px solid var(--color-border)",
             borderRadius: "4px",
             outline: "none",
-            color: "#444746",
-            backgroundColor: "white",
+            color: "var(--color-foreground)",
+            backgroundColor: "var(--color-card)",
           }}
         />
         <TBtn onClick={() => { const n = parseFloat(fontSizeRef.current) + 1; const s = String(n); setFontSizeInput(s); fontSizeRef.current = s; applyFontSize(s); }} title="Aumentar tamaño">
@@ -290,7 +283,7 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
           justifyContent: "center", width: "28px", height: "28px",
           borderRadius: "4px", gap: "1px",
         }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
         >
           <span style={{ fontSize: "13px", fontWeight: 700, color: currentColor, lineHeight: 1 }}>A</span>
@@ -312,10 +305,10 @@ export function GDocsToolbar({ editor, zoom, onZoomChange }: GDocsToolbarProps) 
           justifyContent: "center", width: "28px", height: "28px",
           borderRadius: "4px", gap: "1px",
         }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "#f1f3f4"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-muted)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
         >
-          <span style={{ fontSize: "13px", fontWeight: 700, color: "#202124", lineHeight: 1,
+          <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-foreground)", lineHeight: 1,
             backgroundColor: currentBg === "transparent" ? "transparent" : currentBg, padding: "0 1px" }}>A</span>
           <div style={{ width: "16px", height: "3px", backgroundColor: currentBg === "transparent" ? "#fbbc04" : currentBg, borderRadius: "1px" }} />
         </div>

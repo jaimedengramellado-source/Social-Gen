@@ -35,24 +35,37 @@ export async function POST(request: NextRequest) {
       const userId = session.metadata?.userId;
       if (!userId) break;
 
+      // Legacy credit pack
       if (session.metadata?.type === "credit_pack") {
         const packId = session.metadata.packId;
         const amount = CREDIT_PACK_AMOUNTS[packId] || 0;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("credits_remaining")
-          .eq("id", userId)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({ credits_remaining: profile.credits_remaining + amount })
-            .eq("id", userId);
+        const { data: prof } = await supabase.from("profiles").select("credits_remaining").eq("id", userId).single();
+        if (prof) {
+          await supabase.from("profiles").update({ credits_remaining: (prof as { credits_remaining: number }).credits_remaining + amount }).eq("id", userId);
         }
         break;
       }
 
+      // Custom credit topup (one-time or first payment of recurring)
+      if (
+        session.metadata?.type === "credit_topup" ||
+        session.metadata?.type === "credit_topup_recurring"
+      ) {
+        const credits = parseInt(session.metadata.credits || "0", 10);
+        if (credits > 0) {
+          const { data: prof } = await supabase.from("profiles").select("credits_remaining").eq("id", userId).single();
+          if (prof) {
+            await supabase.from("profiles").update({ credits_remaining: (prof as { credits_remaining: number }).credits_remaining + credits }).eq("id", userId);
+          }
+        }
+        // Persist customer ID if not already set
+        if (session.customer) {
+          await supabase.from("profiles").update({ stripe_customer_id: session.customer as string }).eq("id", userId).is("stripe_customer_id", null);
+        }
+        break;
+      }
+
+      // Plan subscription — first payment
       if (session.subscription) {
         const sub = await getStripeClient().subscriptions.retrieve(session.subscription as string);
         const plan = session.metadata?.plan || "starter";
@@ -71,6 +84,9 @@ export async function POST(request: NextRequest) {
 
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
+      // Credit topup subscriptions don't affect the user's plan
+      if (sub.metadata?.type === "credit_topup_recurring") break;
+
       const userId = sub.metadata?.userId;
       if (!userId) break;
 
@@ -89,6 +105,9 @@ export async function POST(request: NextRequest) {
 
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
+      // Cancelling a credit topup subscription doesn't reset the user's plan
+      if (sub.metadata?.type === "credit_topup_recurring") break;
+
       const userId = sub.metadata?.userId;
       if (!userId) break;
 
@@ -112,7 +131,21 @@ export async function POST(request: NextRequest) {
       const userId = sub.metadata?.userId;
       if (!userId) break;
 
-      // Only reset credits on renewal (not on first payment)
+      // Credit topup subscription renewal — add credits each month
+      if (sub.metadata?.type === "credit_topup_recurring") {
+        if (invoice.billing_reason === "subscription_cycle") {
+          const credits = parseInt(sub.metadata.credits || "0", 10);
+          if (credits > 0) {
+            const { data: prof } = await supabase.from("profiles").select("credits_remaining").eq("id", userId).single();
+            if (prof) {
+              await supabase.from("profiles").update({ credits_remaining: (prof as { credits_remaining: number }).credits_remaining + credits }).eq("id", userId);
+            }
+          }
+        }
+        break;
+      }
+
+      // Plan subscription renewal — reset weekly credits
       if (invoice.billing_reason === "subscription_cycle") {
         const priceId = sub.items.data[0]?.price.id;
         const plan = getPlanFromPriceId(priceId) || "starter";
