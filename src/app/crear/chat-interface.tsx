@@ -8,7 +8,7 @@ import {
   Plus, ArrowUp, ImageIcon, FileText, Clapperboard,
   Lightbulb, Anchor, TrendingUp, Sparkles, Calendar, Hash,
   Users, X, Check, ExternalLink, Loader2,
-  Search, ChevronUp, ChevronDown, PanelRightOpen, PanelRightClose,
+  Search, ChevronUp, ChevronDown, PanelRightOpen, PanelRightClose, History,
   Reply, Wand2, MonitorPlay, Smartphone, Briefcase, AlertTriangle,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
@@ -818,9 +818,10 @@ interface ChatInterfaceProps {
   projectName?: string | null;
   onSessionCreated: (id: string, title: string, messages: Message[], projectId: string | null) => void;
   onSessionUpdated: (id: string) => void;
+  onOpenHistory?: () => void;
 }
 
-export function ChatInterface({ profile, sessionId, initialMessages, projectId, projectName, onSessionCreated, onSessionUpdated }: ChatInterfaceProps) {
+export function ChatInterface({ profile, sessionId, initialMessages, projectId, projectName, onSessionCreated, onSessionUpdated, onOpenHistory }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -960,6 +961,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
     setStreaming("");
     setMaxTokensHit(false);
     setActiveCreator(null);
+    setContentFormat(null);
     setSearchOpen(false);
     setSearchQuery("");
     setSearchIndex(0);
@@ -1508,7 +1510,11 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
   async function saveSession(finalMessages: Message[], firstUserMessage: string) {
     if (!currentSessionId.current) {
       const raw = firstUserMessage.trim();
-      const title = raw.length > 45 ? raw.slice(0, 45) + "…" : raw;
+      // El flujo "Guiado" manda el sentinel __GUIDED_SCRIPT__ como primer mensaje; sin esto
+      // el chat aparecería en la barra lateral titulado con ese texto interno. Y un primer
+      // mensaje solo con imagen deja el título vacío, así que caemos al mismo default del server.
+      const base = raw === GUIDED_SCRIPT_PROMPT ? "Guion guiado" : raw;
+      const title = (base.length > 45 ? base.slice(0, 45) + "…" : base) || "Nueva conversación";
       sessionTitleRef.current = title;
       const res = await fetch("/api/chat/sessions", {
         method: "POST",
@@ -1566,7 +1572,18 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-4 md:px-6 pb-16 md:pb-0">
+      <div className="relative flex flex-col items-center justify-center h-full px-4 md:px-6 pb-16 md:pb-0">
+        {onOpenHistory && (
+          <button
+            onClick={onOpenHistory}
+            title="Historial de chats"
+            className="absolute top-2 left-0 w-7 h-7 rounded-full flex md:hidden items-center justify-center border shadow-sm transition-colors hover:bg-[var(--color-muted)]"
+            style={{ background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+            aria-label="Historial de chats"
+          >
+            <History size={14} />
+          </button>
+        )}
         {projectName && (
           <motion.div
             key={`badge-${welcomeKey}`}
@@ -1808,6 +1825,17 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
 
       {/* Search + outline toggle */}
       <div className="flex items-center justify-end gap-1.5 mb-2 flex-shrink-0">
+        {onOpenHistory && (
+          <button
+            onClick={onOpenHistory}
+            title="Historial de chats"
+            className="w-7 h-7 rounded-full flex md:hidden items-center justify-center border shadow-sm transition-colors hover:bg-[var(--color-muted)] flex-shrink-0 mr-auto"
+            style={{ background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+            aria-label="Historial de chats"
+          >
+            <History size={14} />
+          </button>
+        )}
         <div
           ref={searchContainerRef}
           className="flex items-center gap-1.5 relative"
@@ -2219,7 +2247,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
           </div>
         </div>
         </div>
-        <div className="flex items-center justify-end mt-2 px-1 pb-1">
+        <div className="hidden md:flex items-center justify-end mt-2 px-1 pb-1">
           <p className="text-[10px] text-[var(--color-muted-foreground)]">
             Enter para enviar · Shift+Enter para nueva línea
           </p>

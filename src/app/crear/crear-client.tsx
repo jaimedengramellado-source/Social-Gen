@@ -22,6 +22,7 @@ export function CrearClient({ profile }: CrearClientProps) {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [pendingEditProjectId, setPendingEditProjectId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -40,6 +41,7 @@ export function CrearClient({ profile }: CrearClientProps) {
   }, []);
 
   async function handleSelectSession(id: string) {
+    setMobileHistoryOpen(false);
     if (id === activeSessionId) return;
     setActiveProjectId(null);
     try {
@@ -54,12 +56,14 @@ export function CrearClient({ profile }: CrearClientProps) {
   }
 
   function handleNewChat() {
+    setMobileHistoryOpen(false);
     setActiveSessionId(null);
     setActiveMessages([]);
     setActiveProjectId(null);
   }
 
   function handleNewChatInProject(projectId: string) {
+    setMobileHistoryOpen(false);
     setActiveSessionId(null);
     setActiveMessages([]);
     setActiveProjectId(projectId);
@@ -162,6 +166,28 @@ export function CrearClient({ profile }: CrearClientProps) {
             {sidebarCollapsed ? <PanelLeftOpen size={12} /> : <PanelLeftClose size={12} />}
           </button>
         </div>
+        {/* Mobile: drawer con historial de chats */}
+        {mobileHistoryOpen && (
+          <div className="md:hidden fixed inset-0 z-50 bg-black/30" onClick={() => setMobileHistoryOpen(false)} />
+        )}
+        <div className={`md:hidden fixed inset-y-0 left-0 z-[60] flex p-2 transition-transform duration-200 ease-out ${mobileHistoryOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"}`}>
+          <ChatSidebar
+            sessions={chatSessions}
+            projects={chatProjects}
+            activeId={activeSessionId}
+            pendingEditProjectId={pendingEditProjectId}
+            profile={profile}
+            onSelect={handleSelectSession}
+            onNew={handleNewChat}
+            onNewInProject={handleNewChatInProject}
+            onDelete={handleDeleteSession}
+            onRename={handleRenameSession}
+            onCreateProject={handleCreateProject}
+            onDeleteProject={handleDeleteProject}
+            onRenameProject={handleRenameProject}
+            onPendingEditHandled={() => setPendingEditProjectId(null)}
+          />
+        </div>
         <div className="flex-1 min-h-0 px-4 md:px-6 pb-4">
           <ChatInterface
             profile={profile}
@@ -171,6 +197,7 @@ export function CrearClient({ profile }: CrearClientProps) {
             projectName={activeProjectId ? (chatProjects.find(p => p.id === activeProjectId)?.title ?? null) : null}
             onSessionCreated={handleSessionCreated}
             onSessionUpdated={handleSessionUpdated}
+            onOpenHistory={() => setMobileHistoryOpen(true)}
           />
         </div>
       </div>

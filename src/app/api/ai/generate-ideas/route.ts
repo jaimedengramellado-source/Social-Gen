@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
 
   const userContext = await fetchUserAIContext(supabase, user.id);
   const body = await request.json();
-  const { platform, niche, nicheDescription, count = 10, answers } = body;
+  const { platform, niche, nicheDescription, answers } = body;
+  // `count` viene del cliente y decide tanto el precio en créditos como cuántas ideas
+  // pedimos al modelo: lo acotamos a [1,15] para que no se pueda pedir un número enorme
+  // pagando la tarifa tope.
+  const count = Math.min(15, Math.max(1, Math.round(Number(body.count) || 10)));
 
   const actionKey = count <= 5
     ? "generate_5_ideas"

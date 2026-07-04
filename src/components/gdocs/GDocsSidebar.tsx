@@ -12,9 +12,11 @@ interface GDocsSidebarProps {
   currentScriptId: string;
   tocItems: TocItem[];
   editor: Editor;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function GDocsSidebar({ scripts, currentScriptId, tocItems, editor }: GDocsSidebarProps) {
+export function GDocsSidebar({ scripts, currentScriptId, tocItems, editor, mobileOpen = false, onMobileClose }: GDocsSidebarProps) {
   const [creating, setCreating] = useState(false);
 
   function scrollToHeading(pos: number) {
@@ -44,8 +46,15 @@ export function GDocsSidebar({ scripts, currentScriptId, tocItems, editor }: GDo
   }
 
   return (
+    <>
+    {mobileOpen && (
+      <div
+        className="md:hidden fixed inset-0 z-50 bg-black/30"
+        onClick={onMobileClose}
+      />
+    )}
     <aside
-      className="hidden md:flex"
+      className={`${mobileOpen ? "flex fixed inset-y-0 left-0 z-[60] shadow-2xl" : "hidden"} md:flex md:static md:inset-auto md:z-auto md:shadow-none`}
       style={{
         width: "240px",
         flexShrink: 0,
@@ -209,5 +218,6 @@ export function GDocsSidebar({ scripts, currentScriptId, tocItems, editor }: GDo
         )}
       </div>
     </aside>
+    </>
   );
 }

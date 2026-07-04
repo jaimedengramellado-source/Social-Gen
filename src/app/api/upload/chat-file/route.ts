@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { PDFDocument } from "pdf-lib";
 
 const MAX_BYTES = 10 * 1024 * 1024;
+// Tope de coste: cada página de PDF son ~1.500-3.000 tokens de entrada en cada turno del chat.
+const MAX_PDF_PAGES = 150;
 const YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 const ALLOWED_MIMES = new Set([
@@ -37,6 +40,23 @@ export async function POST(request: Request) {
   }
   if (file.size > MAX_BYTES) {
     return Response.json({ error: "Máximo 10 MB" }, { status: 400 });
+  }
+
+  if (file.type === "application/pdf") {
+    try {
+      const pdf = await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true });
+      if (pdf.getPageCount() > MAX_PDF_PAGES) {
+        return Response.json(
+          { error: `El PDF tiene ${pdf.getPageCount()} páginas y el máximo es ${MAX_PDF_PAGES}. Divide el documento y vuelve a subirlo.` },
+          { status: 400 }
+        );
+      }
+    } catch {
+      return Response.json(
+        { error: "No se ha podido leer el PDF. Comprueba que el archivo no esté dañado." },
+        { status: 400 }
+      );
+    }
   }
 
   const ext = extFromName(file.name);

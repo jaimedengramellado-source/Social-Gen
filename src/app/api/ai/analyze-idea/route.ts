@@ -13,17 +13,28 @@ export async function POST(req: NextRequest) {
   const rl = await checkRateLimit(user.id);
   if (!rl.ok) return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
 
-  const credit = await checkAndDeductCredits(user.id, "analyze_idea");
-  if (!credit.ok) return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
+  // Validamos y construimos el prompt ANTES de cobrar: si la entrada es inválida no
+  // queremos descontar un crédito al usuario y devolverle un 500.
+  const body = await req.json().catch(() => null);
+  const query = body?.query;
+  const videos = body?.videos;
+  if (typeof query !== "string" || !query.trim() || !Array.isArray(videos)) {
+    return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+  }
 
-  const { query, videos } = await req.json();
-
-  const videoList = (videos as { title: string; views: number; publishedAt: string }[])
+  const videoList = (videos as { title?: string; views?: number; publishedAt?: string }[])
     .slice(0, 10)
-    .map((v, i) => `${i + 1}. "${v.title}" — ${v.views.toLocaleString()} vistas — ${new Date(v.publishedAt).toLocaleDateString("es-ES")}`)
+    .map((v, i) => {
+      const views = typeof v?.views === "number" ? v.views.toLocaleString() : "?";
+      const date = v?.publishedAt ? new Date(v.publishedAt).toLocaleDateString("es-ES") : "?";
+      return `${i + 1}. "${v?.title ?? "Sin título"}" — ${views} vistas — ${date}`;
+    })
     .join("\n");
 
   const userPrompt = `Idea de vídeo: "${query}"\n\nVídeos que ya existen sobre esta idea (ordenados por vistas):\n${videoList}\n\nAnaliza qué ha funcionado y genera los mejores insights para crear el vídeo definitivo sobre esta idea.`;
+
+  const credit = await checkAndDeductCredits(user.id, "analyze_idea");
+  if (!credit.ok) return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
 
   try {
     const message = await getAnthropicClient().messages.create({

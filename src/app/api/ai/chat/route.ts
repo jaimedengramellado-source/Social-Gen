@@ -388,6 +388,29 @@ const TEXT_ATTACHMENT_MIMES = new Set(["text/plain", "text/markdown", "text/csv"
 // ~100K chars ≈ 30-40K tokens: acota el coste de un TXT/CSV enorme sin afectar a documentos normales.
 const MAX_TEXT_ATTACHMENT_CHARS = 100_000;
 
+// Los adjuntos legítimos son URLs firmadas de NUESTRO propio Storage de Supabase. El array
+// `messages` llega íntegro desde el cliente, así que sin esta comprobación un usuario podría
+// apuntar `attachment.url` a una dirección interna (p. ej. la metadata de la instancia) y
+// forzar al servidor —o a la API de Anthropic— a leerla (SSRF). Solo confiamos en URLs cuyo
+// origen coincide con el del proyecto Supabase y cuya ruta es la de Storage.
+const SUPABASE_STORAGE_ORIGIN = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).origin;
+  } catch {
+    return "";
+  }
+})();
+
+function isTrustedAttachmentUrl(url: string): boolean {
+  if (!SUPABASE_STORAGE_ORIGIN) return false;
+  try {
+    const u = new URL(url);
+    return u.origin === SUPABASE_STORAGE_ORIGIN && u.pathname.startsWith("/storage/");
+  } catch {
+    return false;
+  }
+}
+
 async function fetchTextAttachment(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
@@ -443,7 +466,15 @@ export async function POST(request: NextRequest) {
     const quotePrefix = m.role === "user" && m.replyTo
       ? `[El usuario está citando este fragmento de tu respuesta anterior]: "${m.replyTo}"\n\n`
       : "";
-    const att = m.role === "user" ? m.attachment : undefined;
+    const rawAtt = m.role === "user" ? m.attachment : undefined;
+    const att = rawAtt?.url && isTrustedAttachmentUrl(rawAtt.url) ? rawAtt : undefined;
+    if (rawAtt?.url && !att) {
+      // Adjunto con URL no confiable: no lo leemos ni lo pasamos al modelo.
+      return {
+        role: "user" as const,
+        content: `${quotePrefix}[El usuario adjuntó un archivo pero no se ha podido acceder a él de forma segura. Pídele que lo vuelva a subir.]\n\n${m.content}`,
+      };
+    }
     if (att?.url && att.mime_type.startsWith("image/")) {
       return {
         role: "user" as const,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { markdownToTiptap } from "@/lib/markdown-to-tiptap";
 import { getAnthropicClient, MODEL, THINKING_DISABLED, cachedSystem, extractText } from "@/lib/anthropic";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // El chat muestra los guiones con encabezados normales (## Hook / ## Intro / ...) para no
 // romper el formato de lectura habitual. Solo al exportar a Documentos se reformatea a
@@ -41,6 +42,11 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Este endpoint hace una llamada a la IA sin cobrar créditos, así que limitamos la
+  // frecuencia para que no se pueda abusar y disparar nuestro coste de Anthropic.
+  const rl = await checkRateLimit(user.id, 10);
+  if (!rl.ok) return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
 
   const body = await request.json().catch(() => ({})) as { content?: unknown; title?: unknown };
   if (!body.content || typeof body.content !== "string") {

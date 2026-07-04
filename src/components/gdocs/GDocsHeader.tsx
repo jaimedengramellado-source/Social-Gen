@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import {
   Share2, Star, Folder, Cloud, Loader2, CheckCircle, AlertCircle,
-  FileText, Download, Printer, Copy, ChevronDown,
+  FileText, Download, Printer, Copy, ChevronDown, Menu,
 } from "lucide-react";
 import type { SaveState } from "./GDocsEditor";
 import type { Editor } from "@tiptap/react";
@@ -14,9 +14,10 @@ interface GDocsHeaderProps {
   saveState: SaveState;
   scriptId: string;
   editor: Editor | null;
+  onToggleSidebar?: () => void;
 }
 
-export function GDocsHeader({ title, onTitleChange, saveState, editor }: GDocsHeaderProps) {
+export function GDocsHeader({ title, onTitleChange, saveState, editor, onToggleSidebar }: GDocsHeaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [sharePos, setSharePos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -105,8 +106,20 @@ ${editor.getHTML()}
         flexShrink: 0,
       }}
     >
+      {/* Mobile: abrir lista de documentos */}
+      {onToggleSidebar && (
+        <button
+          onClick={onToggleSidebar}
+          className="flex md:hidden items-center justify-center flex-shrink-0"
+          aria-label="Documentos"
+          style={{ width: "28px", height: "28px", borderRadius: "50%", border: "none", backgroundColor: "transparent", cursor: "pointer" }}
+        >
+          <Menu size={20} color="var(--color-foreground)" />
+        </button>
+      )}
+
       {/* Doc icon */}
-      <div style={{ flexShrink: 0 }}>
+      <div className="hidden md:block" style={{ flexShrink: 0 }}>
         <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
           <rect x="8" y="4" width="18" height="24" rx="1" fill="#4285F4" />
           <rect x="11" y="9" width="12" height="1.5" rx="0.75" fill="white" opacity="0.8" />
@@ -118,7 +131,7 @@ ${editor.getHTML()}
 
       {/* Title + metadata icons */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
-        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 0, maxWidth: "fit-content" }}>
           <input
             ref={inputRef}
             type="text"
@@ -136,8 +149,8 @@ ${editor.getHTML()}
               backgroundColor: "transparent",
               color: "var(--color-foreground)",
               minWidth: "40px",
-              maxWidth: "400px",
-              width: `${Math.max(120, (title || "Sin título").length * 11)}px`,
+              maxWidth: "100%",
+              width: `${Math.min(400, Math.max(120, (title || "Sin título").length * 11))}px`,
               transition: "border-color 0.15s, background-color 0.15s",
             }}
             onMouseEnter={e => { (e.target as HTMLInputElement).style.borderColor = "var(--color-border)"; }}
@@ -191,17 +204,17 @@ ${editor.getHTML()}
           onMouseLeave={e => { if (!shareOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-card)"; }}
         >
           <Share2 size={15} />
-          {copied ? "¡Copiado!" : "Compartir"}
+          <span className="hidden sm:inline">{copied ? "¡Copiado!" : "Compartir"}</span>
           <ChevronDown size={13} style={{ transform: shareOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
         </button>
 
         <div
+          className="hidden md:flex"
           style={{
             width: "32px",
             height: "32px",
             borderRadius: "50%",
             backgroundColor: "var(--color-primary)",
-            display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",

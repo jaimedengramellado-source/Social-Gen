@@ -26,15 +26,17 @@ export function CalendarHeader({
   onSettingsOpen,
 }: Props) {
   return (
-    <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)] flex-shrink-0 bg-white gap-3">
-      {/* Left: title + navigation */}
-      <div className="flex items-center gap-3 min-w-0">
-        <h1
-          className="text-xl font-bold leading-none truncate"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
-          {title}
-        </h1>
+    <div className="flex flex-wrap items-center justify-between px-3 md:px-5 py-3 border-b border-[var(--color-border)] flex-shrink-0 bg-white gap-x-3 gap-y-2">
+      {/* Title: fila propia en móvil, inline en desktop */}
+      <h1
+        className="w-full md:w-auto text-lg md:text-xl font-bold leading-none truncate order-first"
+        style={{ fontFamily: "var(--font-serif)" }}
+      >
+        {title}
+      </h1>
+
+      {/* Left: navigation */}
+      <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
         <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
             onClick={onPrev}
@@ -100,10 +102,10 @@ export function CalendarHeader({
 
         <button
           onClick={onNewEvent}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-80"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-80"
           style={{ backgroundColor: "var(--color-primary)" }}
         >
-          <Plus size={14} /> Nuevo evento
+          <Plus size={14} /> <span className="hidden sm:inline">Nuevo evento</span>
         </button>
       </div>
     </div>

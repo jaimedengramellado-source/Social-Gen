@@ -12,6 +12,21 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
   let i = 0;
   let pendingGap = false;
 
+  // El editor de documentos pinta los párrafos sin margen (estilo Google Docs), así que
+  // una línea en blanco del markdown debe convertirse en un párrafo vacío para que el
+  // espaciado del original no se pierda. Los headings, hr y tablas ya traen margen propio
+  // en CSS — meter un párrafo vacío junto a ellos duplicaría el hueco.
+  const hasOwnSpacing = (node: TiptapNode | undefined) =>
+    !!node && ["heading", "horizontalRule", "table"].includes(node.type);
+
+  const pushBlock = (node: TiptapNode) => {
+    if (pendingGap && !hasOwnSpacing(nodes[nodes.length - 1]) && !hasOwnSpacing(node)) {
+      nodes.push({ type: "paragraph", content: [] });
+    }
+    pendingGap = false;
+    nodes.push(node);
+  };
+
   while (i < lines.length) {
     const line = lines[i];
 
@@ -20,14 +35,14 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
     if (hMatch) {
       const level = hMatch[1].length;
       const content = parseInline(hMatch[2]);
-      nodes.push({ type: "heading", attrs: { level }, content: content.length ? content : [{ type: "text", text: hMatch[2] }] });
+      pushBlock({ type: "heading", attrs: { level }, content: content.length ? content : [{ type: "text", text: hMatch[2] }] });
       i++;
       continue;
     }
 
     // Horizontal rule
     if (/^---+$/.test(line.trim())) {
-      nodes.push({ type: "horizontalRule" });
+      pushBlock({ type: "horizontalRule" });
       i++;
       continue;
     }
@@ -40,7 +55,7 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
         items.push({ type: "listItem", content: [{ type: "paragraph", content: parseInline(text) }] });
         i++;
       }
-      nodes.push({ type: "bulletList", content: items });
+      pushBlock({ type: "bulletList", content: items });
       continue;
     }
 
@@ -52,7 +67,7 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
         items.push({ type: "listItem", content: [{ type: "paragraph", content: parseInline(text) }] });
         i++;
       }
-      nodes.push({ type: "orderedList", attrs: { start: 1 }, content: items });
+      pushBlock({ type: "orderedList", attrs: { start: 1 }, content: items });
       continue;
     }
 
@@ -63,7 +78,7 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
         quoteLines.push(lines[i].replace(/^>\s?/, ""));
         i++;
       }
-      nodes.push({ type: "blockquote", content: [{ type: "paragraph", content: parseInline(quoteLines.join(" ")) }] });
+      pushBlock({ type: "blockquote", content: [{ type: "paragraph", content: parseInline(quoteLines.join(" ")) }] });
       continue;
     }
 
@@ -82,14 +97,13 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
           type,
           content: [{ type: "paragraph", content: parseInline(cells[col] ?? "") }],
         }));
-      nodes.push({
+      pushBlock({
         type: "table",
         content: [
           { type: "tableRow", content: toCellNodes(headerCells, "tableHeader") },
           ...bodyRows.map(cells => ({ type: "tableRow", content: toCellNodes(cells, "tableCell") })),
         ],
       });
-      pendingGap = false;
       continue;
     }
 
@@ -113,17 +127,13 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
     }
 
     if (paraLines.length > 0) {
-      if (pendingGap && nodes[nodes.length - 1]?.type === "paragraph") {
-        nodes.push({ type: "paragraph", content: [] });
-      }
       const content: TiptapNode[] = [];
       paraLines.forEach((paraLine, idx) => {
         if (idx > 0) content.push({ type: "hardBreak" });
         content.push(...parseInline(paraLine));
       });
-      nodes.push({ type: "paragraph", content });
+      pushBlock({ type: "paragraph", content });
     }
-    pendingGap = false;
   }
 
   return { type: "doc", content: nodes.length > 0 ? nodes : [{ type: "paragraph", content: [] }] };

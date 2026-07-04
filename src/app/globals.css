@@ -393,6 +393,19 @@ select:focus-visible {
 }
 .gdocs-page .ProseMirror li { margin: 2px 0; }
 
+.gdocs-page .ProseMirror blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--color-border);
+  color: var(--color-muted-foreground);
+}
+
+.gdocs-page .ProseMirror hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
 .gdocs-page .ProseMirror a {
   color: #1155cc;
   text-decoration: underline;

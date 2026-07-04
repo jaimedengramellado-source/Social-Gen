@@ -79,6 +79,7 @@ export function GDocsEditor(props: GDocsEditorProps) {
   const { scriptId, initialTitle, allScripts } = props;
 
   const [zoom, setZoom] = useState(100);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [title, setTitle] = useState(initialTitle);
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
@@ -231,11 +232,18 @@ export function GDocsEditor(props: GDocsEditorProps) {
 
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: "100%", backgroundColor: "var(--color-card)" }}>
-      <GDocsHeader title={title} onTitleChange={handleTitleChange} saveState={saveState} scriptId={scriptId} editor={editor} />
+      <GDocsHeader title={title} onTitleChange={handleTitleChange} saveState={saveState} scriptId={scriptId} editor={editor} onToggleSidebar={() => setMobileSidebarOpen(v => !v)} />
       <GDocsMenuBar editor={editor} />
       <GDocsToolbar editor={editor} zoom={zoom} onZoomChange={setZoom} />
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <GDocsSidebar scripts={localScripts} currentScriptId={scriptId} tocItems={tocItems} editor={editor} />
+        <GDocsSidebar
+          scripts={localScripts}
+          currentScriptId={scriptId}
+          tocItems={tocItems}
+          editor={editor}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
+        />
         <GDocsDocumentArea editor={editor} zoom={zoom} />
       </div>
     </div>

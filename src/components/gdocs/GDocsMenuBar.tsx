@@ -51,7 +51,8 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
   function openDropdown(menuName: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (openMenu === menuName) { setOpenMenu(null); return; }
     const rect = e.currentTarget.getBoundingClientRect();
-    setDropdownPos({ top: rect.bottom + 2, left: rect.left });
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - 236));
+    setDropdownPos({ top: rect.bottom + 2, left });
     setOpenMenu(menuName);
   }
 
@@ -251,6 +252,8 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
           padding: "0 4px",
           flexShrink: 0,
           zIndex: 50,
+          overflowX: "auto",
+          overflowY: "hidden",
         }}
       >
         {menus.map(menu => (
