@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getGeminiClient, IMAGEN_MODEL } from "@/lib/gemini";
-import { checkAndDeductCredits } from "@/lib/credits";
+import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(user.id);
+  const rl = await checkRateLimit(user.id);
   if (!rl.ok) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
@@ -48,6 +48,11 @@ export async function POST(request: NextRequest) {
       { text: fullPrompt },
     ]);
 
+    await recordTokenUsage(credit.logId, IMAGEN_MODEL, {
+      input_tokens: result.response.usageMetadata?.promptTokenCount,
+      output_tokens: result.response.usageMetadata?.candidatesTokenCount,
+    });
+
     const parts = result.response.candidates?.[0]?.content?.parts ?? [];
     const imagePart = parts.find(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,6 +61,7 @@ export async function POST(request: NextRequest) {
 
     if (!imagePart?.inlineData?.data) {
       console.error("Gemini image: no image in response");
+      await refundCredits(user.id, actionKey);
       return NextResponse.json({ error: "NO_IMAGE_IN_RESPONSE" }, { status: 500 });
     }
 
@@ -92,6 +98,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ images: [dbRecord], creditsRemaining: credit.creditsRemaining });
   } catch (err) {
     console.error("generate-image error:", err);
+    await refundCredits(user.id, actionKey);
     return NextResponse.json({ error: "AI_ERROR" }, { status: 500 });
   }
 }

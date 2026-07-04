@@ -10,6 +10,7 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
   const lines = markdown.split("\n");
   const nodes: TiptapNode[] = [];
   let i = 0;
+  let pendingGap = false;
 
   while (i < lines.length) {
     const line = lines[i];
@@ -66,8 +67,35 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
       continue;
     }
 
-    // Empty line
+    // GFM table: header row + separator row (|---|---|) + body rows
+    if (isTableRow(line) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      const headerCells = splitTableRow(line);
+      i += 2;
+      const bodyRows: string[][] = [];
+      while (i < lines.length && isTableRow(lines[i])) {
+        bodyRows.push(splitTableRow(lines[i]));
+        i++;
+      }
+      const colCount = headerCells.length;
+      const toCellNodes = (cells: string[], type: "tableHeader" | "tableCell"): TiptapNode[] =>
+        Array.from({ length: colCount }, (_, col) => ({
+          type,
+          content: [{ type: "paragraph", content: parseInline(cells[col] ?? "") }],
+        }));
+      nodes.push({
+        type: "table",
+        content: [
+          { type: "tableRow", content: toCellNodes(headerCells, "tableHeader") },
+          ...bodyRows.map(cells => ({ type: "tableRow", content: toCellNodes(cells, "tableCell") })),
+        ],
+      });
+      pendingGap = false;
+      continue;
+    }
+
+    // Empty line — marks a paragraph break in the source that should stay visible
     if (line.trim() === "") {
+      if (nodes.length > 0) pendingGap = true;
       i++;
       continue;
     }
@@ -77,18 +105,60 @@ export function markdownToTiptap(markdown: string): { type: "doc"; content: Tipt
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
-      !/^(#{1,3}\s|[-*]\s|\d+\.\s|---+$|>\s)/.test(lines[i])
+      !/^(#{1,3}\s|[-*]\s|\d+\.\s|---+$|>\s)/.test(lines[i]) &&
+      !(isTableRow(lines[i]) && isTableSeparator(lines[i + 1] ?? ""))
     ) {
       paraLines.push(lines[i]);
       i++;
     }
 
     if (paraLines.length > 0) {
-      nodes.push({ type: "paragraph", content: parseInline(paraLines.join(" ")) });
+      if (pendingGap && nodes[nodes.length - 1]?.type === "paragraph") {
+        nodes.push({ type: "paragraph", content: [] });
+      }
+      const content: TiptapNode[] = [];
+      paraLines.forEach((paraLine, idx) => {
+        if (idx > 0) content.push({ type: "hardBreak" });
+        content.push(...parseInline(paraLine));
+      });
+      nodes.push({ type: "paragraph", content });
     }
+    pendingGap = false;
   }
 
   return { type: "doc", content: nodes.length > 0 ? nodes : [{ type: "paragraph", content: [] }] };
+}
+
+function isTableRow(line: string): boolean {
+  return /\|/.test(line) && line.trim() !== "";
+}
+
+function isTableSeparator(line: string): boolean {
+  const trimmed = line.trim().replace(/^\||\|$/g, "");
+  if (!trimmed) return false;
+  return trimmed.split("|").every(cell => /^:?-+:?$/.test(cell.trim()));
+}
+
+function splitTableRow(line: string): string[] {
+  const trimmed = line.trim().replace(/^\||\|$/g, "");
+  const cells: string[] = [];
+  let current = "";
+  for (let idx = 0; idx < trimmed.length; idx++) {
+    const ch = trimmed[idx];
+    if (ch === "\\" && trimmed[idx + 1] === "|") {
+      current += "|";
+      idx++;
+      continue;
+    }
+    if (ch === "|") {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  cells.push(current.trim());
+  return cells;
 }
 
 function parseInline(text: string): TiptapTextNode[] {

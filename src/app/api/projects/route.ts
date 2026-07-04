@@ -7,14 +7,13 @@ export async function GET() {
   if (!user) return new Response("Unauthorized", { status: 401 });
 
   const { data, error } = await supabase
-    .from("ideas")
-    .select("id, title, description, viral_score, hook_type, content_style, project_id, created_at, project:projects(name)")
+    .from("projects")
+    .select("id, name, created_at")
     .eq("user_id", user.id)
-    .eq("is_saved", true)
     .order("created_at", { ascending: false });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ ideas: data });
+  return Response.json({ projects: data });
 }
 
 export async function POST(request: NextRequest) {
@@ -22,22 +21,17 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const { title, hook, viral_score, content_style, project_id } = await request.json();
+  const { name } = await request.json();
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return Response.json({ error: "El nombre de la carpeta es obligatorio" }, { status: 400 });
+  }
 
   const { data, error } = await supabase
-    .from("ideas")
-    .insert({
-      user_id: user.id,
-      title,
-      description: hook,
-      viral_score,
-      content_style,
-      project_id: project_id || null,
-      is_saved: true,
-    })
-    .select("id")
+    .from("projects")
+    .insert({ user_id: user.id, name: name.trim() })
+    .select("id, name, created_at")
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ idea: data });
+  return Response.json({ project: data });
 }

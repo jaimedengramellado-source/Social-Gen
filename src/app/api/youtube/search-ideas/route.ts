@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 const CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export async function GET(req: NextRequest) {
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const q = new URL(req.url).searchParams.get("q") ?? "";
   if (!q.trim()) return NextResponse.json({ videos: [] });
 

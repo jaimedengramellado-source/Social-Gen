@@ -10,16 +10,17 @@
   --color-card-foreground: #0D0D0D;
   --color-popover: #FFFFFF;
   --color-popover-foreground: #0D0D0D;
-  --color-primary: #7C3AED;
+  --color-primary: #8C2230;
   --color-primary-foreground: #FFFFFF;
-  --color-primary-hover: #6D28D9;
-  --color-primary-light: #EDE9FE;
+  --color-primary-hover: #731C27;
+  --color-primary-light: #F7DEE2;
   --color-secondary: #F4F4F5;
   --color-secondary-foreground: #0D0D0D;
   --color-muted: #F4F4F5;
   --color-muted-foreground: #6B6B6B;
-  --color-accent: #EDE9FE;
-  --color-accent-foreground: #7C3AED;
+  --color-nav-foreground: #4A4A4A;
+  --color-accent: #F7DEE2;
+  --color-accent-foreground: #8C2230;
   --color-destructive: #DC2626;
   --color-destructive-foreground: #FFFFFF;
   --color-success: #059669;
@@ -28,7 +29,7 @@
   --color-warning-foreground: #FFFFFF;
   --color-border: #E5E5E5;
   --color-input: #E5E5E5;
-  --color-ring: #7C3AED;
+  --color-ring: #8C2230;
 
   /* Typography */
   --font-serif: "Instrument Serif", Georgia, serif;
@@ -126,6 +127,11 @@ html.dark ::-webkit-calendar-picker-indicator {
   --tw-prose-bullets: var(--color-muted-foreground);
   --tw-prose-counters: var(--color-muted-foreground);
   --tw-prose-hr: var(--color-border);
+  --tw-prose-th-borders: var(--color-border);
+  --tw-prose-td-borders: var(--color-border);
+}
+.prose thead th {
+  background-color: var(--color-muted);
 }
 
 /* ── Design system tokens (surface / text / bg / fill / border) ── */
@@ -135,14 +141,16 @@ html.dark ::-webkit-calendar-picker-indicator {
   --text-primary: #0D0D0D;
   --text-secondary: #3D3D3D;
   --text-muted: #6B6B6B;
-  --bg-pro: #EDE9FE;
+  --bg-pro: #F7DEE2;
   --bg-success: #D1FAE5;
-  --bg-accent: #EDE9FE;
-  --text-pro: #7C3AED;
+  --bg-accent: #F7DEE2;
+  --bg-info: #DBEAFE;
+  --text-pro: #8C2230;
   --text-success: #059669;
-  --text-accent: #7C3AED;
+  --text-accent: #8C2230;
+  --text-info: #2563EB;
   --on-primary: #FFFFFF;
-  --fill-primary: #7C3AED;
+  --fill-primary: #8C2230;
   --border: #E5E5E5;
   --border-strong: #C4C4C4;
   --radius: 8px;
@@ -157,6 +165,16 @@ html.dark ::-webkit-calendar-picker-indicator {
   --destructive-muted-border: #FECACA;
 }
 
+/* Hide number input spinners globally */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 html.dark {
   /* Design system tokens */
   --surface-1: #0F0F13;
@@ -164,14 +182,16 @@ html.dark {
   --text-primary: #F0EFE9;
   --text-secondary: #C0BFB8;
   --text-muted: #8A8A9A;
-  --bg-pro: #2D1B69;
+  --bg-pro: #43191F;
   --bg-success: #064E3B;
-  --bg-accent: #2D1B69;
-  --text-pro: #A78BFA;
+  --bg-accent: #43191F;
+  --bg-info: #1A2E4D;
+  --text-pro: #D77582;
   --text-success: #34D399;
-  --text-accent: #A78BFA;
+  --text-accent: #D77582;
+  --text-info: #60A5FA;
   --on-primary: #FFFFFF;
-  --fill-primary: #7C3AED;
+  --fill-primary: #8C2230;
   --border: #2A2A38;
   --border-strong: #3D3D4F;
 
@@ -184,13 +204,14 @@ html.dark {
   --color-popover-foreground: #F0EFE9;
   --color-muted: #1E1E28;
   --color-muted-foreground: #8A8A9A;
+  --color-nav-foreground: #B4B4C4;
   --color-border: #2A2A38;
   --color-input: #2A2A38;
   --color-secondary: #1E1E28;
   --color-secondary-foreground: #F0EFE9;
-  --color-primary-light: #2D1B69;
-  --color-accent: #2D1B69;
-  --color-accent-foreground: #A78BFA;
+  --color-primary-light: #43191F;
+  --color-accent: #43191F;
+  --color-accent-foreground: #D77582;
 
   /* Calendar grid lines */
   --cal-line-main: rgba(255,255,255,0.07);
@@ -410,6 +431,62 @@ select:focus-visible {
   color: #9aa0a6;
   pointer-events: none;
   height: 0;
+}
+
+/* ── Tables (escaleta / rundown) ── */
+.gdocs-page .ProseMirror .tableWrapper {
+  overflow-x: auto;
+  margin: 10px 0;
+}
+.gdocs-page .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+}
+.gdocs-page .ProseMirror td,
+.gdocs-page .ProseMirror th {
+  min-width: 80px;
+  border: 1px solid var(--color-border);
+  padding: 8px 10px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+.gdocs-page .ProseMirror td > p,
+.gdocs-page .ProseMirror th > p {
+  margin: 0;
+  min-height: 1.4em;
+}
+.gdocs-page .ProseMirror th {
+  font-weight: 700;
+  text-align: left;
+  background-color: var(--color-muted);
+}
+.gdocs-page .ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  inset: 0;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  pointer-events: none;
+}
+.gdocs-page .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: var(--color-primary);
+  pointer-events: none;
+}
+.gdocs-page .ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Flash highlight for AI-modified text selections (CSS Custom Highlight API — driven from JS, see chat-interface.tsx) */
+::highlight(modify-flash) {
+  background-color: color-mix(in srgb, var(--color-primary) var(--modify-flash-pct, 45%), transparent);
 }
 
 /* Print styles */

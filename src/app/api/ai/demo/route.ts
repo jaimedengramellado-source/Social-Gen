@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, THINKING_ADAPTIVE, extractText, cachedSystem } from "@/lib/anthropic";
 
 const DEMO_LIMIT = 3;
 const DEMO_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -83,9 +83,10 @@ export async function POST(req: NextRequest) {
 
   const message = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 600,
+    max_tokens: 1200,
+    thinking: THINKING_ADAPTIVE,
     messages: [{ role: "user", content: prompt.trim() }],
-    system: SYSTEM_PROMPTS.script + `
+    system: cachedSystem(SYSTEM_PROMPTS.script + `
 
 TAREA ESPECÍFICA: El usuario te da un tema o contexto. Genera el inicio de un guion que pare el scroll y obligue a seguir viendo.
 
@@ -100,10 +101,10 @@ Responde SOLO con este JSON (sin markdown, sin texto extra):
     { "momento": "Apertura (2-15s)", "tipo": "entorno/acción/pantalla/encuadre", "descripcion": "qué cambia, cómo evoluciona la escena, movimiento de cámara" },
     { "momento": "Loop (15-30s)", "tipo": "entorno/acción/pantalla/encuadre", "descripcion": "el momento visual que refuerza la promesa y retiene al espectador" }
   ]
-}`,
+}`),
   });
 
-  const raw = message.content[0].type === "text" ? message.content[0].text : "";
+  const raw = extractText(message);
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 
   const response = (() => {

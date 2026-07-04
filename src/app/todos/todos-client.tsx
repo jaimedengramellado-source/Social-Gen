@@ -738,7 +738,7 @@ export function TodosClient({ initialTodos }: { initialTodos: Todo[] }) {
               style={{
                 borderColor: urgencyFilter === u ? (u === "all" ? PRIMARY : URGENCY_COLOR[u as Urgency]) : "var(--color-border)",
                 color: urgencyFilter === u ? (u === "all" ? PRIMARY : URGENCY_COLOR[u as Urgency]) : "var(--color-muted-foreground)",
-                backgroundColor: urgencyFilter === u ? (u === "all" ? "rgba(124,58,237,0.07)" : `${URGENCY_COLOR[u as Urgency]}15`) : "transparent",
+                backgroundColor: urgencyFilter === u ? (u === "all" ? "rgba(140,34,48,0.07)" : `${URGENCY_COLOR[u as Urgency]}15`) : "transparent",
               }}>
               {u === "all" ? "Todas" : URGENCY_LABEL[u as Urgency]}
             </button>

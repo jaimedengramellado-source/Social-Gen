@@ -1,7 +1,25 @@
 import Stripe from "stripe";
 import { Plan } from "@/types";
 
-export const CREDITS_PER_EUR = 10;
+export const CREDIT_TIERS = [
+  { min: 5,   max: 9,    rate: 10, bonus: 0  },
+  { min: 10,  max: 24,   rate: 11, bonus: 10 },
+  { min: 25,  max: 49,   rate: 12, bonus: 20 },
+  { min: 50,  max: 99,   rate: 14, bonus: 40 },
+  { min: 100, max: 500,  rate: 16, bonus: 60 },
+];
+
+export type CreditTier = typeof CREDIT_TIERS[number];
+
+const LAST_TIER = CREDIT_TIERS[CREDIT_TIERS.length - 1];
+
+export function getTopupTier(amountEur: number): CreditTier {
+  return CREDIT_TIERS.find(t => amountEur >= t.min && amountEur <= t.max) ?? LAST_TIER;
+}
+
+export function getTopupCredits(amountEur: number): number {
+  return amountEur * getTopupTier(amountEur).rate;
+}
 
 let _stripe: Stripe | null = null;
 

@@ -21,7 +21,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { PRICING_PLANS, PLAN_CREDITS, CREDIT_COSTS } from "@/types";
 import type { Profile, Channel } from "@/types";
-import { CREDITS_PER_EUR } from "@/lib/stripe";
+import { getTopupCredits, getTopupTier, CREDIT_TIERS } from "@/lib/stripe";
 import {
   Check,
   CreditCard,
@@ -120,7 +120,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  const [topupAmount, setTopupAmount] = useState(10);
+  const [topupInput, setTopupInput] = useState("10");
   const [topupRecurring, setTopupRecurring] = useState(false);
   const [buyingTopup, setBuyingTopup] = useState(false);
   const [topupSuccess, setTopupSuccess] = useState(false);
@@ -132,6 +132,11 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
       window.history.replaceState({}, "", "/ajustes");
     }
   }, []);
+
+  const validAmount = Math.max(5, Math.min(500, parseInt(topupInput) || 5));
+  const topupCredits = getTopupCredits(validAmount);
+  const tier = getTopupTier(validAmount);
+  const nextTier = CREDIT_TIERS.find(t => t.min > validAmount) ?? null;
 
   const pct = profile.credits_total > 0 ? (profile.credits_remaining / profile.credits_total) * 100 : 0;
   const upgradePlans = PRICING_PLANS.filter((p) => PLAN_ORDER[p.id] > PLAN_ORDER[profile.plan]);
@@ -251,13 +256,13 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   }
 
   async function handleBuyTopup() {
-    if (topupAmount < 5 || topupAmount > 500) return;
+    if (validAmount < 5 || validAmount > 500) return;
     setBuyingTopup(true);
     try {
       const res = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topup: { amount: topupAmount, recurring: topupRecurring } }),
+        body: JSON.stringify({ topup: { amount: validAmount, recurring: topupRecurring } }),
       });
       const { url } = await res.json();
       if (url) window.location.href = url;
@@ -661,15 +666,11 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
           )}
 
           {/* Recargar créditos */}
-          <section className="bg-white rounded-2xl border p-6" style={{ borderColor: "var(--color-border)" }}>
-            <div className="flex items-center gap-2 mb-4">
-              <Package className="w-5 h-5" style={{ color: "var(--color-muted-foreground)" }} />
-              <h2 className="text-base font-semibold">Recargar créditos</h2>
-            </div>
+          <section className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: "var(--color-border)" }}>
 
             {topupSuccess && (
               <div
-                className="rounded-xl px-4 py-3 mb-4 text-sm flex items-center gap-2"
+                className="px-6 py-3 text-sm flex items-center gap-2"
                 style={{ backgroundColor: "#ECFDF5", color: "var(--color-success)" }}
               >
                 <Check className="w-4 h-4 shrink-0" />
@@ -677,107 +678,158 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               </div>
             )}
 
-            {/* Qué puedes hacer */}
-            <div
-              className="rounded-xl p-4 mb-5 text-sm"
-              style={{ backgroundColor: "var(--color-muted)" }}
-            >
-              <p className="font-medium mb-2" style={{ color: "var(--color-foreground)" }}>
-                ¿Para qué te dan{" "}
-                <span style={{ color: "var(--color-primary)" }}>
-                  {topupAmount * CREDITS_PER_EUR} créditos
-                </span>
-                ?
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1" style={{ color: "var(--color-muted-foreground)" }}>
-                <span>🎬 {Math.floor((topupAmount * CREDITS_PER_EUR) / CREDIT_COSTS.generate_script)} guiones completos</span>
-                <span>🖼️ {Math.floor((topupAmount * CREDITS_PER_EUR) / CREDIT_COSTS.generate_image)} imágenes</span>
-                <span>💡 {topupAmount * CREDITS_PER_EUR} packs de 5 ideas</span>
-                <span>📊 {Math.floor((topupAmount * CREDITS_PER_EUR) / CREDIT_COSTS.analyze_channel)} análisis de canal</span>
+            {/* Cabecera + widget de importe — fondo oscuro */}
+            <div className="p-6 pb-8" style={{ backgroundColor: "var(--color-foreground)" }}>
+              <div className="flex items-center gap-2 mb-8">
+                <Package className="w-4 h-4" style={{ color: "rgba(255,255,255,0.5)" }} />
+                <h2 className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>Recargar créditos</h2>
+              </div>
+
+              {/* Importe editable grande */}
+              <div className="text-center">
+                <div className="flex items-start justify-center">
+                  <span
+                    className="text-3xl font-medium mt-3 mr-1 select-none"
+                    style={{ color: "rgba(255,255,255,0.35)" }}
+                  >
+                    €
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={topupInput}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      setTopupInput(raw === "" ? "" : raw);
+                    }}
+                    onBlur={() => {
+                      const clamped = Math.max(5, Math.min(500, parseInt(topupInput) || 5));
+                      setTopupInput(String(clamped));
+                    }}
+                    className="bg-transparent border-none outline-none text-center tabular-nums leading-none font-semibold"
+                    style={{
+                      fontSize: "clamp(3rem, 12vw, 6rem)",
+                      color: "#fff",
+                      letterSpacing: "-0.04em",
+                      width: `${Math.max(1.5, (topupInput || "0").length + 0.5)}ch`,
+                    }}
+                  />
+                </div>
+
+                {/* Créditos + badge de tier */}
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    {topupCredits} créditos
+                  </p>
+                  {tier.bonus > 0 && (
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: "rgba(140,34,48,0.45)", color: "#F1B1BA" }}
+                    >
+                      +{tier.bonus}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Nudge hacia el siguiente tier */}
+                {nextTier && (
+                  <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                    Desde {nextTier.min}€, {nextTier.rate} créditos/€
+                    {tier.bonus === 0
+                      ? ` (+${nextTier.bonus}% más)`
+                      : ` (+${nextTier.bonus - tier.bonus}% adicional)`}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Presets */}
-            <p className="text-sm font-medium mb-3">¿Cuánto quieres añadir?</p>
-            <div className="flex gap-2 mb-3 flex-wrap">
-              {TOPUP_PRESETS.map((amt) => (
+            <div className="p-6 space-y-5">
+              {/* Presets rápidos */}
+              <div className="flex gap-2 flex-wrap">
+                {TOPUP_PRESETS.map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => setTopupInput(String(amt))}
+                    className="px-4 py-1.5 rounded-full text-sm font-medium border transition-all"
+                    style={
+                      validAmount === amt
+                        ? { backgroundColor: "var(--color-foreground)", color: "#fff", borderColor: "var(--color-foreground)" }
+                        : { borderColor: "var(--color-border)", color: "var(--color-muted-foreground)", backgroundColor: "transparent" }
+                    }
+                  >
+                    {amt}€
+                  </button>
+                ))}
+              </div>
+
+              {/* Qué puedes crear — sin emoticonos */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { count: Math.floor(topupCredits / CREDIT_COSTS.generate_script), label: "guiones completos" },
+                  { count: Math.floor(topupCredits / CREDIT_COSTS.generate_image), label: "imágenes" },
+                  { count: topupCredits * 5, label: "ideas" },
+                  { count: Math.floor(topupCredits / CREDIT_COSTS.analyze_channel), label: "análisis de canal" },
+                ].map(({ count, label }) => (
+                  <div
+                    key={label}
+                    className="rounded-xl px-3 py-2.5 text-sm"
+                    style={{ backgroundColor: "var(--color-muted)" }}
+                  >
+                    <p className="text-base font-semibold tabular-nums leading-tight">{count}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Toggle pago único / mensual */}
+              <div
+                className="flex rounded-xl overflow-hidden border"
+                style={{ borderColor: "var(--color-border)" }}
+              >
                 <button
-                  key={amt}
-                  onClick={() => setTopupAmount(amt)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium border transition-all"
+                  onClick={() => setTopupRecurring(false)}
+                  className="flex-1 py-2.5 text-sm font-medium transition-all"
                   style={
-                    topupAmount === amt
-                      ? { backgroundColor: "var(--color-foreground)", color: "#fff", borderColor: "var(--color-foreground)" }
-                      : { borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }
+                    !topupRecurring
+                      ? { backgroundColor: "var(--color-foreground)", color: "#fff" }
+                      : { color: "var(--color-muted-foreground)" }
                   }
                 >
-                  {amt}€
+                  Pago único
                 </button>
-              ))}
-            </div>
-
-            {/* Input personalizado */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex items-center gap-1 rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)" }}>
-                <input
-                  type="number"
-                  min={5}
-                  max={500}
-                  step={1}
-                  value={topupAmount}
-                  onChange={(e) => setTopupAmount(Math.round(parseFloat(e.target.value)) || 5)}
-                  className="w-16 text-sm text-center outline-none bg-transparent"
-                />
-                <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>€</span>
+                <button
+                  onClick={() => setTopupRecurring(true)}
+                  className="flex-1 py-2.5 text-sm font-medium transition-all border-l"
+                  style={
+                    topupRecurring
+                      ? { backgroundColor: "var(--color-foreground)", color: "#fff", borderColor: "var(--color-border)" }
+                      : { color: "var(--color-muted-foreground)", borderColor: "var(--color-border)" }
+                  }
+                >
+                  Mensual
+                </button>
               </div>
-              <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                =&nbsp;<strong style={{ color: "var(--color-foreground)" }}>{topupAmount * CREDITS_PER_EUR} créditos</strong>
-              </span>
+
+              <div>
+                <Button
+                  className="w-full h-11"
+                  onClick={handleBuyTopup}
+                  disabled={buyingTopup || validAmount < 5 || validAmount > 500}
+                >
+                  {buyingTopup
+                    ? "Redirigiendo..."
+                    : topupRecurring
+                    ? `Añadir ${topupCredits} créditos/mes — ${validAmount},00€/mes`
+                    : `Comprar ${topupCredits} créditos — ${validAmount},00€`}
+                </Button>
+                {topupRecurring && (
+                  <p className="text-xs text-center mt-2" style={{ color: "var(--color-muted-foreground)" }}>
+                    Se cobra {validAmount},00€ cada mes. Cancela cuando quieras.
+                  </p>
+                )}
+              </div>
             </div>
-
-            {/* Toggle pago único / mensual */}
-            <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit" style={{ backgroundColor: "var(--color-muted)" }}>
-              <button
-                onClick={() => setTopupRecurring(false)}
-                className="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-                style={
-                  !topupRecurring
-                    ? { backgroundColor: "#fff", color: "var(--color-foreground)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }
-                    : { color: "var(--color-muted-foreground)" }
-                }
-              >
-                Pago único
-              </button>
-              <button
-                onClick={() => setTopupRecurring(true)}
-                className="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
-                style={
-                  topupRecurring
-                    ? { backgroundColor: "#fff", color: "var(--color-foreground)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }
-                    : { color: "var(--color-muted-foreground)" }
-                }
-              >
-                Mensual
-              </button>
-            </div>
-
-            <Button
-              className="w-full"
-              onClick={handleBuyTopup}
-              disabled={buyingTopup || topupAmount < 5 || topupAmount > 500}
-            >
-              {buyingTopup
-                ? "Redirigiendo..."
-                : topupRecurring
-                ? `Añadir ${topupAmount * CREDITS_PER_EUR} créditos/mes — ${topupAmount},00€/mes`
-                : `Comprar ${topupAmount * CREDITS_PER_EUR} créditos — ${topupAmount},00€`}
-            </Button>
-
-            {topupRecurring && (
-              <p className="text-xs text-center mt-2" style={{ color: "var(--color-muted-foreground)" }}>
-                Se cobrarán {topupAmount},00€ cada mes. Cancela cuando quieras desde "Gestionar suscripción".
-              </p>
-            )}
           </section>
         </TabsContent>
       </Tabs>

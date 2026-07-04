@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
-import { checkAndDeductCredits } from "@/lib/credits";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext, THINKING_ADAPTIVE, extractText, cachedSystem } from "@/lib/anthropic";
+import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
 import { CREDIT_COSTS } from "@/types";
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(user.id);
+  const rl = await checkRateLimit(user.id);
   if (!rl.ok) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
@@ -55,12 +55,15 @@ Genera ideas que REALMENTE funcionen para esta plataforma específica, con títu
   try {
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
-      max_tokens: 4096,
-      system: userContext + SYSTEM_PROMPTS.ideas,
+      max_tokens: 8000,
+      thinking: THINKING_ADAPTIVE,
+      system: cachedSystem(SYSTEM_PROMPTS.ideas, userContext),
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = message.content[0].type === "text" ? message.content[0].text : "";
+    await recordTokenUsage(credit.logId, MODEL, message.usage);
+
+    const raw = extractText(message);
     const ideas = JSON.parse(extractJSON(raw));
 
     // Create project for this generation session
@@ -79,7 +82,7 @@ Genera ideas que REALMENTE funcionen para esta plataforma específica, con títu
       title: idea.title,
       description: idea.description,
       platform,
-      format: count <= 60 ? "short" : "long",
+      format: platform === "youtube_long" ? "long" : "short",
       niche,
       viral_score: idea.viral_score,
       hook_type: idea.hook_type,
@@ -99,6 +102,7 @@ Genera ideas que REALMENTE funcionen para esta plataforma específica, con títu
     return NextResponse.json({ ideas: result, projectId, creditsRemaining: credit.creditsRemaining });
   } catch (err) {
     console.error("generate-ideas error:", err);
+    await refundCredits(user.id, actionKey);
     return NextResponse.json({ error: "AI_ERROR" }, { status: 500 });
   }
 }

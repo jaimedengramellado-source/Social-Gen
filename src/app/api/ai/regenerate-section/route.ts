@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
-import { checkAndDeductCredits } from "@/lib/credits";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext, THINKING_ADAPTIVE, extractText, cachedSystem } from "@/lib/anthropic";
+import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(user.id);
+  const rl = await checkRateLimit(user.id);
   if (!rl.ok) {
     return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
@@ -42,12 +42,15 @@ Mejora el impacto sin perder el hilo narrativo con el resto del guion. Solo devu
   try {
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
-      max_tokens: 1000,
-      system: userContext + systemPrompt,
+      max_tokens: 2000,
+      thinking: THINKING_ADAPTIVE,
+      system: cachedSystem(systemPrompt, userContext),
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = message.content[0].type === "text" ? message.content[0].text : "";
+    await recordTokenUsage(credit.logId, MODEL, message.usage);
+
+    const raw = extractText(message);
     let newContent: string;
 
     try {
@@ -69,6 +72,7 @@ Mejora el impacto sin perder el hilo narrativo con el resto del guion. Solo devu
     return NextResponse.json({ content: newContent, creditsRemaining: credit.creditsRemaining });
   } catch (err) {
     console.error("regenerate-section error:", err);
+    await refundCredits(user.id, "regenerate_section");
     return NextResponse.json({ error: "AI_ERROR" }, { status: 500 });
   }
 }

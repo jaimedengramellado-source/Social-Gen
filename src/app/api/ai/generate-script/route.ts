@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext } from "@/lib/anthropic";
-import { checkAndDeductCredits } from "@/lib/credits";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext, THINKING_ADAPTIVE, extractText, cachedSystem } from "@/lib/anthropic";
+import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { extractJSON } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(user.id);
+  const rl = await checkRateLimit(user.id);
   if (!rl.ok) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
@@ -44,14 +44,22 @@ export async function POST(request: NextRequest) {
 Escribe el guion COMPLETO con el texto exacto a decir en cada sección.`;
 
   try {
-    const message = await getAnthropicClient().messages.create({
+    // A 15-20min long-form script (see SYSTEM_PROMPTS.script's long-video structure) plus its
+    // JSON metadata (visuals, captions, retention peaks) can run well past 16K tokens — stream
+    // internally so a large max_tokens doesn't risk an HTTP timeout, even though the client
+    // still gets a single JSON response once generation finishes.
+    const scriptStream = getAnthropicClient().messages.stream({
       model: MODEL,
-      max_tokens: 6000,
-      system: userContext + SYSTEM_PROMPTS.script,
+      max_tokens: 32000,
+      thinking: THINKING_ADAPTIVE,
+      system: cachedSystem(SYSTEM_PROMPTS.script, userContext),
       messages: [{ role: "user", content: userPrompt }],
     });
+    const message = await scriptStream.finalMessage();
 
-    const raw = message.content[0].type === "text" ? message.content[0].text : "";
+    await recordTokenUsage(credit.logId, MODEL, message.usage);
+
+    const raw = extractText(message);
     const scriptData = JSON.parse(extractJSON(raw));
 
     const title = typeof idea === "object" ? idea.title : String(idea);
@@ -89,6 +97,7 @@ Escribe el guion COMPLETO con el texto exacto a decir en cada sección.`;
     });
   } catch (err) {
     console.error("generate-script error:", err);
+    await refundCredits(user.id, "generate_script");
     return NextResponse.json({ error: "AI_ERROR" }, { status: 500 });
   }
 }

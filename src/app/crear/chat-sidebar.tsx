@@ -102,6 +102,7 @@ export function ChatSidebar({
   onPendingEditHandled,
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery]           = useState("");
+  const [searchActive, setSearchActive]         = useState(false);
   const [activeFilter, setActiveFilter]         = useState<FilterId>("todos");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionValue, setEditingSessionValue] = useState("");
@@ -211,6 +212,7 @@ export function ChatSidebar({
                 onClick={e => e.stopPropagation()}
                 onBlur={() => commitSessionRename(s.id, s.title)}
                 onKeyDown={e => {
+                  e.stopPropagation();
                   if (e.key === "Enter") { e.preventDefault(); commitSessionRename(s.id, s.title); }
                   if (e.key === "Escape") setEditingSessionId(null);
                 }}
@@ -222,7 +224,7 @@ export function ChatSidebar({
                   {s.title}
                 </p>
                 {fresh && (
-                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "var(--bg-accent)", color: "var(--text-accent)", flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "var(--bg-info)", color: "var(--text-info)", flexShrink: 0 }}>
                     Nuevo
                   </span>
                 )}
@@ -271,53 +273,64 @@ export function ChatSidebar({
   }
 
   return (
-    <aside style={{ width: 280, background: "var(--surface-1)", border: "0.5px solid var(--border)", borderRadius: 12, display: "flex", flexDirection: "column", flexShrink: 0, overflow: "hidden" }}>
+    <aside style={{ width: 280, background: "var(--color-card)", border: "0.5px solid var(--border)", borderRadius: 12, boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", flexShrink: 0, overflow: "hidden" }}>
 
       {/* ── HEADER ── */}
       <div style={{ padding: 14, borderBottom: "0.5px solid var(--border)", flexShrink: 0 }}>
 
-        {/* Row: logo + new button */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 28, height: 28, borderRadius: 6, background: "var(--bg-pro)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <i className="ti ti-sparkles" style={{ fontSize: 15, color: "var(--text-pro)" }} />
-            </span>
-            <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
-              Social <em style={{ color: "var(--text-pro)", fontStyle: "italic" }}>Gen</em>
-            </span>
-          </div>
+        {/* Row: search + new button */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: searchActive ? 10 : 0 }}>
+          {searchActive ? (
+            <div className="transition-colors focus-within:border-[var(--color-muted-foreground)]" style={{ background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", padding: "7px 10px", display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
+              <i className="ti ti-search" style={{ fontSize: 14, color: "var(--text-muted)", flexShrink: 0 }} />
+              <input
+                autoFocus
+                placeholder="Buscar chats..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === "Escape") { setSearchActive(false); setSearchQuery(""); } }}
+                style={{ border: "none", background: "transparent", outline: "none", fontSize: 13, color: "var(--text-primary)", flex: 1, minWidth: 0 }}
+              />
+              <button
+                onClick={() => { setSearchActive(false); setSearchQuery(""); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 2, borderRadius: 4, display: "inline-flex", alignItems: "center", flexShrink: 0 }}
+                aria-label="Cerrar búsqueda"
+              >
+                <i className="ti ti-x" style={{ fontSize: 13 }} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setSearchActive(true)}
+              style={{ width: 32, height: 32, background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              aria-label="Buscar chats"
+            >
+              <i className="ti ti-search" style={{ fontSize: 14 }} />
+            </button>
+          )}
           <button
             onClick={onNew}
-            style={{ background: "var(--bg-accent)", color: "var(--text-accent)", borderRadius: "var(--radius)", padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: "pointer", fontWeight: 500 }}
+            style={{ background: "var(--bg-accent)", color: "var(--text-accent)", borderRadius: "var(--radius)", padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: "pointer", fontWeight: 500, flexShrink: 0, marginLeft: searchActive ? 0 : "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}
           >
             <i className="ti ti-plus" style={{ fontSize: 13 }} />
             Nuevo
           </button>
         </div>
 
-        {/* Search */}
-        <div style={{ background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", padding: "7px 10px", display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
-          <i className="ti ti-search" style={{ fontSize: 14, color: "var(--text-muted)", flexShrink: 0 }} />
-          <input
-            placeholder="Buscar chats..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{ border: "none", background: "transparent", outline: "none", fontSize: 13, color: "var(--text-primary)", flex: 1, minWidth: 0 }}
-          />
-        </div>
-
         {/* Filter pills */}
-        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-          {FILTERS.map(f => (
-            <button
-              key={f.id}
-              onClick={() => setActiveFilter(f.id)}
-              className={`sidebar-filter-pill${activeFilter === f.id ? " active" : ""}`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {searchActive && (
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setActiveFilter(f.id)}
+                className={`sidebar-filter-pill${activeFilter === f.id ? " active" : ""}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── BODY ── */}
@@ -369,6 +382,7 @@ export function ChatSidebar({
                           onClick={e => e.stopPropagation()}
                           onBlur={() => commitProjectRename(project.id, project.title)}
                           onKeyDown={e => {
+                            e.stopPropagation();
                             if (e.key === "Enter") { e.preventDefault(); commitProjectRename(project.id, project.title); }
                             if (e.key === "Escape") setEditingProjectId(null);
                           }}

@@ -1,3 +1,6 @@
+-- Esquema completo de Social Gen — regenerado desde la base de datos real (2026-07-03).
+-- Ejecutar entero en el SQL Editor de Supabase en un proyecto nuevo.
+
 create table profiles (
   id uuid references auth.users primary key,
   email text,
@@ -14,7 +17,8 @@ create table profiles (
   tone text,
   ai_instructions text,
   main_platform text,
-  channel_name text
+  channel_name text,
+  credits_refreshed_at timestamptz default now()
 );
 
 create table channels (
@@ -35,10 +39,20 @@ create table channels (
   created_at timestamptz default now()
 );
 
+create table projects (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete cascade,
+  name text,
+  platform text,
+  niche text,
+  created_at timestamptz default now()
+);
+
 create table ideas (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references profiles(id) on delete cascade,
   channel_id uuid references channels(id),
+  project_id uuid references projects(id) on delete set null,
   title text,
   description text,
   platform text,
@@ -56,6 +70,7 @@ create table scripts (
   user_id uuid references profiles(id) on delete cascade,
   channel_id uuid references channels(id),
   idea_id uuid references ideas(id),
+  project_id uuid references projects(id) on delete set null,
   title text,
   platform text,
   format text,
@@ -74,6 +89,7 @@ create table scripts (
   status text default 'draft',
   share_token text unique default gen_random_uuid()::text,
   credits_used integer default 3,
+  content jsonb, -- documentos del editor (formato Tiptap)
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -100,58 +116,232 @@ create table usage_logs (
   created_at timestamptz default now()
 );
 
+create index usage_logs_user_created_idx on usage_logs (user_id, created_at desc);
+
+create table youtube_connections (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade unique,
+  channel_id text not null,
+  channel_name text,
+  channel_thumbnail text,
+  subscriber_count bigint default 0,
+  access_token text not null,
+  refresh_token text,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table calendar_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null,
+  description text,
+  scheduled_at timestamptz not null,
+  remind_before_minutes integer,
+  reminder_sent boolean not null default false,
+  script_id uuid references scripts(id),
+  start_time timestamptz,
+  end_time timestamptz,
+  color text default '#1a73e8',
+  remind_times jsonb default '[]'::jsonb,
+  sent_reminder_offsets jsonb default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table todos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null,
+  completed boolean not null default false,
+  priority text default 'media',
+  urgency text default 'media',
+  importance text default 'normal',
+  due_date date,
+  category text,
+  completed_at timestamptz,
+  parent_id uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table chat_projects (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null default 'Nuevo proyecto',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table chat_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null default 'Nueva conversación',
+  messages jsonb not null default '[]'::jsonb,
+  project_id uuid references chat_projects(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table generated_images (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  prompt text not null,
+  model_used text not null,
+  image_url text not null,
+  storage_path text not null,
+  parent_image_id uuid references generated_images(id) on delete set null,
+  aspect_ratio text default '1:1',
+  created_at timestamptz not null default now()
+);
+
+-- Caché de búsquedas de ideas en YouTube (compartida entre usuarios)
+create table ideas_cache (
+  query text primary key,
+  results jsonb not null,
+  cached_at timestamptz not null default now()
+);
+
+-- Idempotencia de webhooks de Stripe (solo la usa el service role)
+create table stripe_events (
+  id text primary key,
+  created_at timestamptz not null default now()
+);
+
+-- ============================================================
 -- RLS
+-- ============================================================
+
 alter table profiles enable row level security;
 alter table channels enable row level security;
+alter table projects enable row level security;
 alter table ideas enable row level security;
 alter table scripts enable row level security;
 alter table watchlist_channels enable row level security;
 alter table usage_logs enable row level security;
+alter table youtube_connections enable row level security;
+alter table calendar_events enable row level security;
+alter table todos enable row level security;
+alter table chat_projects enable row level security;
+alter table chat_sessions enable row level security;
+alter table generated_images enable row level security;
+alter table ideas_cache enable row level security;
+alter table stripe_events enable row level security; -- sin policies: solo service role
 
 create policy "own profile" on profiles for all using (auth.uid() = id);
 create policy "own channels" on channels for all using (auth.uid() = user_id);
+create policy "own projects" on projects for all using (auth.uid() = user_id);
 create policy "own ideas" on ideas for all using (auth.uid() = user_id);
 create policy "own scripts" on scripts for all using (auth.uid() = user_id);
-create policy "public scripts" on scripts for select using (status = 'saved');
+-- OJO: no crear una policy pública sobre scripts. La página /share/[id] accede
+-- por share_token con el admin client (server-only).
 create policy "own watchlist" on watchlist_channels for all using (auth.uid() = user_id);
 create policy "own logs" on usage_logs for all using (auth.uid() = user_id);
+create policy "Users manage own youtube connections" on youtube_connections for all using (auth.uid() = user_id);
+create policy "Users can manage their own calendar events" on calendar_events
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can manage their own todos" on todos
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own projects" on chat_projects for all using (auth.uid() = user_id);
+create policy "Users can manage their own chat sessions" on chat_sessions
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users own their generated images" on generated_images for all using (auth.uid() = user_id);
+create policy "authenticated read ideas_cache" on ideas_cache for select to authenticated using (true);
+create policy "authenticated write ideas_cache" on ideas_cache for insert to authenticated with check (true);
+create policy "authenticated update ideas_cache" on ideas_cache for update to authenticated using (true);
+
+-- ============================================================
+-- Funciones y triggers
+-- ============================================================
 
 create or replace function handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   insert into public.profiles (id, email, full_name)
   values (new.id, new.email, new.raw_user_meta_data->>'full_name');
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
+revoke execute on function handle_new_user() from anon, authenticated, public;
 
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
--- ============================================================
--- Imágenes generadas con IA (Imagen 3 / Gemini 2.0 Flash)
--- ============================================================
+-- Descuento atómico de créditos. Devuelve el saldo restante, -1 si es ilimitado,
+-- o null si el perfil no existe o no hay saldo suficiente.
+create or replace function deduct_credits(p_user_id uuid, p_amount integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_remaining integer;
+begin
+  select credits_remaining into v_remaining
+  from public.profiles where id = p_user_id for update;
 
-CREATE TABLE generated_images (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  prompt TEXT NOT NULL,
-  model_used TEXT NOT NULL,
-  image_url TEXT NOT NULL,
-  storage_path TEXT NOT NULL,
-  parent_image_id UUID REFERENCES generated_images(id) ON DELETE SET NULL,
-  aspect_ratio TEXT DEFAULT '1:1',
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-ALTER TABLE generated_images ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users own their generated images"
-  ON generated_images FOR ALL USING (auth.uid() = user_id);
+  if not found then
+    return null;
+  end if;
+
+  if v_remaining = -1 then
+    return -1;
+  end if;
+
+  if v_remaining < p_amount then
+    return null;
+  end if;
+
+  update public.profiles
+  set credits_remaining = credits_remaining - p_amount
+  where id = p_user_id
+  returning credits_remaining into v_remaining;
+
+  return v_remaining;
+end;
+$$;
+revoke execute on function deduct_credits(uuid, integer) from anon, authenticated, public;
+grant execute on function deduct_credits(uuid, integer) to service_role;
+
+create or replace function add_credits(p_user_id uuid, p_amount integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_remaining integer;
+begin
+  update public.profiles
+  set credits_remaining = case when credits_remaining = -1 then -1 else credits_remaining + p_amount end
+  where id = p_user_id
+  returning credits_remaining into v_remaining;
+  return v_remaining;
+end;
+$$;
+revoke execute on function add_credits(uuid, integer) from anon, authenticated, public;
+grant execute on function add_credits(uuid, integer) to service_role;
 
 -- ============================================================
--- Bucket generated-images — ejecutar por separado en SQL Editor
+-- Storage buckets — ejecutar por separado en el SQL Editor
 -- ============================================================
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('generated-images', 'generated-images', false);
 -- CREATE POLICY "Users upload own generated images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
 -- CREATE POLICY "Users read own generated images" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
 -- CREATE POLICY "Users delete own generated images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+--
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
+-- CREATE POLICY "Users upload own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- CREATE POLICY "Users update own avatar" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- CREATE POLICY "Public read avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+--
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('chat-attachments', 'chat-attachments', false);
+-- CREATE POLICY "Users upload own chat images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);
+-- CREATE POLICY "Users read own chat images" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);

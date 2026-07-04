@@ -38,13 +38,13 @@ export function useLasso(canvasRef: { current: HTMLCanvasElement | null }) {
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = "rgba(124,58,237,0.85)";
+    ctx.strokeStyle = "rgba(140,34,48,0.85)";
     ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(pts[0].x, pts[0].y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(124,58,237,0.9)";
+    ctx.fillStyle = "rgba(140,34,48,0.9)";
     ctx.fill();
   }, [canvasRef]);
 
@@ -60,9 +60,9 @@ export function useLasso(canvasRef: { current: HTMLCanvasElement | null }) {
     ctx.moveTo(pts[0].x, pts[0].y);
     pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
     ctx.closePath();
-    ctx.fillStyle = "rgba(124,58,237,0.22)";
+    ctx.fillStyle = "rgba(140,34,48,0.22)";
     ctx.fill();
-    ctx.strokeStyle = "rgba(124,58,237,0.9)";
+    ctx.strokeStyle = "rgba(140,34,48,0.9)";
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 3]);
     ctx.stroke();

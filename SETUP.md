@@ -46,14 +46,17 @@ Stripe ya está en **live mode**. No usar test keys.
 
 ### 3.2 Productos y precios (ya creados en live mode)
 
+Los precios coinciden con los de la landing (`PRICING_PLANS` en `src/types/index.ts`).
+Los precios antiguos (4,75/12,25/24,75 €/sem) quedaron archivados el 2026-07-03 — no reactivarlos.
+
 | Env var | Price ID | Descripción |
 |---|---|---|
-| `STRIPE_STARTER_WEEKLY_PRICE_ID` | `price_1TnxbhLTq2Nj2Fq3zGQVHrHZ` | 4,75 €/semana |
-| `STRIPE_STARTER_ANNUAL_PRICE_ID` | `price_1TnxbiLTq2Nj2Fq3DaijbIJG` | 205,83 €/año |
-| `STRIPE_PRO_WEEKLY_PRICE_ID` | `price_1TnxbjLTq2Nj2Fq3qAk2OG9e` | 12,25 €/semana |
-| `STRIPE_PRO_ANNUAL_PRICE_ID` | `price_1TnxbjLTq2Nj2Fq3BDA3Zfrz` | 530,83 €/año |
-| `STRIPE_AGENCY_WEEKLY_PRICE_ID` | `price_1TnxbkLTq2Nj2Fq3dYSClgGv` | 24,75 €/semana |
-| `STRIPE_AGENCY_ANNUAL_PRICE_ID` | `price_1TnxblLTq2Nj2Fq3tyNZwQUU` | 1.072,50 €/año |
+| `STRIPE_STARTER_WEEKLY_PRICE_ID` | `price_1To4StLTq2Nj2Fq3LDO7IPQ4` | 2,49 €/semana |
+| `STRIPE_STARTER_ANNUAL_PRICE_ID` | `price_1To4SuLTq2Nj2Fq3GL2zFu8o` | 124,99 €/año |
+| `STRIPE_PRO_WEEKLY_PRICE_ID` | `price_1To4SvLTq2Nj2Fq37Lok8VSo` | 6,49 €/semana |
+| `STRIPE_PRO_ANNUAL_PRICE_ID` | `price_1To4SzLTq2Nj2Fq3l2kyiv8N` | 324,99 €/año |
+| `STRIPE_AGENCY_WEEKLY_PRICE_ID` | `price_1To4T0LTq2Nj2Fq3PxYfnzPu` | 19,99 €/semana |
+| `STRIPE_AGENCY_ANNUAL_PRICE_ID` | `price_1To4T0LTq2Nj2Fq3IazgtJdB` | 999,99 €/año |
 | `STRIPE_PACK_50_PRICE_ID` | `price_1TnxbmLTq2Nj2Fq3gx0ShRs8` | 9 € one-time |
 | `STRIPE_PACK_150_PRICE_ID` | `price_1TnxbmLTq2Nj2Fq3t37zeaQm` | 19 € one-time |
 | `STRIPE_PACK_500_PRICE_ID` | `price_1TnxbnLTq2Nj2Fq3I2xeRpU3` | 49 € one-time |
@@ -73,12 +76,12 @@ Stripe ya está en **live mode**. No usar test keys.
 STRIPE_SECRET_KEY=sk_live_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_STARTER_WEEKLY_PRICE_ID=price_1TnxbhLTq2Nj2Fq3zGQVHrHZ
-STRIPE_STARTER_ANNUAL_PRICE_ID=price_1TnxbiLTq2Nj2Fq3DaijbIJG
-STRIPE_PRO_WEEKLY_PRICE_ID=price_1TnxbjLTq2Nj2Fq3qAk2OG9e
-STRIPE_PRO_ANNUAL_PRICE_ID=price_1TnxbjLTq2Nj2Fq3BDA3Zfrz
-STRIPE_AGENCY_WEEKLY_PRICE_ID=price_1TnxbkLTq2Nj2Fq3dYSClgGv
-STRIPE_AGENCY_ANNUAL_PRICE_ID=price_1TnxblLTq2Nj2Fq3tyNZwQUU
+STRIPE_STARTER_WEEKLY_PRICE_ID=price_1To4StLTq2Nj2Fq3LDO7IPQ4
+STRIPE_STARTER_ANNUAL_PRICE_ID=price_1To4SuLTq2Nj2Fq3GL2zFu8o
+STRIPE_PRO_WEEKLY_PRICE_ID=price_1To4SvLTq2Nj2Fq37Lok8VSo
+STRIPE_PRO_ANNUAL_PRICE_ID=price_1To4SzLTq2Nj2Fq3l2kyiv8N
+STRIPE_AGENCY_WEEKLY_PRICE_ID=price_1To4T0LTq2Nj2Fq3PxYfnzPu
+STRIPE_AGENCY_ANNUAL_PRICE_ID=price_1To4T0LTq2Nj2Fq3IazgtJdB
 STRIPE_PACK_50_PRICE_ID=price_1TnxbmLTq2Nj2Fq3gx0ShRs8
 STRIPE_PACK_150_PRICE_ID=price_1TnxbmLTq2Nj2Fq3t37zeaQm
 STRIPE_PACK_500_PRICE_ID=price_1TnxbnLTq2Nj2Fq3I2xeRpU3
@@ -93,27 +96,17 @@ Copiar `.env.local.example` a `.env.local`:
 cp .env.local.example .env.local
 ```
 
-Rellenar todas las variables con los valores obtenidos en los pasos anteriores:
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-STRIPE_SECRET_KEY=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+Rellenar todas las variables (la lista completa y actualizada está en `.env.local.example`).
+Los price IDs usan billing **semanal** (`*_WEEKLY_*`), no mensual.
 
-# Stripe Price IDs
-STRIPE_STARTER_MONTHLY_PRICE_ID=
-STRIPE_STARTER_ANNUAL_PRICE_ID=
-STRIPE_PRO_MONTHLY_PRICE_ID=
-STRIPE_PRO_ANNUAL_PRICE_ID=
-STRIPE_AGENCY_MONTHLY_PRICE_ID=
-STRIPE_AGENCY_ANNUAL_PRICE_ID=
-STRIPE_PACK_50_PRICE_ID=
-STRIPE_PACK_150_PRICE_ID=
-STRIPE_PACK_500_PRICE_ID=
+Variables adicionales a las de Supabase/Stripe/Anthropic:
+```
+GOOGLE_GEMINI_API_KEY=      # imágenes (paso 6)
+GOOGLE_CLIENT_ID=           # OAuth YouTube en /estadisticas
+GOOGLE_CLIENT_SECRET=
+CRON_SECRET=                # OBLIGATORIO en Vercel: autentica los crons (fail-closed)
+RESEND_API_KEY=             # emails de recordatorio
+RESEND_FROM_EMAIL=          # remitente verificado en Resend
 ```
 
 ---

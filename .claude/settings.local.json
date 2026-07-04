@@ -13,7 +13,14 @@
       "Bash(git remote *)",
       "Bash(git branch *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
-    ]
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "enabledPlugins": {
+    "stripe@claude-plugins-official": true
   }
 }

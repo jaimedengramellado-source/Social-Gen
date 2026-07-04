@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getGeminiClient, GEMINI_EDIT_MODEL } from "@/lib/gemini";
-import { checkAndDeductCredits } from "@/lib/credits";
+import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(user.id);
+  const rl = await checkRateLimit(user.id);
   if (!rl.ok) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (sourceError || !sourceRecord) {
+        await refundCredits(user.id, "edit_image");
         return NextResponse.json({ error: "IMAGE_NOT_FOUND" }, { status: 404 });
       }
 
@@ -101,8 +102,14 @@ export async function POST(request: NextRequest) {
       result = await model.generateContent(contents);
     } catch (geminiErr) {
       console.error("edit-image gemini error:", geminiErr);
+      await refundCredits(user.id, "edit_image");
       return NextResponse.json({ error: "AI_ERROR", detail: String(geminiErr) }, { status: 500 });
     }
+
+    await recordTokenUsage(credit.logId, GEMINI_EDIT_MODEL, {
+      input_tokens: result.response.usageMetadata?.promptTokenCount,
+      output_tokens: result.response.usageMetadata?.candidatesTokenCount,
+    });
 
     const parts = result.response.candidates?.[0]?.content?.parts ?? [];
     const imagePart = parts.find(
@@ -113,6 +120,7 @@ export async function POST(request: NextRequest) {
     if (!imagePart?.inlineData?.data) {
       const responseText = parts.find((p: any) => p.text)?.text ?? "";
       console.error("edit-image: no image in response. Text:", responseText, "Candidates:", JSON.stringify(result.response.candidates?.map(c => c.finishReason)));
+      await refundCredits(user.id, "edit_image");
       return NextResponse.json({ error: "NO_IMAGE_IN_RESPONSE" }, { status: 500 });
     }
 
@@ -148,6 +156,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ image: dbRecord, creditsRemaining: credit.creditsRemaining });
   } catch (err) {
     console.error("edit-image error:", err);
+    await refundCredits(user.id, "edit_image");
     return NextResponse.json({ error: "AI_ERROR" }, { status: 500 });
   }
 }

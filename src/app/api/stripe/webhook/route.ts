@@ -29,6 +29,14 @@ export async function POST(request: NextRequest) {
 
   const supabase = getAdminClient();
 
+  // Idempotencia: Stripe reintenta webhooks; un evento ya procesado no debe repetir abonos.
+  const { error: dedupeError } = await supabase
+    .from("stripe_events")
+    .insert({ id: event.id });
+  if (dedupeError) {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -39,9 +47,8 @@ export async function POST(request: NextRequest) {
       if (session.metadata?.type === "credit_pack") {
         const packId = session.metadata.packId;
         const amount = CREDIT_PACK_AMOUNTS[packId] || 0;
-        const { data: prof } = await supabase.from("profiles").select("credits_remaining").eq("id", userId).single();
-        if (prof) {
-          await supabase.from("profiles").update({ credits_remaining: (prof as { credits_remaining: number }).credits_remaining + amount }).eq("id", userId);
+        if (amount > 0) {
+          await supabase.rpc("add_credits", { p_user_id: userId, p_amount: amount });
         }
         break;
       }
@@ -53,10 +60,7 @@ export async function POST(request: NextRequest) {
       ) {
         const credits = parseInt(session.metadata.credits || "0", 10);
         if (credits > 0) {
-          const { data: prof } = await supabase.from("profiles").select("credits_remaining").eq("id", userId).single();
-          if (prof) {
-            await supabase.from("profiles").update({ credits_remaining: (prof as { credits_remaining: number }).credits_remaining + credits }).eq("id", userId);
-          }
+          await supabase.rpc("add_credits", { p_user_id: userId, p_amount: credits });
         }
         // Persist customer ID if not already set
         if (session.customer) {
@@ -75,6 +79,7 @@ export async function POST(request: NextRequest) {
           plan,
           credits_remaining: credits,
           credits_total: credits,
+          credits_refreshed_at: new Date().toISOString(),
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: sub.id,
         }).eq("id", userId);
@@ -136,10 +141,7 @@ export async function POST(request: NextRequest) {
         if (invoice.billing_reason === "subscription_cycle") {
           const credits = parseInt(sub.metadata.credits || "0", 10);
           if (credits > 0) {
-            const { data: prof } = await supabase.from("profiles").select("credits_remaining").eq("id", userId).single();
-            if (prof) {
-              await supabase.from("profiles").update({ credits_remaining: (prof as { credits_remaining: number }).credits_remaining + credits }).eq("id", userId);
-            }
+            await supabase.rpc("add_credits", { p_user_id: userId, p_amount: credits });
           }
         }
         break;
@@ -154,6 +156,7 @@ export async function POST(request: NextRequest) {
         await supabase.from("profiles").update({
           credits_remaining: credits,
           credits_total: credits,
+          credits_refreshed_at: new Date().toISOString(),
         }).eq("id", userId);
       }
       break;

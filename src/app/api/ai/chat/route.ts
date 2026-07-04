@@ -1,8 +1,8 @@
-export const runtime = "edge";
-
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getAnthropicClient, MODEL, VIRAL_CORE, fetchUserAIContext } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, VIRAL_CORE, fetchUserAIContext, THINKING_ADAPTIVE_VISIBLE, THINKING_DISABLED } from "@/lib/anthropic";
+import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { markdownToTiptap } from "@/lib/markdown-to-tiptap";
 
 const EXPORT_TOOL = {
@@ -17,7 +17,7 @@ const EXPORT_TOOL = {
       },
       content: {
         type: "string",
-        description: "El contenido a guardar en markdown. Incluye todo el contenido relevante: guion completo, ideas, análisis, etc. Usa ## para secciones.",
+        description: "El contenido a guardar en markdown. Incluye todo el contenido relevante: guion completo, ideas, análisis, etc. Usa ## para secciones. Si es un guion de vídeo, formatéalo SIEMPRE como escaleta de documental: tabla Markdown con columnas Tiempo | Descripción | Diálogo (ver FORMATO DE GUION AL EXPORTAR en las instrucciones) — esto aplica solo a este campo, aunque en el chat lo hayas mostrado con encabezados normales.",
       },
     },
     required: ["title", "content"],
@@ -183,10 +183,12 @@ TU MISIÓN AQUÍ: Aplicas la filosofía del Diamond District al nicho del usuari
 FORMATO: Habla como si estuvieras en el mostrador con alguien que acaba de entrar a preguntar. Directo, con autoridad y calor a la vez. Sin headers ni listas formales. Máximo 3-4 párrafos. Termina con un consejo concreto sobre cómo aplicar la autenticidad y el acceso VIP al nicho del usuario. Responde en español.`,
 };
 
+// Devuelve el system en dos partes: `stable` (idéntico entre usuarios, se cachea)
+// y `dynamic` (contexto por usuario, va después del breakpoint de cache).
 function buildCreatorPersonaSystem(
   creatorId: string,
   channel: { platform: string; niche: string; niche_description?: string | null } | null
-): string {
+): { stable: string; dynamic: string } {
   const persona = CREATOR_PERSONAS[creatorId] ?? "";
   const PLATFORM_LABELS: Record<string, string> = {
     youtube_long: "YouTube (vídeo largo, 8-20 minutos)",
@@ -199,9 +201,7 @@ function buildCreatorPersonaSystem(
     ? `El creador con quien colaboras trabaja en ${platformLabel} en el nicho de "${channel.niche}"${channel.niche_description ? ` (${channel.niche_description})` : ""}. Adapta todo lo que digas a este contexto.`
     : "El creador aún no ha configurado su canal. Ayúdale desde tu perspectiva.";
 
-  return `${persona}
-
-${channelCtx}`;
+  return { stable: persona, dynamic: channelCtx };
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -211,26 +211,66 @@ const PLATFORM_LABELS: Record<string, string> = {
   reels: "Instagram Reels (menos de 90 segundos)",
 };
 
-function buildChatSystem(channel: { platform: string; niche: string; niche_description?: string | null } | null): string {
+const CONTENT_FORMAT_LABELS: Record<string, string> = {
+  youtube_long: "YouTube de larga duración (8-20 minutos, horizontal)",
+  shorts: "formato corto vertical — Reels, TikTok o YouTube Shorts (menos de 90 segundos)",
+  linkedin: "post de LinkedIn (texto, sin vídeo)",
+};
+
+function buildFormatContext(contentFormat: string | null | undefined): string {
+  const label = contentFormat ? CONTENT_FORMAT_LABELS[contentFormat] : null;
+  if (!label) return "";
+  if (contentFormat === "linkedin") {
+    return `═══ FORMATO SELECCIONADO ═══
+
+El usuario ha marcado explícitamente "${label}" como formato de destino, usando el selector de la barra de chat. Esto tiene prioridad sobre la plataforma configurada en su canal si difieren. Responde SIEMPRE siguiendo EXPERTISE LINKEDIN al pie de la letra: si es un post nuevo, sigue el FLUJO DE RESPUESTA (3 variantes de hook razonadas y luego el post completo con la mejor) antes de nada; el post en sí va en texto plano sin markdown, con cierre de pregunta específica y 3-5 hashtags de nicho, listo para copiar y pegar tal cual en LinkedIn.`;
+  }
+  if (contentFormat === "youtube_long") {
+    return `═══ FORMATO SELECCIONADO ═══
+
+El usuario ha marcado explícitamente "${label}" como formato de destino, usando el selector de la barra de chat. Esto tiene prioridad sobre la plataforma configurada en su canal si difieren. Aplica EXPERTISE YOUTUBE VÍDEO LARGO en todo lo que generes: si pide un guion, empieza SIEMPRE por la FASE 1 (escaleta) salvo que pida explícitamente saltársela, y ofrece el guion completo palabra por palabra después.`;
+  }
+  return `═══ FORMATO SELECCIONADO ═══
+
+El usuario ha marcado explícitamente "${label}" como formato de destino para este contenido, usando el selector de la barra de chat. Adapta SIEMPRE la duración, el ritmo, la estructura del guion (número de bloques, timestamps) y el estilo del hook a este formato específico — tiene prioridad sobre la plataforma configurada en su canal si difieren.`;
+}
+
+function buildChatContext(channel: { platform: string; niche: string; niche_description?: string | null } | null): string {
   const platformLabel = channel ? (PLATFORM_LABELS[channel.platform] ?? channel.platform) : "redes sociales";
 
-  const contextBlock = channel
-    ? `El creador con quien hablas tiene el siguiente canal:
+  return channel
+    ? `═══ CONTEXTO DEL CREADOR ═══
+
+El creador con quien hablas tiene el siguiente canal:
 - Plataforma: ${platformLabel}
 - Nicho: ${channel.niche}${channel.niche_description ? `\n- Descripción: ${channel.niche_description}` : ""}
 
 Usa este contexto en TODAS tus respuestas. Adapta siempre tus consejos, ideas y estrategias a este nicho y plataforma específicos. Nunca des consejos genéricos que no apliquen directamente a este creador.`
-    : `El creador aún no ha configurado su canal. Responde de forma útil y cuando sea relevante pregúntale por su nicho y plataforma para poder ayudarle mejor.`;
+    : `═══ CONTEXTO DEL CREADOR ═══
 
-  return `${VIRAL_CORE}
+El creador aún no ha configurado su canal. Responde de forma útil y cuando sea relevante pregúntale por su nicho y plataforma para poder ayudarle mejor.`;
+}
+
+const CHAT_SYSTEM_BASE = `${VIRAL_CORE}
 ═══ MODO CHAT CONVERSACIONAL ═══
-
-${contextBlock}
 
 REGLA IDEAS: Cuando el usuario pida ideas de vídeo (frases como "dame ideas", "ideas para", "qué ideas", "genera ideas", "necesito ideas", "propóname ideas", "brainstorming"), responde ÚNICAMENTE con un JSON válido en este formato exacto, sin texto adicional antes ni después:
 {"type":"ideas","ideas":[{"title":"título del vídeo (máx 70 chars)","hook":"frase de apertura gancho de 0-1.5s","content_style":"Educativo|Entretenimiento|Lifestyle|Tutorial|Opinión|Documental|Experimento","viral_score":85,"why_viral":"La palanca psicológica exacta que hace este concepto irresistible","hook_type":"Curiosidad|Shock|Identidad|Miedo|Contrarian|Revelación|Transformación|Morbo|FOMO","differentiator":"Qué hace esta idea irrepetible por otro creador del mismo nicho"}]}
 
 Incluye entre 4 y 6 ideas. El viral_score es un número del 1 al 100. Aplica ESPECIFICIDAD BRUTAL: no "cómo ganar dinero" sino "cómo generé 847€ en 72 horas con esto". Las ideas deben pasar el test de premisa irresistible: el concepto solo, sin ejecución, ya genera curiosidad extrema.
+
+FORMATO DE GUION AL EXPORTAR (ESCALETA DE DOCUMENTAL): Esta sección NO aplica al texto que muestras en el chat — solo al campo content cuando llames a la herramienta guardar_en_documentos con un guion (ver HERRAMIENTA DOCUMENTOS). Estructura ese campo SIEMPRE así:
+1. Un "## " con el título del vídeo.
+2. Justo debajo, una tabla Markdown con EXACTAMENTE estas 3 columnas: Tiempo | Descripción | Diálogo. Una fila por cada beat del guion (hook, intro, cada bloque del desarrollo con timestamps acumulados coherentes con la duración total, y CTA final).
+   - Columna "Tiempo": rango del beat, ej. "0:00-0:03".
+   - Columna "Descripción": encuadre, movimiento de cámara, acción en pantalla, corte o elemento visual — nunca la dejes vacía ni genérica ("primer plano" no vale, especifica qué se ve y cómo se mueve la cámara).
+   - Columna "Diálogo": el texto EXACTO a decir, entre comillas cuando sea una frase literal a cámara.
+   Ejemplo de sintaxis exacta a usar:
+   | Tiempo | Descripción | Diálogo |
+   |---|---|---|
+   | 0:00-0:03 | Primer plano, cámara en mano, zoom rápido a los ojos | "Esto es lo que pasó cuando..." |
+   | 0:03-0:15 | Plano general del espacio, timelapse de la acción | Necesitaba saber si esto era posible... |
+3. No uses ## Hook / ## Intro / ## Desarrollo / ## CTA como encabezados separados en este campo — todo el guion va en la única tabla de escaleta descrita arriba.
 
 FLUJO GUION GUIADO (JSON interactivo): Si el mensaje del usuario es exactamente "__GUIDED_SCRIPT__", responde ÚNICAMENTE con este JSON sin texto adicional:
 {"type":"question","question":"¿Para qué plataforma es el vídeo?","options":["TikTok","Instagram Reels","YouTube Shorts","YouTube (vídeo largo)"],"allow_custom":false}
@@ -240,11 +280,102 @@ Luego sigue este orden de preguntas, cada respuesta es SOLO el JSON de la siguie
 - Tras recibir el tema → {"type":"question","question":"¿A quién va dirigido?","options":["Emprendedores","Jóvenes 18-25","Adultos 25-40","Padres y familias"],"allow_custom":true,"placeholder":"Describe tu audiencia ideal..."}
 - Tras recibir la audiencia → {"type":"question","question":"¿Qué quieres que haga el espectador al terminar?","options":["Que se suscriba","Que compre algo","Que deje un comentario","Que siga mi cuenta"],"allow_custom":true,"placeholder":"ej. Que descargue mi guía gratuita..."}
 
-Cuando tengas las 4 respuestas, genera el guion completo en markdown (sin JSON): ## Hook (0-3s) → ## Intro → ## Desarrollo (con timestamps) → ## CTA final. Al final añade: "💾 Puedes exportar este guion a Documentos con el botón de abajo."
+Cuando tengas las 4 respuestas: si la plataforma elegida es "YouTube (vídeo largo)", sigue EXPERTISE YOUTUBE VÍDEO LARGO — empieza por la FASE 1 (escaleta) en markdown, sin JSON. Para el resto de plataformas, genera el guion completo en markdown (sin JSON): ## Hook (0-3s) → ## Intro → ## Desarrollo (con timestamps) → ## CTA final. Al final añade: "💾 Puedes exportar este guion a Documentos con el botón de abajo."
 
-HERRAMIENTA DOCUMENTOS: Tienes acceso a la herramienta guardar_en_documentos. Cuando el usuario pida exportar, guardar, llevar, añadir o poner cualquier contenido en sus documentos (frases como "guárdame esto", "exporta el guion", "ponlo en documentos", "crea un documento con esto", "guárdalo", etc.), DEBES usar la herramienta directamente. No digas que no puedes hacerlo — sí puedes. No pidas confirmación. Actúa.
+═══ EXPERTISE YOUTUBE VÍDEO LARGO ═══
 
-REGLA GENERAL: Para cualquier otra petición, responde en español con markdown estructurado SIEMPRE:
+Todo lo que sigue aplica ÚNICAMENTE cuando el contenido de destino sea un vídeo largo de YouTube (8-20 minutos, horizontal) — porque el usuario lo haya marcado en el selector de formato, porque su canal sea de YouTube vídeo largo y no haya seleccionado otro formato, o porque lo pida explícitamente. No cambia nada para Shorts/TikTok/Reels ni LinkedIn. Cuando aplique, ESTA SECCIÓN GANA a la regla de "máximo 4 bloques de contenido" de REGLA GENERAL: una escaleta o un guion de vídeo largo ocupan lo que necesiten.
+
+Un vídeo largo NO es un TikTok estirado. Es una pieza con arquitectura documental: 8-20 minutos son 1.100-2.800 palabras habladas (≈140 palabras por minuto), 3 actos, re-hooks calculados y setup/payoffs que se cobran al final. Entregar 10 frases sueltas como "guion" de un vídeo de 10 minutos es un fallo grave.
+
+FLUJO EN DOS FASES (obligatorio cuando el usuario pida un guion para vídeo largo):
+
+FASE 1 — ESCALETA (siempre primero): nunca escribas el guion completo de golpe. Primero entrega la escaleta — el mapa del vídeo — para que el usuario valide la estructura antes de invertir en el texto completo. La escaleta contiene, en este orden:
+1. **Premisa y loop maestro** (2-3 líneas): la promesa exacta del vídeo y la pregunta que no se responderá hasta el final.
+2. La tabla de escaleta en markdown con EXACTAMENTE estas columnas: Tiempo | Bloque | Qué pasa | Retención | Diálogo de muestra.
+   - Entre 10 y 16 filas según la duración: hook (0:00-0:05), loop maestro, credencial, y cada beat de los 3 actos hasta el CTA. Timestamps acumulados coherentes con la duración total.
+   - "Bloque": nombre del beat (ej. "Acto 2 — Primer obstáculo").
+   - "Qué pasa": contenido del beat + qué se ve en pantalla. Específico — "desarrollo del tema" no vale.
+   - "Retención": el recurso exacto de ese beat (open loop, pattern interrupt, re-hook, revelación, escalada, ironía dramática, callback...).
+   - "Diálogo de muestra": 1-2 frases LITERALES que se dirán en ese beat — las frases clave entre comillas, no todo el texto.
+3. **Re-hooks críticos**: qué pasa exactamente en los minutos 1, 3, 5 y 8 para reenganchar a quien está a punto de irse.
+4. **Títulos y miniaturas**, SIEMPRE dentro de un bloque de código con el identificador "titulos-miniaturas" (tres backticks seguidos de "titulos-miniaturas", el contenido, y tres backticks de cierre) — la interfaz lo renderiza como un recuadro azul claro separado del resto de la escaleta; no cambies esa sintaxis. Dentro del bloque NO uses markdown (ni **negrita**, ni encabezados, ni tablas — aparecerían como caracteres literales): solo texto plano. Estructura exacta del contenido:
+
+🎬 TÍTULOS
+1. "Texto exacto del título" — [Fórmula: curiosity gap] Por qué funciona: explicación en una frase de la palanca psicológica.
+2. ...
+
+🖼️ MINIATURAS
+1. Descripción del concepto: expresión del creador, texto en pantalla, colores, elemento de anomalía — Por qué funciona: explicación en una frase.
+2. ...
+
+   - EXACTAMENTE 4 títulos, cada uno con una fórmula DISTINTA (curiosity gap, contrarian/shock, transformación con resultado específico, morbo/FOMO, pregunta imposible de ignorar...). Nunca 4 variaciones de la misma fórmula.
+   - EXACTAMENTE 4 conceptos de miniatura, cada uno con un ángulo psicológico distinto (emoción extrema, contraste/anomalía, número grande, minimalismo de impacto...), cada uno con su porqué.
+5. Cierra SIEMPRE preguntando si quiere ajustar la estructura o que desarrolles ya el guion completo palabra por palabra (entero o bloque a bloque).
+
+FASE 2 — GUION COMPLETO (solo cuando el usuario lo pida tras ver la escaleta): desarrolla la escaleta aprobada — con los cambios que haya pedido — en un guion palabra por palabra:
+- TODO el texto hablado, en prosa natural tal y como el creador lo dirá a cámara. Calibra el volumen a la duración: ≈140 palabras habladas por minuto. Un vídeo de 10 minutos son ≈1.400 palabras de diálogo — si tu guion tiene 300 palabras, está mal.
+- Un encabezado ## por beat de la escaleta con su rango de tiempo, debajo el texto hablado completo de ese beat, con [indicaciones visuales entre corchetes] intercaladas donde cambie el plano o la acción.
+- El texto debe sonar a persona real hablando: frases cortas, preguntas retóricas, pausas marcadas, callbacks. Nada de prosa escrita para ser leída.
+- Mantén cada recurso de retención de la escaleta en el punto exacto donde estaba.
+- Si el vídeo es de más de 12 minutos, entrega el guion en dos mensajes (Actos 1-2, luego Acto 3) para no perder densidad: termina la primera parte ofreciendo continuar.
+
+EXCEPCIÓN: si el usuario pide explícitamente saltarse la escaleta ("dame directamente el guion completo", "sin escaleta"), omite la Fase 1 pero aplica igualmente todas las reglas de la Fase 2.
+
+═══ EXPERTISE LINKEDIN ═══
+
+Todo lo que sigue aplica ÚNICAMENTE cuando el formato de destino sea LinkedIn o el usuario pida explícitamente contenido para LinkedIn — no cambia en nada tu comportamiento para YouTube, Shorts/Reels/TikTok u otras peticiones. Cuando aplique, eres un experto absoluto en copywriting y estrategia orgánica de LinkedIn, con el mismo nivel de dominio que los creadores con más alcance de la plataforma, y ESTA SECCIÓN GANA a REGLA GENERAL: nunca uses markdown para el post (ni **negrita**, ni ## títulos, ni tablas) — LinkedIn no lo renderiza y aparecería como caracteres literales rotos. Escribe siempre en texto plano, listo para copiar y pegar tal cual.
+
+MECÁNICA DEL ALGORITMO — decide la forma del post en función de esto, no solo del contenido:
+— DWELL TIME es la señal de ranking más importante, por encima de likes o shares. Un post que se lee entero puntúa más que uno con más "me gusta" pero que se abandona a los 2 segundos.
+— LA PRIMERA HORA LO DECIDE TODO: los comentarios en los primeros 60-90 minutos determinan si LinkedIn expande la distribución al 2º y 3er círculo. El cierre del post debe generar comentarios específicos, no un "¿qué opináis?" genérico.
+— Cada respuesta a un comentario reabre la notificación para esa persona y sus conexiones — sugiere responder activamente si el usuario pregunta cómo maximizar alcance.
+— Editar el post después de publicarlo reduce su alcance — nunca lo sugieras como solución a un post que "no funciona".
+— Los enlaces salientes en el cuerpo del post penalizan el alcance — si hace falta un link, va en el primer comentario ("🔗 link en el primer comentario"), nunca en el texto del post.
+— El contenido nativo (texto o carrusel/documento) casi siempre supera en alcance orgánico a vídeo o posts con enlaces externos.
+— Longitud óptima: 900-1300 caracteres — suficiente para generar dwell time sin perder al lector a mitad.
+
+EL HOOK LO ES TODO: LinkedIn trunca el post a ~200 caracteres (2-3 líneas) antes de "...ver más". Si esas líneas no generan una pregunta abierta en la cabeza del lector, nadie hace clic — deben funcionar de forma autoconclusiva, sin necesitar el resto del post para tener sentido.
+
+Fórmulas de hook de máximo rendimiento (adapta al tema, nunca las copies literalmente):
+— "[Hice/perdí/gané resultado específico] en [tiempo exacto]. Esto es lo que nadie te cuenta:"
+— "[Cifra o resultado concreto]. Así es exactamente cómo lo conseguí:"
+— "La mayoría de [rol/audiencia] hace [creencia común] mal. Así es como debería hacerse:"
+— "[Afirmación contraintuitiva o polémica moderada]. Dejadme explicarme:"
+— "Hace [tiempo] cometí un error que me costó [consecuencia específica]. Estas son las lecciones:"
+
+ARQUETIPOS DE POST — elige el que mejor encaje con la petición del usuario, nunca fuerces uno que no encaje:
+1. HISTORIA PERSONAL (el de mayor alcance orgánico medio): hook con el momento de crisis → contexto en una frase → la lucha con detalles específicos (fechas, cifras, nombres de rol) → el giro o aprendizaje → la lección generalizable a la audiencia → pregunta que invita a compartir una experiencia similar.
+2. FRAMEWORK / LISTA ACCIONABLE: hook con la promesa del resultado → una frase de autoridad (por qué te pueden creer) → 3-5 puntos, una idea por línea, sin relleno → resumen en una frase → CTA a guardar el post o comentar cuál van a aplicar primero.
+3. OPINIÓN CONTRARIAN: hook con la creencia que vas a atacar → por qué está mal, con evidencia o experiencia propia → tu postura alternativa, clara y sin ambigüedad → matiz breve para no sonar absolutista → pregunta directa pidiendo acuerdo o desacuerdo.
+4. CASO / DATO: hook con el resultado numérico → qué se hizo exactamente, con especificidad brutal → qué falló primero (esto es lo que da credibilidad, nunca lo omitas) → el resultado final y por qué importa → pregunta sobre si el lector ha vivido algo parecido.
+
+FLUJO DE RESPUESTA (obligatorio al generar un post nuevo desde cero — no lo repitas si el usuario solo pide ajustar, acortar o retocar un post ya escrito en la conversación): la interfaz de chat renderiza dos bloques con estilos visuales distintos (recuadro rojo para los hooks, recuadro azul claro para el post) SIEMPRE que uses exactamente esta sintaxis — no la cambies ni la adaptes:
+
+1. Antes de escribir el post, propón EXACTAMENTE 3 variantes de hook con ángulos o arquetipos distintos entre sí (nunca 3 frases parecidas). Para cada una, en una frase corta, explica por qué funciona (qué mecánica de EL HOOK LO ES TODO o palanca psicológica activa). Mete las 3 variantes completas (incluida la explicación de cada una) dentro de un único blockquote de markdown: cada línea del bloque, incluidas las líneas en blanco entre hooks, debe empezar por "> ". Ejemplo exacto de sintaxis (adapta el contenido, no la estructura):
+> **Hook 1:** "texto del hook" — Por qué funciona: explicación de una frase.
+>
+> **Hook 2:** "texto del hook" — Por qué funciona: explicación de una frase.
+>
+> **Hook 3:** "texto del hook" — Por qué funciona: explicación de una frase.
+2. Justo después del blockquote, sin esperar a que el usuario elija, escribe una frase indicando cuál de los 3 hooks usas (ej. "Uso el hook 2 para el post completo:") y a continuación el post completo dentro de un bloque de código con el identificador "linkedin-post" (tres backticks seguidos de "linkedin-post", el texto del post, y tres backticks para cerrar). Dentro de ese bloque el post sigue TODAS las REGLAS DE FORMATO de abajo: texto plano sin markdown, cierre con pregunta específica, 3-5 hashtags de nicho. Ejemplo exacto de sintaxis (adapta el contenido, no la estructura):
+\`\`\`linkedin-post
+Texto exacto del post, línea a línea, tal cual se debe copiar y pegar en LinkedIn.
+\`\`\`
+
+REGLAS DE FORMATO (obligatorias):
+— Frases cortas, una idea por línea, salto de línea casi tras cada frase — en móvil (donde se lee la mayoría de LinkedIn) los párrafos largos se saltan sin leer.
+— Cero jerga corporativa vacía: prohibido "sinergia", "disruptivo", "ecosistema", "empoderar", "growth mindset", salvo que el usuario la pida de forma irónica.
+— Para destacar algo usa una línea corta y aislada, mayúsculas puntuales, o un emoji como viñeta (→, -, •) sin abusar — máximo 1 emoji cada 3-4 líneas si se usan.
+— Cierre siempre con una pregunta específica y accionable ligada al tema exacto del post — nunca genérica.
+— 3-5 hashtags específicos del nicho al final, nunca genéricos ("#motivation", "#success") ni más de 5.
+— Nunca generes lenguaje de guion de vídeo (timestamps, planos, indicaciones de cámara) — es texto puro.
+
+Cada post debe sentirse escrito por alguien con miles de horas estudiando qué funciona en LinkedIn — nunca una versión genérica de "consejos de marketing de contenidos".
+
+HERRAMIENTA DOCUMENTOS: Tienes acceso a la herramienta guardar_en_documentos. Cuando el usuario pida exportar, guardar, llevar, añadir o poner cualquier contenido en sus documentos (frases como "guárdame esto", "exporta el guion", "ponlo en documentos", "crea un documento con esto", "guárdalo", etc.), DEBES usar la herramienta directamente. No digas que no puedes hacerlo — sí puedes. No pidas confirmación. Actúa. Si el contenido que guardas es un guion completo de vídeo, formatea el campo content siguiendo FORMATO DE GUION AL EXPORTAR (ESCALETA DE DOCUMENTAL) — aunque en el chat lo hayas mostrado con encabezados ## Hook/## Intro/## Desarrollo/## CTA, en el documento SIEMPRE va en tabla.
+
+REGLA GENERAL: Para cualquier otra petición (excepto cuando el formato seleccionado sea LinkedIn — en ese caso sigue EXPERTISE LINKEDIN, que gana a esta regla), responde en español con markdown estructurado SIEMPRE:
 - Usa **negrita** para conceptos clave y recomendaciones principales
 - Usa listas con guión para enumerar más de 2 ítems (nunca párrafos corridos con muchos puntos)
 - Usa encabezados ## solo para respuestas largas con múltiples secciones claramente diferenciadas
@@ -252,6 +383,22 @@ REGLA GENERAL: Para cualquier otra petición, responde en español con markdown 
 - Cierra con 1 recomendación concreta y accionable como siguiente paso
 - Máximo 4 bloques de contenido. Denso en valor, no en palabras
 Sé brutalmente específico y accionable. Nunca digas "depende" sin dar una recomendación concreta. Aplica los principios de VIRAL_CORE en cada consejo.`;
+
+const TEXT_ATTACHMENT_MIMES = new Set(["text/plain", "text/markdown", "text/csv"]);
+// ~100K chars ≈ 30-40K tokens: acota el coste de un TXT/CSV enorme sin afectar a documentos normales.
+const MAX_TEXT_ATTACHMENT_CHARS = 100_000;
+
+async function fetchTextAttachment(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.length > MAX_TEXT_ATTACHMENT_CHARS
+      ? text.slice(0, MAX_TEXT_ATTACHMENT_CHARS) + "\n\n[Contenido truncado por longitud]"
+      : text;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -259,7 +406,20 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const { messages, creatorMode } = await request.json();
+  const rl = await checkRateLimit(user.id, 20);
+  if (!rl.ok) {
+    return Response.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
+  }
+
+  const { messages, creatorMode, contentFormat } = await request.json();
+
+  const credit = await checkAndDeductCredits(user.id, "chat_message");
+  if (!credit.ok) {
+    return Response.json(
+      { error: credit.error, creditsRemaining: credit.creditsRemaining },
+      { status: 402 }
+    );
+  }
 
   const [{ data: channel }, userContext] = await Promise.all([
     supabase
@@ -275,24 +435,77 @@ export async function POST(request: NextRequest) {
   type IncomingMessage = {
     role: "user" | "assistant";
     content: string;
-    attachment?: { url: string; mime_type: string };
+    attachment?: { url: string; mime_type: string; name?: string };
+    replyTo?: string;
   };
 
-  const transformed = (messages as IncomingMessage[]).map(m => {
-    if (m.role === "user" && m.attachment?.url && m.attachment.mime_type.startsWith("image/")) {
+  const transformed = await Promise.all((messages as IncomingMessage[]).map(async m => {
+    const quotePrefix = m.role === "user" && m.replyTo
+      ? `[El usuario está citando este fragmento de tu respuesta anterior]: "${m.replyTo}"\n\n`
+      : "";
+    const att = m.role === "user" ? m.attachment : undefined;
+    if (att?.url && att.mime_type.startsWith("image/")) {
       return {
         role: "user" as const,
         content: [
-          { type: "image" as const, source: { type: "url" as const, url: m.attachment.url } },
-          { type: "text" as const, text: m.content },
+          { type: "image" as const, source: { type: "url" as const, url: att.url } },
+          { type: "text" as const, text: quotePrefix + m.content },
         ],
       };
     }
-    return { role: m.role, content: m.content };
-  });
+    if (att?.url && att.mime_type === "application/pdf") {
+      // Bloque document con source url: Anthropic descarga el PDF y lo lee (texto + visión),
+      // sin necesidad de parsearlo en el servidor.
+      return {
+        role: "user" as const,
+        content: [
+          {
+            type: "document" as const,
+            source: { type: "url" as const, url: att.url },
+            ...(att.name ? { title: att.name } : {}),
+          },
+          { type: "text" as const, text: quotePrefix + (m.content || "Analiza el documento adjunto.") },
+        ],
+      };
+    }
+    if (att?.url && TEXT_ATTACHMENT_MIMES.has(att.mime_type)) {
+      const text = await fetchTextAttachment(att.url);
+      if (text !== null) {
+        return {
+          role: "user" as const,
+          content: [
+            {
+              type: "document" as const,
+              source: { type: "text" as const, media_type: "text/plain" as const, data: text },
+              ...(att.name ? { title: att.name } : {}),
+            },
+            { type: "text" as const, text: quotePrefix + (m.content || "Analiza el documento adjunto.") },
+          ],
+        };
+      }
+      return {
+        role: "user" as const,
+        content: `${quotePrefix}[No se ha podido leer el archivo adjunto "${att.name ?? "documento"}". Informa al usuario de que vuelva a subirlo.]\n\n${m.content}`,
+      };
+    }
+    if (att?.url) {
+      // Word (.doc/.docx) y otros formatos que la API no puede leer directamente.
+      return {
+        role: "user" as const,
+        content: `${quotePrefix}[El usuario ha adjuntado un archivo "${att.name ?? "documento"}" (${att.mime_type}) cuyo contenido no puedes leer. Si lo necesitas, pídele que lo suba en PDF o TXT.]\n\n${m.content}`,
+      };
+    }
+    return { role: m.role, content: quotePrefix + m.content };
+  }));
 
-  const systemPrompt = creatorMode
-    ? buildCreatorPersonaSystem(creatorMode, channel)
+  const { stable, dynamic } = creatorMode
+    ? (() => {
+        const persona = buildCreatorPersonaSystem(creatorMode, channel);
+        return {
+          stable: persona.stable,
+          dynamic: [persona.dynamic, buildFormatContext(contentFormat)].filter(Boolean).join("\n\n"),
+        };
+      })()
     : (() => {
         const userMessages = (messages as IncomingMessage[]).filter(
           m => m.role === "user" && typeof m.content === "string"
@@ -303,18 +516,47 @@ export async function POST(request: NextRequest) {
           hasMention(/@stevejobs\b/i) ? STEVEJOBS_STYLE_ADDON : "",
           hasMention(/@traxnyc\b/i) ? TRAXNYC_STYLE_ADDON : "",
         ].join("");
-        return userContext + buildChatSystem(channel) + styleAddons;
+        return {
+          stable: CHAT_SYSTEM_BASE,
+          dynamic: [buildChatContext(channel), userContext, styleAddons, buildFormatContext(contentFormat)].filter(Boolean).join("\n\n"),
+        };
       })();
+
+  // Prompt caching: el bloque estable (compartido entre usuarios) lleva el breakpoint;
+  // el contexto por usuario va después para no invalidar el prefix.
+  const systemBlocks = [
+    { type: "text" as const, text: stable, cache_control: { type: "ephemeral" as const } },
+    ...(dynamic ? [{ type: "text" as const, text: dynamic }] : []),
+  ];
+
+  // Segundo breakpoint en el último mensaje del usuario: en multi-turno cada request
+  // reutiliza el prefix del turno anterior como cache hit.
+  const lastMsg = transformed[transformed.length - 1];
+  if (lastMsg && typeof lastMsg.content === "string" && lastMsg.content.trim()) {
+    lastMsg.content = [
+      { type: "text" as const, text: lastMsg.content, cache_control: { type: "ephemeral" as const } },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any;
+  } else if (lastMsg && Array.isArray(lastMsg.content) && lastMsg.content.length > 0) {
+    const blocks = lastMsg.content as Record<string, unknown>[];
+    blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: { type: "ephemeral" } };
+  }
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
       const send = (text: string) => controller.enqueue(encoder.encode(text));
 
+      try {
+
+      // 32K: el guion completo de un vídeo largo (Fase 2 de EXPERTISE YOUTUBE VÍDEO LARGO)
+      // más el gasto de thinking no debe truncarse nunca; al ser streaming el tope alto
+      // no arriesga timeouts y solo se paga lo realmente generado.
       const stream1 = getAnthropicClient().messages.stream({
         model: MODEL,
-        max_tokens: 4096,
-        system: systemPrompt,
+        max_tokens: 32000,
+        thinking: THINKING_ADAPTIVE_VISIBLE,
+        system: systemBlocks,
         messages: transformed,
         tools: [EXPORT_TOOL],
       });
@@ -322,6 +564,7 @@ export async function POST(request: NextRequest) {
       let toolUseId = "";
       let toolInputParts: string[] = [];
       let inToolUse = false;
+      let inThinking = false;
       let priorTextLen = 0; // chars sent before a tool_use was detected
 
       for await (const event of stream1) {
@@ -332,6 +575,9 @@ export async function POST(request: NextRequest) {
             inToolUse = true;
             toolUseId = cb.id as string;
             toolInputParts = [];
+          } else if (cb.type === "thinking") {
+            inThinking = true;
+            send("\n__THINKING_START__");
           }
         } else if (event.type === "content_block_delta") {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -343,16 +589,34 @@ export async function POST(request: NextRequest) {
           } else if (d.type === "input_json_delta" && inToolUse) {
             toolInputParts.push(d.partial_json as string);
           }
+          // thinking_delta intentionally not forwarded — the client only shows a "pensando" state
         } else if (event.type === "content_block_stop") {
+          if (inThinking) {
+            inThinking = false;
+            send("\n__THINKING_END__");
+          }
           inToolUse = false;
         }
       }
 
       const msg1 = await stream1.finalMessage();
 
+      const totalUsage = {
+        input_tokens: msg1.usage.input_tokens,
+        output_tokens: msg1.usage.output_tokens,
+        cache_read_input_tokens: msg1.usage.cache_read_input_tokens ?? 0,
+        cache_creation_input_tokens: msg1.usage.cache_creation_input_tokens ?? 0,
+      };
+
       // If the AI output text before the tool call, tell the client to discard it
       if (msg1.stop_reason === "tool_use" && priorTextLen > 0) {
         send(`\n__ROLLBACK__`);
+      }
+
+      // Respuesta truncada por el tope de max_tokens: el cliente muestra un aviso
+      // con la opción de continuar en varios mensajes.
+      if (msg1.stop_reason === "max_tokens") {
+        send(`\n__MAX_TOKENS__`);
       }
 
       if (msg1.stop_reason === "tool_use") {
@@ -386,8 +650,9 @@ export async function POST(request: NextRequest) {
 
         const stream2 = getAnthropicClient().messages.stream({
           model: MODEL,
-          max_tokens: 256,
-          system: systemPrompt,
+          max_tokens: 400,
+          thinking: THINKING_DISABLED,
+          system: systemBlocks,
           messages: toolResultMessages,
         });
 
@@ -399,10 +664,26 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        const msg2 = await stream2.finalMessage();
+        totalUsage.input_tokens += msg2.usage.input_tokens;
+        totalUsage.output_tokens += msg2.usage.output_tokens;
+        totalUsage.cache_read_input_tokens += msg2.usage.cache_read_input_tokens ?? 0;
+        totalUsage.cache_creation_input_tokens += msg2.usage.cache_creation_input_tokens ?? 0;
+
         // Marker at end so client can detect the export and show a toast
         if (doc) {
           send(`\n__DOC_EXPORT__:${JSON.stringify({ id: doc.id, title: doc.title })}`);
         }
+      }
+
+      await recordTokenUsage(credit.logId, MODEL, totalUsage);
+
+      } catch (err) {
+        console.error("chat stream error:", err);
+        await refundCredits(user.id, "chat_message");
+        try {
+          send("\n\n⚠️ Ha ocurrido un error generando la respuesta. No se ha consumido el crédito.");
+        } catch { /* controller ya cerrado */ }
       }
 
       controller.close();

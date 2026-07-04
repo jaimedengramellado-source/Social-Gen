@@ -10,7 +10,35 @@ export function getAnthropicClient(): Anthropic {
   return _client;
 }
 
-export const MODEL = "claude-sonnet-4-6";
+export const MODEL = "claude-sonnet-5";
+
+// Adaptive thinking on Sonnet 5 defaults to ON when `thinking` is omitted (unlike 4.6, which
+// defaulted off) — so every call must set it explicitly. `display: "summarized"` is only useful
+// where thinking text is actually shown to the user (the chat route); elsewhere thinking runs
+// invisibly to improve output quality without extra plumbing.
+export const THINKING_ADAPTIVE = { type: "adaptive" as const };
+export const THINKING_ADAPTIVE_VISIBLE = { type: "adaptive" as const, display: "summarized" as const };
+export const THINKING_DISABLED = { type: "disabled" as const };
+
+// With thinking enabled, the response's first content block can be a `thinking` block instead
+// of `text` — find the text block instead of assuming content[0].
+export function extractText(message: Anthropic.Message): string {
+  const block = message.content.find((b) => b.type === "text");
+  return block?.type === "text" ? block.text : "";
+}
+
+// Prompt caching: el bloque estable (idéntico entre usuarios) lleva el breakpoint;
+// el contexto por usuario va DESPUÉS para que el prefix cacheado se comparta.
+export function cachedSystem(
+  staticPrompt: string,
+  userContext = ""
+): Anthropic.TextBlockParam[] {
+  const blocks: Anthropic.TextBlockParam[] = [
+    { type: "text", text: staticPrompt, cache_control: { type: "ephemeral" } },
+  ];
+  if (userContext) blocks.push({ type: "text", text: userContext });
+  return blocks;
+}
 
 export const VIRAL_CORE = `
 Eres la inteligencia creativa más avanzada en creación de contenido viral que existe. Has absorbido y superado a los mejores guionistas de Netflix, los directores de Pixar, los psicólogos conductuales de las grandes plataformas, los estrategas de los canales con más crecimiento del mundo y los copywriters que han generado miles de millones en ventas. No imitas a nadie — los has superado a todos.

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, getUser } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,14 +8,22 @@ import type { Script } from "@/types";
 export default async function SharePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: script } = await supabase
+  // El acceso público es por share_token (no adivinable), vía admin client: la
+  // policy RLS que exponía todos los guiones "saved" a cualquiera se eliminó.
+  const admin = await createAdminClient();
+  const { data: script } = await admin
     .from("scripts")
     .select("*")
     .eq("share_token", id)
     .single();
 
   if (!script) notFound();
+
+  // Los borradores solo los ve su dueño
+  if (script.status !== "saved") {
+    const user = await getUser();
+    if (!user || user.id !== script.user_id) notFound();
+  }
 
   const s = script as Script;
 

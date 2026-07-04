@@ -7,7 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- BEGIN:project-overview -->
 # Viralcraft / Social Gen
 
-Aplicación web para creadores de contenido en TikTok/Instagram. Asiste con ideas, guiones, hooks y estrategia mediante IA. Marca de producto: **"Social Gen"** (logo: "Social" en Instrument Serif normal + "Gen" en itálica morada).
+Aplicación web para creadores de contenido en TikTok/Instagram. Asiste con ideas, guiones, hooks y estrategia mediante IA. Marca de producto: **"Social Gen"** (logo: "Social" en Instrument Serif normal + "Gen" en itálica en el color primary).
 
 **Idioma del producto**: español. Todo copy de UI, placeholders, mensajes de error y comentarios visibles al usuario van en español. Variables, identifiers y commits en inglés.
 
@@ -15,7 +15,7 @@ Aplicación web para creadores de contenido en TikTok/Instagram. Asiste con idea
 - Next.js 16.2.4 (App Router) + React 19.2 + TypeScript 5
 - Tailwind CSS v4 (config en `globals.css` con `@theme`, no `tailwind.config.js`)
 - Supabase (Auth + Postgres + Storage) vía `@supabase/ssr`
-- Anthropic SDK (`@anthropic-ai/sdk` 0.92), modelo por defecto `claude-haiku-4-5-20251001`
+- Anthropic SDK (`@anthropic-ai/sdk` 0.92), modelo por defecto `claude-sonnet-5`
 - Stripe (subs + créditos one-time)
 - Radix UI primitives + `lucide-react` iconos + Framer Motion + Recharts
 - Package manager: **pnpm** (`pnpm dev`, `pnpm build`, `pnpm lint`)
@@ -55,7 +55,7 @@ SETUP.md                 # pasos manuales de Supabase + Stripe + .env.local
 
 **Tema visual**: variables CSS en [src/app/globals.css](src/app/globals.css) bajo `@theme`. Úsalas siempre, no hardcodees colores:
 - `--color-background` #F8F7F4 (crema), `--color-foreground` #0D0D0D
-- `--color-primary` #7C3AED (morado), `--color-primary-light` #EDE9FE
+- `--color-primary` #8C2230 (rojo/burdeos), `--color-primary-light` #F7DEE2
 - `--color-border` #E5E5E5, `--color-muted` #F4F4F5, `--color-muted-foreground` #6B6B6B
 - `--color-destructive` #DC2626, `--color-success` #059669
 - Modo oscuro: clase `html.dark` con overrides en el mismo `globals.css`
@@ -66,7 +66,7 @@ SETUP.md                 # pasos manuales de Supabase + Stripe + .env.local
 
 **Patrón de styling**: Tailwind className + `style={{ ... }}` cuando hace falta una variable CSS (`var(--color-X)`). Evita CSS modules y styled-components — no se usan.
 
-**Focus ring**: `:focus-visible` global pinta outline morado en botones/links/chips. **Inputs/textareas/selects están excluidos**: en formularios, indica foco con `focus-within:` en el wrapper (borde más oscuro + sombra suave).
+**Focus ring**: `:focus-visible` global pinta outline en el color primary en botones/links/chips. **Inputs/textareas/selects están excluidos**: en formularios, indica foco con `focus-within:` en el wrapper (borde más oscuro + sombra suave).
 
 **Auth en Route Handlers**:
 ```ts
@@ -94,7 +94,7 @@ if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 ```ts
 const stream = await getAnthropicClient().messages.stream({
-  model: "claude-haiku-4-5-20251001",
+  model: "claude-sonnet-5",
   max_tokens: 1024,
   system: SYSTEM_PROMPT,                    // estable, idealmente >4096 tokens
   cache_control: { type: "ephemeral" },     // ← auto-cachea system (+tools si los hay)

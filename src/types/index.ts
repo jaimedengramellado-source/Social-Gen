@@ -135,6 +135,7 @@ export interface UsageLog {
 }
 
 export const CREDIT_COSTS = {
+  chat_message: 1,
   generate_5_ideas: 1,
   generate_10_ideas: 2,
   generate_15_ideas: 3,
@@ -204,8 +205,8 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "starter",
     name: "1.000 seguidores",
-    price_weekly: 4.75,
-    price_annual_total: 205.83,
+    price_weekly: 2.49,
+    price_annual_total: 124.99,
     credits: 100,
     features: [
       "100 créditos/semana",
@@ -218,8 +219,8 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "pro",
     name: "100.000 seguidores",
-    price_weekly: 12.25,
-    price_annual_total: 530.83,
+    price_weekly: 6.49,
+    price_annual_total: 324.99,
     credits: 300,
     highlighted: true,
     features: [
@@ -234,8 +235,8 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: "agency",
     name: "1.000.000 seguidores",
-    price_weekly: 24.75,
-    price_annual_total: 1072.50,
+    price_weekly: 19.99,
+    price_annual_total: 999.99,
     credits: 1000,
     features: [
       "1000 créditos/semana",

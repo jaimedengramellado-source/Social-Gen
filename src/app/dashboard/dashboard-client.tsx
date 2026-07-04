@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Zap, ArrowRight, TrendingUp, FileText, Plus, Sparkles } from "lucide-react";
+import { Zap, ArrowRight, TrendingUp, FileText, Plus, Bookmark } from "lucide-react";
 import Link from "next/link";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
+import { SavedIdeasModal } from "@/components/creator/saved-ideas-modal";
 import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
 import { timeAgo } from "@/lib/utils";
 import { PLATFORM_LABELS } from "@/types";
@@ -39,6 +40,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
   const router = useRouter();
   const [sorprendiendome, setSorprendiendome] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showSavedIdeas, setShowSavedIdeas] = useState(false);
   const [sorpresas, setSorpresas] = useState<Idea[]>([]);
 
   const firstName = profile.full_name?.split(" ")[0] || "creador";
@@ -61,12 +63,13 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} />
+      <SavedIdeasModal open={showSavedIdeas} onClose={() => setShowSavedIdeas(false)} />
 
       {/* ── Greeting ── */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold mb-0.5" style={{ fontFamily: "var(--font-serif)" }}>{greeting()}, {firstName}</h1>
-          <p className="text-sm text-[var(--color-muted-foreground)]">
+          <h1 className="text-2xl font-semibold mb-0.5" style={{ fontFamily: "var(--font-serif)" }} suppressHydrationWarning>{greeting()}, {firstName}</h1>
+          <p className="text-sm text-[var(--color-muted-foreground)]" suppressHydrationWarning>
             {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
           </p>
         </div>
@@ -82,7 +85,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
       {/* ── Primary CTA ── */}
       <div
         className="mb-6 p-5 md:p-6 rounded-2xl border-2 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md:gap-6"
-        style={{ borderColor: YT_RED, boxShadow: "0 4px 24px rgba(124,58,237,0.10)" }}
+        style={{ borderColor: YT_RED, boxShadow: "0 4px 24px rgba(140,34,48,0.10)" }}
       >
         <div>
           <p className="text-base font-semibold mb-1">Crea tu próximo guion viral</p>
@@ -101,21 +104,31 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-3 gap-3 mb-8">
-        {[
-          { label: "Guiones creados", value: totalScripts.toString(), icon: FileText },
-          { label: "Ideas guardadas", value: totalIdeas.toString(), icon: Sparkles },
-          { label: "Viral score medio", value: avgScore !== null ? `${avgScore}` : "—", icon: TrendingUp },
-        ].map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="bg-white rounded-2xl border border-[var(--color-border)] p-4"
-            style={{ boxShadow: "var(--shadow-card)" }}
-          >
-            <Icon size={14} className="text-[var(--color-muted-foreground)] mb-2" />
-            <p className="text-2xl font-black" style={{ color: YT_RED }}>{value}</p>
-            <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5">{label}</p>
-          </div>
-        ))}
+        <div
+          className="bg-white rounded-2xl border border-[var(--color-border)] p-4"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <FileText size={14} className="text-[var(--color-muted-foreground)] mb-2" />
+          <p className="text-2xl font-black" style={{ color: YT_RED }}>{totalScripts}</p>
+          <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5">Guiones creados</p>
+        </div>
+        <button
+          onClick={() => setShowSavedIdeas(true)}
+          className="text-left bg-white rounded-2xl border-2 p-4 transition-all hover:-translate-y-0.5"
+          style={{ borderColor: YT_RED, boxShadow: "var(--shadow-card)" }}
+        >
+          <Bookmark size={14} style={{ color: YT_RED }} className="mb-2" />
+          <p className="text-2xl font-black" style={{ color: YT_RED }}>{totalIdeas}</p>
+          <p className="text-xs font-semibold mt-0.5" style={{ color: YT_RED }}>Ideas guardadas →</p>
+        </button>
+        <div
+          className="bg-white rounded-2xl border border-[var(--color-border)] p-4"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <TrendingUp size={14} className="text-[var(--color-muted-foreground)] mb-2" />
+          <p className="text-2xl font-black" style={{ color: YT_RED }}>{avgScore !== null ? avgScore : "—"}</p>
+          <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5">Viral score medio</p>
+        </div>
       </div>
 
       {/* ── Sorpréndeme ── */}

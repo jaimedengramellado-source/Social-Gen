@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripeClient, STRIPE_PRICE_IDS, CREDIT_PACK_PRICE_IDS, CREDITS_PER_EUR } from "@/lib/stripe";
+import { getStripeClient, STRIPE_PRICE_IDS, CREDIT_PACK_PRICE_IDS, getTopupCredits } from "@/lib/stripe";
 import type { Plan } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const amountCents = amountNum * 100;
-    const credits = amountNum * CREDITS_PER_EUR;
+    const credits = getTopupCredits(amountNum);
     const productName = `${credits} créditos — Social Gen`;
 
     if (recurring) {

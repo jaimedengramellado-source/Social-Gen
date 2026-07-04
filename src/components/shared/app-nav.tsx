@@ -31,7 +31,7 @@ export function AppNav() {
         style={{
           backgroundColor: crearActive ? "var(--color-primary)" : "transparent",
           color: crearActive ? "white" : "var(--color-primary)",
-          boxShadow: crearActive ? "0 2px 10px rgba(124,58,237,0.4)" : undefined,
+          boxShadow: crearActive ? "0 2px 10px rgba(140,34,48,0.4)" : undefined,
         }}
       >
         <Sparkles size={14} strokeWidth={1.8} />
@@ -47,7 +47,7 @@ export function AppNav() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 hover:scale-105"
             style={{
               backgroundColor: active ? "var(--color-muted)" : "transparent",
-              color: active ? "var(--color-foreground)" : "var(--color-muted-foreground)",
+              color: active ? "var(--color-foreground)" : "var(--color-nav-foreground)",
             }}
           >
             <Icon size={14} strokeWidth={1.8} />

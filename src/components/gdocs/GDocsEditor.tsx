@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
+import { TextSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle, Color, FontFamily, FontSize, BackgroundColor } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
+import { TableKit } from "@tiptap/extension-table/kit";
 import { ResizableImage } from "./ResizableImage";
 import { createClient } from "@/lib/supabase/client";
 import { GDocsHeader } from "./GDocsHeader";
@@ -130,6 +132,7 @@ export function GDocsEditor(props: GDocsEditorProps) {
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: "noopener noreferrer" } }),
       Underline,
       ResizableImage.configure({ inline: false, allowBase64: false }),
+      TableKit.configure({ table: { resizable: true } }),
     ],
     content: initialContent as string | object,
     immediatelyRender: false,
@@ -146,6 +149,37 @@ export function GDocsEditor(props: GDocsEditorProps) {
           } catch { /* ignore */ }
         });
         return true;
+      },
+      // Tab in the last cell of a table adds a new row instead of tabbing out, like a spreadsheet
+      handleKeyDown(_view, event) {
+        if (event.key === "Tab" && !event.shiftKey) {
+          const ed = editorRef.current;
+          if (!ed || !ed.isActive("table") || ed.can().goToNextCell()) return false;
+          event.preventDefault();
+          ed.chain().focus().addRowAfter().goToNextCell().run();
+          return true;
+        }
+        // Ctrl/Cmd+A inside a table cell selects the cell's text first (like Google Docs),
+        // so typing to replace a cell's content can't accidentally wipe the whole document.
+        // A second press with the cell already fully selected falls through to select-all-doc.
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+          const ed = editorRef.current;
+          if (!ed || !ed.isActive("table")) return false;
+          const { state } = ed;
+          const { $from } = state.selection;
+          let cellDepth = -1;
+          for (let d = $from.depth; d > 0; d--) {
+            if (["tableCell", "tableHeader"].includes($from.node(d).type.name)) { cellDepth = d; break; }
+          }
+          if (cellDepth === -1) return false;
+          const cellStart = $from.start(cellDepth);
+          const cellEnd = $from.end(cellDepth);
+          if (state.selection.from <= cellStart && state.selection.to >= cellEnd) return false;
+          event.preventDefault();
+          ed.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, cellStart, cellEnd)));
+          return true;
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {

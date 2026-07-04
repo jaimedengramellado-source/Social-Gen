@@ -121,6 +121,26 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
     setUploadPreview(URL.createObjectURL(file));
   }
 
+  function insertEscaletaTable() {
+    setOpenMenu(null);
+    const emptyCell = () => ({ type: "tableCell", content: [{ type: "paragraph" }] });
+    editor.chain().focus().insertContent({
+      type: "table",
+      content: [
+        {
+          type: "tableRow",
+          content: ["Tiempo", "Descripción", "Diálogo"].map(text => ({
+            type: "tableHeader",
+            content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+          })),
+        },
+        { type: "tableRow", content: [emptyCell(), emptyCell(), emptyCell()] },
+        { type: "tableRow", content: [emptyCell(), emptyCell(), emptyCell()] },
+        { type: "tableRow", content: [emptyCell(), emptyCell(), emptyCell()] },
+      ],
+    }).run();
+  }
+
   const menus: MenuDef[] = [
     {
       name: "Archivo",
@@ -160,9 +180,29 @@ export function GDocsMenuBar({ editor }: GDocsMenuBarProps) {
             else editor.chain().focus().unsetLink().run();
           },
         },
+        { label: "Tabla de escaleta (Tiempo / Descripción / Diálogo)", action: insertEscaletaTable },
         { divider: true, label: "" },
         { label: "Salto de línea", action: () => { editor.chain().focus().setHardBreak().run(); setOpenMenu(null); } },
         { label: "Línea horizontal", action: () => { editor.chain().focus().setHorizontalRule().run(); setOpenMenu(null); } },
+      ],
+    },
+    {
+      name: "Tabla",
+      items: [
+        { label: "Insertar tabla de escaleta", action: insertEscaletaTable },
+        { divider: true, label: "" },
+        { label: "Insertar fila arriba", action: () => { editor.chain().focus().addRowBefore().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
+        { label: "Insertar fila abajo", action: () => { editor.chain().focus().addRowAfter().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
+        { label: "Eliminar fila", action: () => { editor.chain().focus().deleteRow().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
+        { divider: true, label: "" },
+        { label: "Insertar columna izquierda", action: () => { editor.chain().focus().addColumnBefore().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
+        { label: "Insertar columna derecha", action: () => { editor.chain().focus().addColumnAfter().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
+        { label: "Eliminar columna", action: () => { editor.chain().focus().deleteColumn().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
+        { divider: true, label: "" },
+        { label: "Combinar celdas", action: () => { editor.chain().focus().mergeCells().run(); setOpenMenu(null); }, disabled: !editor.can().mergeCells() },
+        { label: "Dividir celda", action: () => { editor.chain().focus().splitCell().run(); setOpenMenu(null); }, disabled: !editor.can().splitCell() },
+        { divider: true, label: "" },
+        { label: "Eliminar tabla", action: () => { editor.chain().focus().deleteTable().run(); setOpenMenu(null); }, disabled: !editor.isActive("table") },
       ],
     },
     {

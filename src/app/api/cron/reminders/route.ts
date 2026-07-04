@@ -32,8 +32,9 @@ function offsetLabel(mins: number): string {
 }
 
 export async function GET(request: NextRequest) {
+  // Fail closed: sin CRON_SECRET configurado el endpoint queda cerrado
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && request.headers.get("Authorization") !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || request.headers.get("Authorization") !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
             ${ev.description ? `<p style="color:#374151;font-size:14px;margin:12px 0 0;white-space:pre-line">📝 ${ev.description as string}</p>` : ""}
           </div>
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/calendario"
-             style="display:inline-block;background:#7C3AED;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600">
+             style="display:inline-block;background:#8C2230;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600">
             Ver calendario →
           </a>
           <p style="color:#9ca3af;font-size:12px;margin-top:24px">${reminderNote}</p>

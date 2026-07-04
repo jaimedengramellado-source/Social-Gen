@@ -585,7 +585,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
                   : "Describe la imagen que quieres crear"}
               </label>
               <div
-                className="rounded-xl border transition-all focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.08)]"
+                className="rounded-xl border transition-all focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(140,34,48,0.08)]"
                 style={{ borderColor: "var(--color-border)" }}
               >
                 <textarea
@@ -744,7 +744,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
               style={{
                 backgroundColor: "var(--color-primary)",
                 boxShadow: canGenerate
-                  ? "0 2px 12px rgba(124,58,237,0.35)"
+                  ? "0 2px 12px rgba(140,34,48,0.35)"
                   : undefined,
               }}
             >
@@ -879,7 +879,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
               {currentImage && !loading && (
                 <div className="space-y-1.5">
                   <div
-                    className="flex items-center gap-1 rounded-xl border transition-all focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.08)]"
+                    className="flex items-center gap-1 rounded-xl border transition-all focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(140,34,48,0.08)]"
                     style={{ borderColor: "var(--color-border)" }}
                   >
                     <input
@@ -1015,7 +1015,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
                   {previewLasso.hasSelection && (
                     <div className="space-y-1.5">
                       <div
-                        className="rounded-xl border transition-all focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.08)]"
+                        className="rounded-xl border transition-all focus-within:border-[var(--color-primary)] focus-within:shadow-[0_0_0_3px_rgba(140,34,48,0.08)]"
                         style={{ borderColor: "var(--color-border)" }}
                       >
                         <input

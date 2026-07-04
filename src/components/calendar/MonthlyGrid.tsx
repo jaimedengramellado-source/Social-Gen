@@ -162,11 +162,11 @@ export function MonthlyGrid({
               style={{
                 opacity: isCurrentMonth ? 1 : 0.38,
                 backgroundColor: isDragOver
-                  ? "rgba(124,58,237,0.06)"
+                  ? "rgba(140,34,48,0.06)"
                   : isWeekend
                   ? "rgba(0,0,0,0.012)"
                   : undefined,
-                outline: isDragOver ? "2px inset rgba(124,58,237,0.3)" : undefined,
+                outline: isDragOver ? "2px inset rgba(140,34,48,0.3)" : undefined,
               }}
             >
               <div className="flex justify-end mb-1">
