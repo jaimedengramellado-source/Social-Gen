@@ -111,7 +111,7 @@ function OnboardingFlow() {
       <div className="w-full max-w-xl">
         {/* Logo */}
         <p className="text-center text-xl font-normal mb-10" style={{ fontFamily: "var(--font-instrument-serif)" }}>
-          Social Gen
+          Social Flamingo
         </p>
 
         {isPlanFlow && <PlanSteps current={3} />}

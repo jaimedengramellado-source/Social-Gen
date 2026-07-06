@@ -1,4 +1,4 @@
--- Esquema completo de Social Gen — regenerado desde la base de datos real (2026-07-03).
+-- Esquema completo de Social Flamingo — regenerado desde la base de datos real (2026-07-03).
 -- Ejecutar entero en el SQL Editor de Supabase en un proyecto nuevo.
 
 create table profiles (

@@ -9,7 +9,7 @@ const faqs = [
   },
   {
     q: "¿Los guiones son para YouTube largo y para formatos cortos?",
-    a: "Sí. Social Gen adapta la estructura del guion según la plataforma. Para YouTube largo incluye secciones de retención cada 60-90 segundos. Para Shorts, TikTok y Reels, la estructura es hook de 2 segundos, desarrollo conciso y remate que genera comentarios.",
+    a: "Sí. Social Flamingo adapta la estructura del guion según la plataforma. Para YouTube largo incluye secciones de retención cada 60-90 segundos. Para Shorts, TikTok y Reels, la estructura es hook de 2 segundos, desarrollo conciso y remate que genera comentarios.",
   },
   {
     q: "¿Qué es el Viral Score?",

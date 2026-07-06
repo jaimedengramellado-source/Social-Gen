@@ -43,7 +43,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
           className="text-xl font-normal"
           style={{ fontFamily: "var(--font-instrument-serif)" }}
         >
-          Social Gen
+          Social Flamingo
         </span>
       </Link>
 

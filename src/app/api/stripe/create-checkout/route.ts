@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const amountCents = amountNum * 100;
     const credits = getTopupCredits(amountNum);
-    const productName = `${credits} créditos — Social Gen`;
+    const productName = `${credits} créditos — Social Flamingo`;
 
     if (recurring) {
       const session = await getStripeClient().checkout.sessions.create({

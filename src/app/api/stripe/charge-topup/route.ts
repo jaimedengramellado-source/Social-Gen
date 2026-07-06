@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       // hace falta un Price real, así que reutilizamos un Product estable (idempotente) y creamos
       // un Price nuevo para este importe.
       const product = await stripe.products.create(
-        { name: "Créditos — Social Gen" },
+        { name: "Créditos — Social Flamingo" },
         { idempotencyKey: "credit-topup-product-v1" }
       );
       const price = await stripe.prices.create({

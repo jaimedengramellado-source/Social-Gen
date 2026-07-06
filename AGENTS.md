@@ -5,9 +5,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- END:nextjs-agent-rules -->
 
 <!-- BEGIN:project-overview -->
-# Viralcraft / Social Gen
+# Viralcraft / Social Flamingo
 
-Aplicación web para creadores de contenido en TikTok/Instagram. Asiste con ideas, guiones, hooks y estrategia mediante IA. Marca de producto: **"Social Gen"** (logo: "Social" en Instrument Serif normal + "Gen" en itálica en el color primary).
+Aplicación web para creadores de contenido en TikTok/Instagram. Asiste con ideas, guiones, hooks y estrategia mediante IA. Marca de producto: **"Social Flamingo"** (logo: "Social" en Instrument Serif normal + "Flamingo" en itálica en el color primary).
 
 **Idioma del producto**: español. Todo copy de UI, placeholders, mensajes de error y comentarios visibles al usuario van en español. Variables, identifiers y commits en inglés.
 

@@ -588,7 +588,7 @@ function AssistantAvatar({ creator }: { creator?: Creator | null }) {
     <div className="flex items-baseline gap-[0.05em] px-2 py-1 rounded-lg border flex-shrink-0 mb-0.5"
       style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
       <span className="text-xs font-normal leading-none" style={{ fontFamily: "var(--font-instrument-serif)", color: "var(--color-foreground)" }}>Social</span>
-      <span className="text-xs font-normal leading-none" style={{ fontFamily: "var(--font-instrument-serif)", fontStyle: "italic", color: "var(--color-primary)", letterSpacing: "-0.02em" }}>Gen</span>
+      <span className="text-xs font-normal leading-none" style={{ fontFamily: "var(--font-instrument-serif)", fontStyle: "italic", color: "var(--color-primary)", letterSpacing: "-0.02em" }}>Flamingo</span>
     </div>
   );
 }
@@ -1899,7 +1899,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                           className={`w-full text-left px-3.5 py-2 text-xs transition-colors ${i === clampedSearchIndex ? "bg-[var(--color-primary-light)]" : "hover:bg-[var(--color-muted)]"}`}
                         >
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
-                            {messages[m.msgIndex].role === "user" ? "Tú" : "Social Gen"}
+                            {messages[m.msgIndex].role === "user" ? "Tú" : "Social Flamingo"}
                           </span>
                           <p className="mt-0.5 text-[var(--color-foreground)] line-clamp-1">
                             {m.snippet.slice(0, m.highlightStart)}

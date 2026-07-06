@@ -32,7 +32,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
       <nav className="border-b border-[var(--color-border)] bg-white/80 backdrop-blur-sm sticky top-0">
         <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between">
           <Link href="/" className="text-xl font-normal" style={{ fontFamily: "var(--font-instrument-serif)" }}>
-            Social Gen
+            Social Flamingo
           </Link>
           <Link
             href="/signup"
@@ -95,7 +95,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
         <div className="mt-12 text-center bg-[var(--color-primary-light)] rounded-2xl p-8 border border-[var(--color-primary)]/20">
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)] mb-2">Crea tu propio guion viral</p>
           <h2 className="text-2xl font-semibold mb-3" style={{ fontFamily: "var(--font-instrument-serif)" }}>
-            Este guion fue creado con Social Gen
+            Este guion fue creado con Social Flamingo
           </h2>
           <p className="text-sm text-[var(--color-muted-foreground)] mb-6">
             Genera ideas virales y guiones completos para YouTube, TikTok e Instagram en menos de 60 segundos.

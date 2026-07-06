@@ -26,7 +26,7 @@ export function Logo({ size = "md", href = "/" }: LogoProps) {
           letterSpacing: "-0.02em",
         }}
       >
-        Gen
+        Flamingo
       </span>
     </Link>
   );

@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
             Ver calendario →
           </a>
           <p style="color:#9ca3af;font-size:12px;margin-top:24px">${reminderNote}</p>
-          <p style="color:#9ca3af;font-size:12px;margin-top:4px">Social Gen · Gestiona tus avisos en el calendario.</p>
+          <p style="color:#9ca3af;font-size:12px;margin-top:4px">Social Flamingo · Gestiona tus avisos en el calendario.</p>
         </div>
       `
     );

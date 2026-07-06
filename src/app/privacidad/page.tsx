@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 
 export const metadata = {
-  title: "Política de Privacidad — Social Gen",
+  title: "Política de Privacidad — Social Flamingo",
 };
 
 export default function PrivacidadPage() {
@@ -33,9 +33,9 @@ export default function PrivacidadPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Responsable del tratamiento</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
-              El responsable del tratamiento de tus datos personales es Social Gen, con domicilio en España. Puedes contactarnos en{" "}
-              <a href="mailto:hola@socialgen.app" className="text-[var(--color-primary)] hover:underline">
-                hola@socialgen.app
+              El responsable del tratamiento de tus datos personales es Social Flamingo, con domicilio en España. Puedes contactarnos en{" "}
+              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                hello@socialflamingo.app
               </a>{" "}
               para cualquier cuestión relacionada con la privacidad.
             </p>
@@ -102,8 +102,8 @@ export default function PrivacidadPage() {
             </ul>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed mt-3">
               Para ejercer cualquier derecho, escríbenos a{" "}
-              <a href="mailto:hola@socialgen.app" className="text-[var(--color-primary)] hover:underline">
-                hola@socialgen.app
+              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                hello@socialflamingo.app
               </a>. Responderemos en un plazo máximo de 30 días. Si consideras que el tratamiento vulnera tus derechos, puedes presentar una reclamación ante la{" "}
               <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
                 Agencia Española de Protección de Datos (AEPD)
@@ -136,8 +136,8 @@ export default function PrivacidadPage() {
             <h2 className="text-xl font-semibold mb-3">10. Contacto</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Para cualquier consulta sobre privacidad, escríbenos a{" "}
-              <a href="mailto:hola@socialgen.app" className="text-[var(--color-primary)] hover:underline">
-                hola@socialgen.app
+              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                hello@socialflamingo.app
               </a>.
             </p>
           </section>
@@ -147,7 +147,7 @@ export default function PrivacidadPage() {
 
       <footer className="border-t border-[var(--color-border)] py-8 px-6 mt-16">
         <div className="mx-auto max-w-3xl flex items-center justify-between text-sm text-[var(--color-muted-foreground)]">
-          <span>© 2026 Social Gen</span>
+          <span>© 2026 Social Flamingo</span>
           <div className="flex gap-6">
             <Link href="/terminos" className="hover:text-[var(--color-foreground)]">Términos</Link>
             <Link href="/privacidad" className="hover:text-[var(--color-foreground)]">Privacidad</Link>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 
 export const metadata = {
-  title: "Términos de Servicio — Social Gen",
+  title: "Términos de Servicio — Social Flamingo",
 };
 
 export default function TerminosPage() {
@@ -33,14 +33,14 @@ export default function TerminosPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Aceptación de los términos</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
-              Al crear una cuenta o utilizar Social Gen (en adelante, "el Servicio"), aceptas quedar vinculado por estos Términos de Servicio. Si no estás de acuerdo con alguno de ellos, no debes usar el Servicio. El Servicio es operado por Social Gen y está dirigido a creadores de contenido en plataformas como TikTok, Instagram y YouTube.
+              Al crear una cuenta o utilizar Social Flamingo (en adelante, "el Servicio"), aceptas quedar vinculado por estos Términos de Servicio. Si no estás de acuerdo con alguno de ellos, no debes usar el Servicio. El Servicio es operado por Social Flamingo y está dirigido a creadores de contenido en plataformas como TikTok, Instagram y YouTube.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">2. Descripción del Servicio</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
-              Social Gen es una plataforma de asistencia para creadores de contenido que utiliza inteligencia artificial para generar ideas, guiones, hooks y estrategia de contenido. Las funcionalidades disponibles dependen del plan de suscripción activo en tu cuenta.
+              Social Flamingo es una plataforma de asistencia para creadores de contenido que utiliza inteligencia artificial para generar ideas, guiones, hooks y estrategia de contenido. Las funcionalidades disponibles dependen del plan de suscripción activo en tu cuenta.
             </p>
           </section>
 
@@ -82,14 +82,14 @@ export default function TerminosPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">6. Contenido generado</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
-              El contenido generado por la IA del Servicio es de tu propiedad para los fines de uso personal y comercial en tus canales. Social Gen no reclama derechos sobre el contenido que generes. Eres el único responsable de revisar y verificar que el contenido generado es adecuado, veraz y cumple con las normas de las plataformas en las que lo publiques.
+              El contenido generado por la IA del Servicio es de tu propiedad para los fines de uso personal y comercial en tus canales. Social Flamingo no reclama derechos sobre el contenido que generes. Eres el único responsable de revisar y verificar que el contenido generado es adecuado, veraz y cumple con las normas de las plataformas en las que lo publiques.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3">7. Limitación de responsabilidad</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
-              El Servicio se proporciona "tal cual", sin garantías de ningún tipo. En ningún caso Social Gen será responsable de daños indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del Servicio. Nuestra responsabilidad máxima acumulada no superará el importe pagado por el usuario en los 12 meses anteriores al evento que origine la reclamación.
+              El Servicio se proporciona "tal cual", sin garantías de ningún tipo. En ningún caso Social Flamingo será responsable de daños indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del Servicio. Nuestra responsabilidad máxima acumulada no superará el importe pagado por el usuario en los 12 meses anteriores al evento que origine la reclamación.
             </p>
           </section>
 
@@ -111,8 +111,8 @@ export default function TerminosPage() {
             <h2 className="text-xl font-semibold mb-3">10. Contacto</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Para cualquier consulta sobre estos términos, escríbenos a{" "}
-              <a href="mailto:hola@socialgen.app" className="text-[var(--color-primary)] hover:underline">
-                hola@socialgen.app
+              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                hello@socialflamingo.app
               </a>.
             </p>
           </section>
@@ -122,7 +122,7 @@ export default function TerminosPage() {
 
       <footer className="border-t border-[var(--color-border)] py-8 px-6 mt-16">
         <div className="mx-auto max-w-3xl flex items-center justify-between text-sm text-[var(--color-muted-foreground)]">
-          <span>© 2026 Social Gen</span>
+          <span>© 2026 Social Flamingo</span>
           <div className="flex gap-6">
             <Link href="/terminos" className="hover:text-[var(--color-foreground)]">Términos</Link>
             <Link href="/privacidad" className="hover:text-[var(--color-foreground)]">Privacidad</Link>

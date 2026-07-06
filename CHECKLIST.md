@@ -1,4 +1,4 @@
-# CHECKLIST antes de Deploy — Social Gen
+# CHECKLIST antes de Deploy — Social Flamingo
 
 ## Variables de entorno
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` configurada

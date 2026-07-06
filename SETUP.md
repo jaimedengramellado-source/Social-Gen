@@ -1,4 +1,4 @@
-# SETUP — Social Gen
+# SETUP — Social Flamingo
 
 ## 1. Configurar Supabase
 
