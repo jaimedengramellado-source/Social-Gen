@@ -24,7 +24,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "DB_ERROR" }, { status: 500 });
   }
 
-  return NextResponse.json({ images });
+  // image_url se guarda como signed URL de larga duración en el momento de generar
+  // la imagen; se regenera aquí para que no deje de funcionar si esa URL expira.
+  const admin = await createAdminClient();
+  const withFreshUrls = await Promise.all(
+    (images ?? []).map(async (img) => {
+      const { data: signed } = await admin.storage
+        .from("generated-images")
+        .createSignedUrl(img.storage_path, 60 * 60 * 24 * 365);
+      return signed ? { ...img, image_url: signed.signedUrl } : img;
+    })
+  );
+
+  return NextResponse.json({ images: withFreshUrls });
 }
 
 export async function DELETE(request: NextRequest) {

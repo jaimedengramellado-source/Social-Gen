@@ -204,7 +204,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
   {
     id: "starter",
-    name: "1.000 seguidores",
+    name: "10.000 seguidores",
     price_weekly: 2.49,
     price_annual_total: 124.99,
     credits: 100,

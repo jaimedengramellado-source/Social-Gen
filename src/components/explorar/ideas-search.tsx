@@ -53,8 +53,6 @@ export function IdeasSearch({ profile }: Props) {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Profile used to suppress lint warning — credits are checked server-side
-  void profile;
 
   const filteredVideos = useMemo(() => {
     let videos = [...rawVideos];
@@ -131,7 +129,7 @@ export function IdeasSearch({ profile }: Props) {
 
   return (
     <div>
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} plan={profile.plan} />
 
       {!searched ? (
         /* ── Hero search state ── */

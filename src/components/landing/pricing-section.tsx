@@ -1,16 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { PlanSteps } from "@/components/shared/plan-steps";
 import { PRICING_PLANS } from "@/types";
 
-export function LandingPricing() {
+export function LandingPricing({
+  loggedIn = false,
+  autoPlan,
+  autoBilling,
+}: {
+  loggedIn?: boolean;
+  autoPlan?: string;
+  autoBilling?: string;
+} = {}) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [checkoutKey, setCheckoutKey] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [autoFlow, setAutoFlow] = useState(false);
+  const autoLaunched = useRef(false);
+
+  async function startCheckout(planId: string, billing: "weekly" | "annual") {
+    if (checkoutKey) return;
+    setCheckoutKey(`${planId}-${billing}`);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planId, billing }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error);
+      window.location.href = data.url;
+    } catch {
+      setCheckoutError("No se pudo iniciar el pago. Inténtalo de nuevo.");
+      setCheckoutKey(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!loggedIn || autoLaunched.current) return;
+    const validPlan = PRICING_PLANS.some((p) => p.id === autoPlan && p.id !== "free");
+    if (validPlan && autoPlan) {
+      autoLaunched.current = true;
+      setAutoFlow(true);
+      setSelectedPlan(autoPlan);
+      startCheckout(autoPlan, autoBilling === "annual" ? "annual" : "weekly");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedIn, autoPlan, autoBilling]);
 
   return (
     <section className="py-24 px-6 border-t border-[var(--color-border)]" id="precios">
+      {autoFlow && checkoutKey && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: "var(--color-background)" }}
+        >
+          <div className="text-center">
+            <PlanSteps current={2} />
+            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-[var(--color-primary)]" />
+            <p className="text-sm font-medium">Preparando tu pago seguro...</p>
+            <p className="text-sm text-[var(--color-muted-foreground)] mt-1">
+              Te llevamos a Stripe para completar la suscripción.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-6xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)] mb-6 text-center">
           Precios
@@ -70,10 +129,10 @@ export function LandingPricing() {
 
                 {plan.id === "free" ? (
                   <Link
-                    href="/signup"
+                    href={loggedIn ? "/dashboard" : "/signup"}
                     className="block w-full text-center rounded-lg py-2.5 text-sm font-medium transition-all hover:-translate-y-px mb-6 bg-[var(--color-foreground)] text-white hover:bg-zinc-800"
                   >
-                    Empieza gratis
+                    {loggedIn ? "Ir a mi panel" : "Empieza gratis"}
                   </Link>
                 ) : !isPickingBilling ? (
                   <button
@@ -91,9 +150,13 @@ export function LandingPricing() {
                     <p className={`text-xs font-semibold mb-2 ${plan.highlighted ? "text-white/70" : "text-[var(--color-muted-foreground)]"}`}>
                       ¿Cómo quieres pagar?
                     </p>
-                    <Link
+                    <BillingOption
+                      loggedIn={loggedIn}
                       href={`/signup?plan=${plan.id}&billing=weekly`}
-                      className={`flex flex-col items-center rounded-lg py-2.5 text-sm font-medium transition-all ${
+                      onCheckout={() => startCheckout(plan.id, "weekly")}
+                      loading={checkoutKey === `${plan.id}-weekly`}
+                      disabled={checkoutKey !== null}
+                      className={`flex flex-col items-center rounded-lg py-2.5 text-sm font-medium transition-all w-full ${
                         plan.highlighted
                           ? "bg-white/15 text-white hover:bg-white/25"
                           : "border border-[var(--color-border)] text-[var(--color-foreground)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
@@ -103,10 +166,14 @@ export function LandingPricing() {
                       <span className={`text-xs font-normal mt-0.5 ${plan.highlighted ? "text-white/60" : "text-[var(--color-muted-foreground)]"}`}>
                         {plan.price_weekly.toFixed(2).replace(".", ",")}€/semana
                       </span>
-                    </Link>
-                    <Link
+                    </BillingOption>
+                    <BillingOption
+                      loggedIn={loggedIn}
                       href={`/signup?plan=${plan.id}&billing=annual`}
-                      className={`flex flex-col items-center rounded-lg py-2.5 text-sm font-medium transition-all ${
+                      onCheckout={() => startCheckout(plan.id, "annual")}
+                      loading={checkoutKey === `${plan.id}-annual`}
+                      disabled={checkoutKey !== null}
+                      className={`flex flex-col items-center rounded-lg py-2.5 text-sm font-medium transition-all w-full ${
                         plan.highlighted
                           ? "bg-white text-[var(--color-primary)] hover:bg-zinc-50"
                           : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]"
@@ -119,7 +186,12 @@ export function LandingPricing() {
                       <span className={`text-xs font-normal mt-0.5 ${plan.highlighted ? "text-[var(--color-primary)]/60" : "text-white/70"}`}>
                         {annualWeeklyEquiv}€/sem · {plan.price_annual_total.toFixed(2).replace(".", ",")}€/año
                       </span>
-                    </Link>
+                    </BillingOption>
+                    {checkoutError && (
+                      <p className={`text-xs text-center ${plan.highlighted ? "text-white" : "text-[var(--color-destructive)]"}`}>
+                        {checkoutError}
+                      </p>
+                    )}
                     <button
                       onClick={() => setSelectedPlan(null)}
                       className={`w-full text-center text-xs py-1 transition-colors ${
@@ -143,31 +215,34 @@ export function LandingPricing() {
             );
           })}
         </div>
-
-        {/* Credit packs */}
-        <div className="mt-16 rounded-2xl border border-[var(--color-border)] bg-white p-8">
-          <h3 className="text-lg font-semibold mb-2">Packs de créditos extra</h3>
-          <p className="text-sm text-[var(--color-muted-foreground)] mb-6">Compra una vez, úsalos cuando quieras. No caducan.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { credits: 50, price: 9, popular: false },
-              { credits: 150, price: 19, popular: true },
-              { credits: 500, price: 49, popular: false },
-            ].map((pack) => (
-              <div key={pack.credits} className={`rounded-xl p-4 border text-center relative ${pack.popular ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]" : "border-[var(--color-border)]"}`}>
-                {pack.popular && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs font-semibold bg-[var(--color-primary)] text-white px-2 py-0.5 rounded-full">
-                    Mejor valor
-                  </span>
-                )}
-                <p className="text-2xl font-bold">{pack.credits}</p>
-                <p className="text-sm text-[var(--color-muted-foreground)] mb-2">créditos</p>
-                <p className="text-lg font-semibold">{pack.price}€</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
+  );
+}
+
+function BillingOption({
+  loggedIn,
+  href,
+  onCheckout,
+  loading,
+  disabled,
+  className,
+  children,
+}: {
+  loggedIn: boolean;
+  href: string;
+  onCheckout: () => void;
+  loading: boolean;
+  disabled: boolean;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (!loggedIn) {
+    return <Link href={href} className={className}>{children}</Link>;
+  }
+  return (
+    <button onClick={onCheckout} disabled={disabled} className={`${className} disabled:opacity-60 disabled:cursor-wait`}>
+      {loading ? <Loader2 className="w-4 h-4 animate-spin my-2" /> : children}
+    </button>
   );
 }

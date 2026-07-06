@@ -18,6 +18,7 @@ import {
 import type { Profile, GeneratedImage } from "@/types";
 import { useLasso } from "@/hooks/use-lasso";
 import { ImageLightbox } from "@/components/shared/image-lightbox";
+import { UpgradeModal } from "@/components/shared/upgrade-modal";
 import { downloadImageFromUrl } from "@/lib/utils";
 
 type Mode = "generar" | "editar" | "galeria";
@@ -83,6 +84,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(profile.credits_remaining);
   const [error, setError] = useState<string | null>(null);
   const [noCredits, setNoCredits] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [variacionesEnabled, setVariacionesEnabled] = useState(false);
   const [variacionesCount, setVariacionesCount] = useState<1 | 2>(1);
   const [lightboxImage, setLightboxImage] = useState<GeneratedImage | null>(null);
@@ -172,6 +174,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
         const data = await res.json();
         if (!res.ok) {
           setNoCredits(data.error === "NO_CREDITS");
+          if (data.error === "NO_CREDITS") setShowUpgrade(true);
           setError(getErrorMessage(data.error));
           return;
         }
@@ -192,6 +195,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
           const data = await res.json();
           if (!res.ok) {
             setNoCredits(data.error === "NO_CREDITS");
+            if (data.error === "NO_CREDITS") setShowUpgrade(true);
             setError(getErrorMessage(data.error));
             return;
           }
@@ -246,6 +250,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
         setPreviewEditError(
           data.error === "NO_CREDITS" ? "Sin créditos." : "Error al editar.",
         );
+        if (data.error === "NO_CREDITS") setShowUpgrade(true);
         return;
       }
       const newImg: GeneratedImage = data.image;
@@ -278,6 +283,7 @@ export function ImagenesClient({ profile, initialImages }: Props) {
       const data = await res.json();
       if (!res.ok) {
         setIterateError(data.error === "NO_CREDITS" ? "Sin créditos." : "Error al refinar la imagen.");
+        if (data.error === "NO_CREDITS") setShowUpgrade(true);
         return;
       }
       const newImg: GeneratedImage = data.image;
@@ -329,6 +335,13 @@ export function ImagenesClient({ profile, initialImages }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        creditsRemaining={creditsRemaining ?? 0}
+        plan={profile.plan}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h1

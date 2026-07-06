@@ -69,7 +69,10 @@ Los precios antiguos (4,75/12,25/24,75 €/sem) quedaron archivados el 2026-07-0
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `invoice.payment_succeeded`
+   - `payment_intent.succeeded` (cobro instantáneo de créditos con tarjeta guardada, sin pasar por Checkout)
 4. Copiar Signing Secret → `STRIPE_WEBHOOK_SECRET`
+
+Si el endpoint ya existía antes de añadir `payment_intent.succeeded`, edítalo en el Dashboard y añade el evento — si no, el cobro instantáneo desde el popup de créditos se realizará pero nunca se acreditarán los créditos.
 
 ### 3.4 Claves Stripe (live)
 ```

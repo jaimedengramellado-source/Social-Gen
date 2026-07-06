@@ -16,6 +16,7 @@ import remarkGfm from "remark-gfm";
 import type { Profile } from "@/types";
 import { uploadChatImage, uploadChatFile } from "@/lib/upload";
 import { extractJSON } from "@/lib/utils";
+import { UpgradeModal } from "@/components/shared/upgrade-modal";
 
 const CREATORS = [
   {
@@ -840,6 +841,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
   const [mentionIndex, setMentionIndex] = useState(0);
   const [exportedDoc, setExportedDoc] = useState<{ id: string; title: string } | null>(null);
   const [maxTokensHit, setMaxTokensHit] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [welcomeKey, setWelcomeKey] = useState(0);
   const [welcomeIdx, setWelcomeIdx] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1379,10 +1381,12 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
       });
 
       if (!res.ok || !res.body) {
+        if (res.status === 402) {
+          setShowUpgrade(true);
+          return;
+        }
         const errorText =
-          res.status === 402
-            ? "Te has quedado sin créditos. Consigue más desde **Ajustes → Plan y créditos** para seguir usando el chat."
-            : res.status === 429
+          res.status === 429
             ? "Demasiadas peticiones seguidas. Espera un momento e inténtalo de nuevo."
             : "Error al conectar. Inténtalo de nuevo.";
         setMessages(prev => [...prev, { role: "assistant", content: errorText }]);
@@ -2364,6 +2368,13 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
       </div>,
       document.body
     )}
+
+    <UpgradeModal
+      open={showUpgrade}
+      onClose={() => setShowUpgrade(false)}
+      creditsRemaining={profile.credits_remaining}
+      plan={profile.plan}
+    />
     </div>
   );
 }

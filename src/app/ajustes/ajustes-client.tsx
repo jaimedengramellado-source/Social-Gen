@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
+import { LogoutOverlay } from "@/components/shared/logout-overlay";
 import { PRICING_PLANS, PLAN_CREDITS, CREDIT_COSTS } from "@/types";
 import type { Profile, Channel } from "@/types";
 import { getTopupCredits, getTopupTier, CREDIT_TIERS } from "@/lib/stripe";
@@ -34,6 +36,7 @@ import {
   Zap,
   Package,
   User,
+  LogOut,
 } from "lucide-react";
 
 const PLAN_BADGE: Record<string, "secondary" | "outline" | "purple" | "warning"> = {
@@ -92,6 +95,8 @@ interface AjustesClientProps {
 }
 
 export function AjustesClient({ profile, channel, usageByAction, scriptsCount, ideasCount }: AjustesClientProps) {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
   const [name, setName] = useState(profile.full_name || "");
   const [channelName, setChannelName] = useState(profile.channel_name || "");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -125,11 +130,16 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   const [buyingTopup, setBuyingTopup] = useState(false);
   const [topupSuccess, setTopupSuccess] = useState(false);
 
+  const [activeTab, setActiveTab] = useState("cuenta");
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("topup") === "success") {
       setTopupSuccess(true);
+      setActiveTab("plan");
       window.history.replaceState({}, "", "/ajustes");
+    } else if (params.get("tab") === "plan") {
+      setActiveTab("plan");
     }
   }, []);
 
@@ -243,6 +253,13 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
     if (url) window.location.href = url;
   }
 
+  async function handleLogout() {
+    setLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setTimeout(() => router.push("/"), 900);
+  }
+
   async function handleDeleteAccount() {
     setDeletingAccount(true);
     const res = await fetch("/api/ajustes/delete-account", { method: "POST" });
@@ -275,6 +292,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
 
   return (
     <div className="p-6 md:p-8 max-w-2xl mx-auto">
+      <LogoutOverlay show={loggingOut} />
       <h1 className="text-2xl font-semibold mb-6">Mi cuenta</h1>
 
       {/* Header persistente con avatar */}
@@ -315,7 +333,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
         </div>
       </div>
 
-      <Tabs defaultValue="cuenta">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-6 grid grid-cols-4 h-auto">
           <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
           <TabsTrigger value="ia">IA</TabsTrigger>
@@ -383,6 +401,16 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               </Button>
             </div>
           </section>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full mt-6"
+          >
+            <LogOut className="w-4 h-4 mr-1" />
+            Cerrar sesión
+          </Button>
         </TabsContent>
 
         {/* Tab: IA */}

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeInternalPath } from "@/lib/plan-intent";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PlanSteps } from "@/components/shared/plan-steps";
 import type { Platform } from "@/types";
 
 const PLATFORMS: { id: Platform; label: string; icon: string; desc: string }[] = [
@@ -19,8 +21,29 @@ const PLATFORMS: { id: Platform; label: string; icon: string; desc: string }[] =
 
 const SUBSCRIBER_RANGES = ["0-1K", "1K-10K", "10K-100K", "100K-1M", "+1M"];
 
+const TONE_PRESETS = [
+  "Motivacional y cercano",
+  "Divertido e informal",
+  "Educativo y directo",
+  "Profesional y serio",
+  "Provocador y sin filtros",
+];
+
+const TOTAL_STEPS = 6;
+
 export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingFlow />
+    </Suspense>
+  );
+}
+
+function OnboardingFlow() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeInternalPath(searchParams.get("next"));
+  const isPlanFlow = searchParams.get("payment") === "success";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -33,6 +56,8 @@ export default function OnboardingPage() {
     mainGoal: "",
     audiencePain: "",
     differentiator: "",
+    tone: "",
+    aiInstructions: "",
   });
 
   function update(field: string, value: string) {
@@ -58,8 +83,15 @@ export default function OnboardingPage() {
       content_format: form.platform?.includes("short") || form.platform === "tiktok" || form.platform === "reels" ? "short" : "long",
     });
 
-    await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-    router.push("/dashboard");
+    await supabase.from("profiles").update({
+      onboarding_completed: true,
+      channel_name: form.channelName || null,
+      main_platform: form.platform || null,
+      niche: form.niche || null,
+      tone: form.tone || null,
+      ai_instructions: form.aiInstructions || null,
+    }).eq("id", user.id);
+    router.push(nextPath);
   }
 
   const canAdvance = [
@@ -67,6 +99,7 @@ export default function OnboardingPage() {
     step === 2 && !!form.subscribersRange && form.niche.length > 1,
     step === 3 && form.mainGoal.length > 1,
     step === 4 && form.audiencePain.length > 1,
+    step === 5 && form.tone.length > 1,
     true,
   ][step - 1];
 
@@ -81,9 +114,17 @@ export default function OnboardingPage() {
           Social Gen
         </p>
 
+        {isPlanFlow && <PlanSteps current={3} />}
+
+        {isPlanFlow && step === 1 && (
+          <div className="mb-6 rounded-lg border border-[var(--color-success)] bg-[var(--bg-success)] px-3 py-2.5 text-sm text-[var(--text-success)] text-center">
+            Pago completado — tu plan ya está activo. Último paso: configura tu IA.
+          </div>
+        )}
+
         {/* Progress */}
         <div className="flex gap-1.5 mb-8">
-          {[1, 2, 3, 4, 5].map((n) => (
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((n) => (
             <div
               key={n}
               className={`h-1 flex-1 rounded-full transition-all duration-300 ${n <= step ? "bg-[var(--color-primary)]" : "bg-[var(--color-border)]"}`}
@@ -103,7 +144,7 @@ export default function OnboardingPage() {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 1 de 5</p>
+                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 1 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Cuéntanos sobre tu canal</h2>
                   <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">La IA se adaptará a tu contenido y audiencia.</p>
                 </div>
@@ -141,7 +182,7 @@ export default function OnboardingPage() {
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 2 de 5</p>
+                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 2 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Tu audiencia actual</h2>
                 </div>
                 <div>
@@ -185,7 +226,7 @@ export default function OnboardingPage() {
             {step === 3 && (
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 3 de 5</p>
+                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 3 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Tu objetivo principal</h2>
                 </div>
                 <div className="space-y-1.5">
@@ -203,7 +244,7 @@ export default function OnboardingPage() {
             {step === 4 && (
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 4 de 5</p>
+                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 4 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Tu audiencia y diferenciación</h2>
                 </div>
                 <div className="space-y-1.5">
@@ -228,13 +269,60 @@ export default function OnboardingPage() {
             )}
 
             {step === 5 && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 5 de {TOTAL_STEPS}</p>
+                  <h2 className="text-2xl font-semibold">Tono e instrucciones para la IA</h2>
+                  <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">
+                    Se guardan en tu perfil y se aplican a todo lo que generes. Podrás cambiarlos en Ajustes.
+                  </p>
+                </div>
+                <div>
+                  <Label className="mb-3 block">¿Qué tono usa tu contenido?</Label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {TONE_PRESETS.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => update("tone", t)}
+                        className={`px-4 py-2 rounded-full text-sm border transition-all ${
+                          form.tone === t
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
+                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    placeholder="O escríbelo con tus palabras: irónico y técnico, cercano pero exigente..."
+                    value={form.tone}
+                    onChange={(e) => update("tone", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Instrucciones para la IA <span className="font-normal text-[var(--color-muted-foreground)]">(opcional)</span></Label>
+                  <Textarea
+                    placeholder="Palabras que evitar, muletillas propias, estructura preferida, a quién le hablas..."
+                    value={form.aiInstructions}
+                    onChange={(e) => update("aiInstructions", e.target.value)}
+                    className="h-28"
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 6 && (
               <div className="space-y-6 text-center py-4">
                 <div className="text-5xl">🚀</div>
                 <div>
                   <h2 className="text-2xl font-semibold mb-2">¡Todo listo, {form.channelName}!</h2>
                   <p className="text-[var(--color-muted-foreground)]">
-                    Tu perfil está configurado. La IA ya conoce tu nicho y audiencia.
-                    Tienes <strong>10 créditos gratis</strong> para empezar.
+                    {isPlanFlow ? (
+                      <>Tu plan está activo y tu perfil configurado. La IA ya conoce tu nicho, tono y audiencia.</>
+                    ) : (
+                      <>Tu perfil está configurado. La IA ya conoce tu nicho y audiencia. Tienes <strong>10 créditos gratis</strong> para empezar.</>
+                    )}
                   </p>
                 </div>
                 <div className="bg-[var(--color-primary-light)] rounded-xl p-4 text-left">
@@ -256,7 +344,7 @@ export default function OnboardingPage() {
           ) : (
             <div />
           )}
-          {step < 5 ? (
+          {step < TOTAL_STEPS ? (
             <Button onClick={() => setStep((s) => s + 1)} disabled={!canAdvance}>
               Siguiente →
             </Button>

@@ -62,7 +62,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
 
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} />
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} plan={profile.plan} />
       <SavedIdeasModal open={showSavedIdeas} onClose={() => setShowSavedIdeas(false)} />
 
       {/* ── Greeting ── */}

@@ -154,7 +154,7 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} plan={profile.plan} />
 
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold mb-1 md:mb-2">Explorar</h1>

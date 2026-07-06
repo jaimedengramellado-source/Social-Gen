@@ -229,27 +229,50 @@ alter table generated_images enable row level security;
 alter table ideas_cache enable row level security;
 alter table stripe_events enable row level security; -- sin policies: solo service role
 
-create policy "own profile" on profiles for all using (auth.uid() = id);
-create policy "own channels" on channels for all using (auth.uid() = user_id);
-create policy "own projects" on projects for all using (auth.uid() = user_id);
-create policy "own ideas" on ideas for all using (auth.uid() = user_id);
-create policy "own scripts" on scripts for all using (auth.uid() = user_id);
+-- Nota de rendimiento: usar (select auth.uid()) en vez de auth.uid() a secas evita que
+-- Postgres reevalúe la función en cada fila (ver "Auth RLS Initialization Plan" en los
+-- advisors de Supabase).
+create policy "own profile" on profiles for all using ((select auth.uid()) = id);
+create policy "own channels" on channels for all using ((select auth.uid()) = user_id);
+create policy "own projects" on projects for all using ((select auth.uid()) = user_id);
+create policy "own ideas" on ideas for all using ((select auth.uid()) = user_id);
+create policy "own scripts" on scripts for all using ((select auth.uid()) = user_id);
 -- OJO: no crear una policy pública sobre scripts. La página /share/[id] accede
 -- por share_token con el admin client (server-only).
-create policy "own watchlist" on watchlist_channels for all using (auth.uid() = user_id);
-create policy "own logs" on usage_logs for all using (auth.uid() = user_id);
-create policy "Users manage own youtube connections" on youtube_connections for all using (auth.uid() = user_id);
+create policy "own watchlist" on watchlist_channels for all using ((select auth.uid()) = user_id);
+create policy "own logs" on usage_logs for all using ((select auth.uid()) = user_id);
+create policy "Users manage own youtube connections" on youtube_connections for all using ((select auth.uid()) = user_id);
 create policy "Users can manage their own calendar events" on calendar_events
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "Users can manage their own todos" on todos
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "own projects" on chat_projects for all using (auth.uid() = user_id);
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "own projects" on chat_projects for all using ((select auth.uid()) = user_id);
 create policy "Users can manage their own chat sessions" on chat_sessions
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "Users own their generated images" on generated_images for all using (auth.uid() = user_id);
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "Users own their generated images" on generated_images for all using ((select auth.uid()) = user_id);
+-- Cache compartida entre usuarios: solo se lee desde el rol authenticated.
+-- Los INSERT/UPDATE los hace el admin client (service role) desde el servidor —
+-- si se deja escritura abierta a authenticated cualquier usuario puede envenenar
+-- el caché de otras búsquedas.
 create policy "authenticated read ideas_cache" on ideas_cache for select to authenticated using (true);
-create policy "authenticated write ideas_cache" on ideas_cache for insert to authenticated with check (true);
-create policy "authenticated update ideas_cache" on ideas_cache for update to authenticated using (true);
+
+-- Índices para las foreign keys que no los tenían (ver advisor de performance).
+create index if not exists calendar_events_script_id_idx on calendar_events (script_id);
+create index if not exists channels_user_id_idx on channels (user_id);
+create index if not exists chat_projects_user_id_idx on chat_projects (user_id);
+create index if not exists chat_sessions_project_id_idx on chat_sessions (project_id);
+create index if not exists generated_images_parent_image_id_idx on generated_images (parent_image_id);
+create index if not exists generated_images_user_id_idx on generated_images (user_id);
+create index if not exists ideas_channel_id_idx on ideas (channel_id);
+create index if not exists ideas_project_id_idx on ideas (project_id);
+create index if not exists ideas_user_id_idx on ideas (user_id);
+create index if not exists projects_user_id_idx on projects (user_id);
+create index if not exists scripts_channel_id_idx on scripts (channel_id);
+create index if not exists scripts_idea_id_idx on scripts (idea_id);
+create index if not exists scripts_project_id_idx on scripts (project_id);
+create index if not exists scripts_user_id_idx on scripts (user_id);
+create index if not exists todos_parent_id_idx on todos (parent_id);
+create index if not exists watchlist_channels_user_id_idx on watchlist_channels (user_id);
 
 -- ============================================================
 -- Funciones y triggers
@@ -338,9 +361,12 @@ grant execute on function add_credits(uuid, integer) to service_role;
 -- CREATE POLICY "Users delete own generated images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'generated-images' AND (storage.foldername(name))[1] = auth.uid()::text);
 --
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
--- CREATE POLICY "Users upload own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
--- CREATE POLICY "Users update own avatar" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
--- CREATE POLICY "Public read avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+-- CREATE POLICY "Users upload own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+-- CREATE POLICY "Users update own avatar" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+-- CREATE POLICY "Users delete own avatar" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+-- NOTA: no crear una policy de SELECT pública sobre este bucket — al ser público,
+-- los objetos ya se sirven por URL sin necesidad de policy, y una policy SELECT
+-- con USING(true) permite además *listar* todos los ficheros (enumerar user_ids).
 --
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('chat-attachments', 'chat-attachments', false);
 -- CREATE POLICY "Users upload own chat images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);

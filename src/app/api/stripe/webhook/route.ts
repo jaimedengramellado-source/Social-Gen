@@ -87,10 +87,22 @@ export async function POST(request: NextRequest) {
       break;
     }
 
+    case "payment_intent.succeeded": {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      if (pi.metadata?.type === "credit_topup_instant") {
+        const userId = pi.metadata.userId;
+        const credits = parseInt(pi.metadata.credits || "0", 10);
+        if (userId && credits > 0) {
+          await supabase.rpc("add_credits", { p_user_id: userId, p_amount: credits });
+        }
+      }
+      break;
+    }
+
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       // Credit topup subscriptions don't affect the user's plan
-      if (sub.metadata?.type === "credit_topup_recurring") break;
+      if (sub.metadata?.type === "credit_topup_recurring" || sub.metadata?.type === "credit_topup_recurring_instant") break;
 
       const userId = sub.metadata?.userId;
       if (!userId) break;
@@ -111,7 +123,7 @@ export async function POST(request: NextRequest) {
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
       // Cancelling a credit topup subscription doesn't reset the user's plan
-      if (sub.metadata?.type === "credit_topup_recurring") break;
+      if (sub.metadata?.type === "credit_topup_recurring" || sub.metadata?.type === "credit_topup_recurring_instant") break;
 
       const userId = sub.metadata?.userId;
       if (!userId) break;
@@ -136,9 +148,14 @@ export async function POST(request: NextRequest) {
       const userId = sub.metadata?.userId;
       if (!userId) break;
 
-      // Credit topup subscription renewal — add credits each month
-      if (sub.metadata?.type === "credit_topup_recurring") {
-        if (invoice.billing_reason === "subscription_cycle") {
+      // Credit topup subscription renewal — add credits each month.
+      // "_instant" subs are created directly (no Checkout), so their first invoice
+      // (billing_reason "subscription_create") must be credited here too; the
+      // regular "credit_topup_recurring" (Checkout-based) already got its first
+      // credit from checkout.session.completed, so only renewals count for those.
+      if (sub.metadata?.type === "credit_topup_recurring" || sub.metadata?.type === "credit_topup_recurring_instant") {
+        const isInstant = sub.metadata?.type === "credit_topup_recurring_instant";
+        if (isInstant || invoice.billing_reason === "subscription_cycle") {
           const credits = parseInt(sub.metadata.credits || "0", 10);
           if (credits > 0) {
             await supabase.rpc("add_credits", { p_user_id: userId, p_amount: credits });

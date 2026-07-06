@@ -1,16 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { planCheckoutPath } from "@/lib/plan-intent";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const plan = searchParams.get("plan");
+  const billing = searchParams.get("billing") === "annual" ? "annual" : "weekly";
+  const nextPath = planCheckoutPath(plan, billing);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,14 +44,16 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(nextPath ?? "/dashboard");
   }
 
   async function handleGoogle() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`,
+      },
     });
   }
 
@@ -117,7 +133,10 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-[var(--color-muted-foreground)] mt-6">
           ¿No tienes cuenta?{" "}
-          <Link href="/signup" className="text-[var(--color-primary)] hover:underline font-medium">
+          <Link
+            href={nextPath ? `/signup?plan=${plan}&billing=${billing}` : "/signup"}
+            className="text-[var(--color-primary)] hover:underline font-medium"
+          >
             Regístrate gratis
           </Link>
         </p>

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("stripe_customer_id, email")
+    .select("stripe_customer_id, email, onboarding_completed")
     .eq("id", user.id)
     .single();
 
@@ -118,7 +118,9 @@ export async function POST(request: NextRequest) {
     line_items: [{ price: priceId, quantity: 1 }],
     metadata: { userId: user.id, plan, billing },
     subscription_data: { metadata: { userId: user.id, plan } },
-    success_url: `${appUrl}/dashboard?payment=success`,
+    success_url: profile?.onboarding_completed
+      ? `${appUrl}/dashboard?payment=success`
+      : `${appUrl}/onboarding?payment=success`,
     cancel_url: `${appUrl}/pricing`,
   });
 

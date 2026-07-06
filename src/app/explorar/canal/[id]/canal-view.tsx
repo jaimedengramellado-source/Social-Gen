@@ -104,7 +104,7 @@ export function CanalView({ channel, videos, freqLabel, profile, initialInWatchl
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} plan={profile.plan} />
 
       {/* Back */}
       <Link href="/explorar" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] mb-6">

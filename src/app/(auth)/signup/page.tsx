@@ -1,16 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { planCheckoutPath } from "@/lib/plan-intent";
+import { PlanSteps } from "@/components/shared/plan-steps";
+import { PRICING_PLANS } from "@/types";
 
 export default function SignupPage() {
-  const router = useRouter();
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
+  const searchParams = useSearchParams();
+  const plan = searchParams.get("plan");
+  const billing = searchParams.get("billing") === "annual" ? "annual" : "weekly";
+  const nextPath = planCheckoutPath(plan, billing);
+  const planName = nextPath ? PRICING_PLANS.find((p) => p.id === plan)?.name : null;
+  const callbackUrl = () =>
+    `${window.location.origin}/auth/callback${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`;
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +47,7 @@ export default function SignupPage() {
       password,
       options: {
         data: { full_name: name },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl(),
       },
     });
 
@@ -47,7 +65,7 @@ export default function SignupPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl() },
     });
   }
 
@@ -58,11 +76,17 @@ export default function SignupPage() {
         style={{ backgroundColor: "var(--color-background)" }}
       >
         <div className="w-full max-w-sm text-center">
+          {nextPath && <PlanSteps current={1} />}
           <div className="text-4xl mb-4">📬</div>
           <h2 className="text-xl font-semibold mb-2">Revisa tu email</h2>
           <p className="text-[var(--color-muted-foreground)] text-sm">
             Hemos enviado un enlace de confirmación a <strong>{email}</strong>. Haz clic en el enlace para activar tu cuenta.
           </p>
+          {nextPath && (
+            <p className="text-[var(--color-muted-foreground)] text-sm mt-3">
+              Al confirmar, continuarás con el pago y después configurarás tu IA.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -78,11 +102,19 @@ export default function SignupPage() {
           <Logo size="lg" />
         </div>
 
+        {nextPath && <PlanSteps current={1} />}
+
         <div className="bg-white rounded-2xl border border-[var(--color-border)] p-8 shadow-[var(--shadow-card)]">
-          <h1 className="text-xl font-semibold mb-1">Crea tu cuenta gratis</h1>
+          <h1 className="text-xl font-semibold mb-1">{nextPath ? "Crea tu cuenta" : "Crea tu cuenta gratis"}</h1>
           <p className="text-sm text-[var(--color-muted-foreground)] mb-6">
-            10 créditos incluidos. Sin tarjeta de crédito.
+            {nextPath ? "Paso 1 de 3 para empezar a crecer." : "10 créditos incluidos. Sin tarjeta de crédito."}
           </p>
+
+          {planName && (
+            <div className="mb-4 rounded-lg border border-[var(--color-success)] bg-[var(--bg-success)] px-3 py-2.5 text-sm text-[var(--text-success)]">
+              Plan de <strong>{planName}</strong> en camino.
+            </div>
+          )}
 
           <Button type="button" variant="outline" className="w-full mb-4" onClick={handleGoogle}>
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -150,7 +182,10 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-[var(--color-muted-foreground)] mt-6">
           ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="text-[var(--color-primary)] hover:underline font-medium">
+          <Link
+            href={nextPath ? `/login?plan=${plan}&billing=${billing}` : "/login"}
+            className="text-[var(--color-primary)] hover:underline font-medium"
+          >
             Entrar
           </Link>
         </p>

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Sparkles, Library, Telescope,
-  MoreHorizontal, X, Settings, BarChart2, CalendarDays, ListTodo, Image as ImageIcon,
+  MoreHorizontal, X, Settings, BarChart2, CalendarDays, ListTodo, Image as ImageIcon, LogOut,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { LogoutOverlay } from "./logout-overlay";
 
 const primaryItems = [
   { href: "/dashboard",  icon: LayoutDashboard, label: "Inicio" },
@@ -25,15 +27,26 @@ const moreItems = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
   const moreActive = moreItems.some(item => isActive(item.href));
 
+  async function handleLogout() {
+    setOpen(false);
+    setLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setTimeout(() => router.push("/"), 900);
+  }
+
   return (
     <>
+      <LogoutOverlay show={loggingOut} />
       {/* Backdrop */}
       {open && (
         <div
@@ -78,6 +91,15 @@ export function MobileNav() {
                   </Link>
                 );
               })}
+            </div>
+            <div className="border-t border-[var(--color-border)] p-2">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
+              >
+                <LogOut size={18} strokeWidth={1.8} />
+                <span className="text-sm font-medium">Cerrar sesión</span>
+              </button>
             </div>
           </div>
         </div>

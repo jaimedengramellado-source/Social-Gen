@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { searchIdeasVideos } from "@/lib/youtube";
 
 export const dynamic = "force-dynamic";
@@ -35,14 +35,16 @@ export async function GET(req: NextRequest) {
     // Fetch fresh from YouTube
     const videos = await searchIdeasVideos(q);
 
-    // Write to cache (fail silently — table may not exist yet)
+    // Write to cache con admin client: la tabla es compartida entre usuarios y
+    // ya no acepta INSERT/UPDATE desde el rol authenticated (ver RLS).
     try {
-      await supabase.from("ideas_cache").upsert({
+      const admin = await createAdminClient();
+      await admin.from("ideas_cache").upsert({
         query,
         results: videos,
         cached_at: new Date().toISOString(),
       });
-    } catch { /* table not created yet */ }
+    } catch { /* fail silently, la respuesta ya se sirve sin cache */ }
 
     return NextResponse.json({ videos });
   } catch (err) {

@@ -36,6 +36,15 @@ export async function POST() {
     }
   }
 
+  // Borra los ficheros del usuario en Storage: el borrado de auth.users solo
+  // hace cascade en las tablas de public, los objetos de storage.objects quedarían huérfanos.
+  for (const bucket of ["chat-attachments", "generated-images", "avatars"]) {
+    const { data: files } = await admin.storage.from(bucket).list(user.id);
+    if (files?.length) {
+      await admin.storage.from(bucket).remove(files.map((f) => `${user.id}/${f.name}`));
+    }
+  }
+
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
