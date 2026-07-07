@@ -32,6 +32,7 @@ function SignupForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -62,6 +63,11 @@ function SignupForm() {
   }
 
   async function handleGoogle() {
+    if (!acceptedTerms) {
+      setError("Debes aceptar los términos y condiciones para crear tu cuenta.");
+      return;
+    }
+    setError(null);
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -168,6 +174,32 @@ function SignupForm() {
                 minLength={8}
                 required
               />
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <input
+                id="terms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                required
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--color-border)]"
+                style={{ accentColor: "var(--color-primary)" }}
+              />
+              <label
+                htmlFor="terms"
+                className="text-xs text-[var(--color-muted-foreground)] cursor-pointer select-none leading-relaxed"
+              >
+                He leído y acepto los{" "}
+                <Link href="/terminos" target="_blank" className="text-[var(--color-primary)] hover:underline font-medium">
+                  términos y condiciones
+                </Link>{" "}
+                y la{" "}
+                <Link href="/privacidad" target="_blank" className="text-[var(--color-primary)] hover:underline font-medium">
+                  política de privacidad
+                </Link>
+                .
+              </label>
             </div>
 
             {error && (

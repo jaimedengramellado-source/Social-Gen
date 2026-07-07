@@ -25,7 +25,7 @@ export default function PrivacidadPage() {
           Política de Privacidad
         </h1>
         <p className="text-sm text-[var(--color-muted-foreground)] mb-12">
-          Última actualización: 29 de junio de 2026
+          Última actualización: 7 de julio de 2026
         </p>
 
         <div className="prose prose-zinc max-w-none space-y-10 text-[var(--color-foreground)]">
@@ -81,14 +81,44 @@ export default function PrivacidadPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">5. Conservación de los datos</h2>
+            <h2 className="text-xl font-semibold mb-3">5. Servicios API de Google y datos de YouTube</h2>
+            <p className="text-[var(--color-muted-foreground)] leading-relaxed mb-3">
+              Social Flamingo utiliza los Servicios API de YouTube (YouTube Data API y YouTube Analytics API) cuando decides, de forma voluntaria, conectar tu canal de YouTube desde la sección Estadísticas. Al usar esta función aceptas los{" "}
+              <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
+                Términos de Servicio de YouTube
+              </a>{" "}
+              y la{" "}
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
+                Política de Privacidad de Google
+              </a>.
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-[var(--color-muted-foreground)]">
+              <li><strong>Qué datos accedemos:</strong> información básica de tu canal (nombre, identificador, miniatura, número de suscriptores) y métricas de analíticas (visualizaciones, CTR, retención, fuentes de tráfico y similares). El acceso es de <strong>solo lectura</strong>: nunca publicamos, modificamos ni eliminamos nada en tu canal.</li>
+              <li><strong>Qué datos almacenamos:</strong> únicamente la información básica del canal y los tokens de acceso OAuth necesarios para consultar las métricas en tu nombre. Las métricas de analíticas se consultan a YouTube en tiempo real cada vez que visitas Estadísticas y no se almacenan en nuestros servidores.</li>
+              <li><strong>Cómo los usamos:</strong> exclusivamente para mostrarte tus propias estadísticas dentro de la aplicación. No compartimos estos datos con terceros, no los usamos con fines publicitarios y no los transferimos a los proveedores de IA.</li>
+              <li><strong>Cómo revocar el acceso:</strong> puedes desconectar tu canal en cualquier momento desde Estadísticas (eliminamos los tokens y revocamos el permiso ante Google) o directamente desde la{" "}
+                <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
+                  configuración de seguridad de tu cuenta de Google
+                </a>.
+              </li>
+            </ul>
+            <p className="text-[var(--color-muted-foreground)] leading-relaxed mt-3">
+              El uso que Social Flamingo hace de la información recibida de las APIs de Google se ajusta a la{" "}
+              <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
+                Política de Datos de Usuario de los Servicios API de Google
+              </a>, incluidos los requisitos de Uso Limitado (Limited Use).
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">6. Conservación de los datos</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Conservamos tus datos mientras tu cuenta esté activa. Si eliminas tu cuenta, borraremos tus datos personales en un plazo máximo de 30 días, excepto los que debamos conservar por obligación legal (datos de facturación, hasta 5 años).
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">6. Tus derechos (RGPD)</h2>
+            <h2 className="text-xl font-semibold mb-3">7. Tus derechos (RGPD)</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed mb-3">
               Como usuario en la UE, tienes derecho a:
             </p>
@@ -112,28 +142,28 @@ export default function PrivacidadPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">7. Cookies</h2>
+            <h2 className="text-xl font-semibold mb-3">8. Cookies</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Usamos exclusivamente cookies técnicas necesarias para el funcionamiento del Servicio: la cookie de sesión de autenticación y una cookie temporal para el demo de la landing (control de uso). No usamos cookies de publicidad ni de seguimiento de terceros.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">8. Transferencias internacionales</h2>
+            <h2 className="text-xl font-semibold mb-3">9. Transferencias internacionales</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Algunos de nuestros proveedores (Anthropic, Stripe, Vercel) operan desde Estados Unidos. Las transferencias se realizan bajo las garantías adecuadas previstas en el RGPD (cláusulas contractuales tipo aprobadas por la Comisión Europea o el marco EU-US Data Privacy Framework según corresponda).
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">9. Cambios en esta política</h2>
+            <h2 className="text-xl font-semibold mb-3">10. Cambios en esta política</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Podemos actualizar esta política cuando sea necesario. Te notificaremos por email ante cambios materiales. La fecha de última actualización siempre aparece al inicio del documento.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-3">10. Contacto</h2>
+            <h2 className="text-xl font-semibold mb-3">11. Contacto</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Para cualquier consulta sobre privacidad, escríbenos a{" "}
               <a href="mailto:service@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
