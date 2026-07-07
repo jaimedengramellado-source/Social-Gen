@@ -517,3 +517,24 @@ select:focus-visible {
     min-height: unset !important;
   }
 }
+
+/* Scrollbar del calendario semanal: fina, redondeada y visible en ambos temas */
+.cal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.cal-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.cal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cal-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.cal-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted-foreground);
+}

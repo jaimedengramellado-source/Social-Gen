@@ -1,19 +1,20 @@
 "use client";
 
-import { HOUR_HEIGHT, minutesOfDay, formatTime } from "./types";
+import { minutesOfDay, formatTime } from "./types";
 import { useCalSettings } from "./CalendarContext";
 import type { LayoutEvent } from "./types";
 
 interface Props {
   event: LayoutEvent;
   dayIdx: number;
+  hourHeight: number;
   isDragging?: boolean;
   onDragStart?: (eventId: string, offsetMins: number) => void;
   onDragEnd?: () => void;
   onClick: (e: React.MouseEvent, eventId: string) => void;
 }
 
-export function EventBlock({ event, dayIdx, isDragging, onDragStart, onDragEnd, onClick }: Props) {
+export function EventBlock({ event, dayIdx, hourHeight, isDragging, onDragStart, onDragEnd, onClick }: Props) {
   const { settings } = useCalSettings();
 
   const start = new Date(event.start_time);
@@ -23,8 +24,8 @@ export function EventBlock({ event, dayIdx, isDragging, onDragStart, onDragEnd, 
 
   const startMins = minutesOfDay(start);
   const durationMins = Math.max(minutesOfDay(end) - startMins, 15);
-  const height = (durationMins / 60) * HOUR_HEIGHT;
-  const top = (startMins / 60) * HOUR_HEIGHT;
+  const height = (durationMins / 60) * hourHeight;
+  const top = (startMins / 60) * hourHeight;
 
   const dayWidthPct = 100 / 7;
   const colWidthPct = dayWidthPct / event.totalCols;
@@ -43,7 +44,7 @@ export function EventBlock({ event, dayIdx, isDragging, onDragStart, onDragEnd, 
         if (!onDragStart) return;
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const offsetPx = e.clientY - rect.top;
-        const offsetMins = Math.round((offsetPx / HOUR_HEIGHT) * 60);
+        const offsetMins = Math.round((offsetPx / hourHeight) * 60);
         e.dataTransfer.effectAllowed = "move";
         // Required for Firefox
         e.dataTransfer.setData("text/plain", event.id);

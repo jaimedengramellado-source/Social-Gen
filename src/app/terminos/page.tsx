@@ -111,8 +111,8 @@ export default function TerminosPage() {
             <h2 className="text-xl font-semibold mb-3">10. Contacto</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Para cualquier consulta sobre estos términos, escríbenos a{" "}
-              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
-                hello@socialflamingo.app
+              <a href="mailto:service@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                service@socialflamingo.app
               </a>.
             </p>
           </section>

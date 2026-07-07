@@ -34,8 +34,8 @@ export default function PrivacidadPage() {
             <h2 className="text-xl font-semibold mb-3">1. Responsable del tratamiento</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               El responsable del tratamiento de tus datos personales es Social Flamingo, con domicilio en España. Puedes contactarnos en{" "}
-              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
-                hello@socialflamingo.app
+              <a href="mailto:service@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                service@socialflamingo.app
               </a>{" "}
               para cualquier cuestión relacionada con la privacidad.
             </p>
@@ -102,8 +102,8 @@ export default function PrivacidadPage() {
             </ul>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed mt-3">
               Para ejercer cualquier derecho, escríbenos a{" "}
-              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
-                hello@socialflamingo.app
+              <a href="mailto:service@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                service@socialflamingo.app
               </a>. Responderemos en un plazo máximo de 30 días. Si consideras que el tratamiento vulnera tus derechos, puedes presentar una reclamación ante la{" "}
               <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
                 Agencia Española de Protección de Datos (AEPD)
@@ -136,8 +136,8 @@ export default function PrivacidadPage() {
             <h2 className="text-xl font-semibold mb-3">10. Contacto</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed">
               Para cualquier consulta sobre privacidad, escríbenos a{" "}
-              <a href="mailto:hello@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
-                hello@socialflamingo.app
+              <a href="mailto:service@socialflamingo.app" className="text-[var(--color-primary)] hover:underline">
+                service@socialflamingo.app
               </a>.
             </p>
           </section>

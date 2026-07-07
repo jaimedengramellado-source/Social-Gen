@@ -191,8 +191,10 @@ function CalendarInner({ scripts, userEmail }: Props) {
         onSettingsOpen={() => setSettingsOpen(true)}
       />
 
+      {/* flex flex-col es imprescindible: sin ello el grid no acota su alto y el
+          scroll interno de la vista semanal nunca se activa */}
       <div
-        className="flex-1 min-h-0 transition-opacity duration-150"
+        className="flex-1 min-h-0 flex flex-col transition-opacity duration-150"
         style={{ opacity: loading ? 0.6 : 1 }}
       >
         {view === "week" ? (

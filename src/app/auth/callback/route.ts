@@ -33,7 +33,15 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
+
+    // El código ya se usó, caducó, o se abrió en un navegador distinto al de la
+    // solicitud (PKCE liga el intercambio al navegador de origen). Para
+    // recuperación de contraseña mandamos a pedir un enlace nuevo en vez de
+    // fallar en silencio hacia /login.
+    if (next === "/restablecer") {
+      return NextResponse.redirect(`${origin}/recuperar?error=expired_link`);
+    }
   }
 
-  return NextResponse.redirect(`${origin}/login`);
+  return NextResponse.redirect(`${origin}/login?error=expired_link`);
 }

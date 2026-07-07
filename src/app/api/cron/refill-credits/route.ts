@@ -40,5 +40,12 @@ export async function GET(request: NextRequest) {
     results[plan] = data?.length ?? 0;
   }
 
+  // Higiene: los IDs de eventos de Stripe solo hacen falta mientras Stripe puede
+  // reintentar el webhook (~72h); 30 días da margen de sobra.
+  await supabaseAdmin
+    .from("stripe_events")
+    .delete()
+    .lt("created_at", new Date(Date.now() - 30 * 86_400_000).toISOString());
+
   return NextResponse.json({ refreshed: results });
 }

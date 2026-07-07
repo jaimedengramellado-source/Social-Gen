@@ -70,9 +70,16 @@ Los precios antiguos (4,75/12,25/24,75 €/sem) quedaron archivados el 2026-07-0
    - `customer.subscription.deleted`
    - `invoice.payment_succeeded`
    - `payment_intent.succeeded` (cobro instantáneo de créditos con tarjeta guardada, sin pasar por Checkout)
+   - `customer.updated` (propaga el cambio de tarjeta hecho desde Ajustes → Facturación a las suscripciones activas)
+   - `invoice.payment_failed` (email al usuario en el primer cobro fallido, con enlace a Ajustes → Facturación para actualizar la tarjeta)
 4. Copiar Signing Secret → `STRIPE_WEBHOOK_SECRET`
 
 Si el endpoint ya existía antes de añadir `payment_intent.succeeded`, edítalo en el Dashboard y añade el evento — si no, el cobro instantáneo desde el popup de créditos se realizará pero nunca se acreditarán los créditos.
+
+Lo mismo con `customer.updated`: sin él, al cambiar la tarjeta desde la pestaña Facturación las suscripciones existentes (que fijan su propia tarjeta al crearse por Checkout) seguirían cobrando la tarjeta antigua.
+
+### 3.3b Portal de facturación
+En Stripe Dashboard → Settings → Billing → Customer portal, la opción **Payment methods → Allow customers to update their payment methods** debe estar activada (lo está por defecto). La pestaña Facturación de Ajustes usa el flujo `payment_method_update` del portal para cambiar la tarjeta.
 
 ### 3.4 Claves Stripe (live)
 ```

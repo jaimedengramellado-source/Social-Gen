@@ -296,6 +296,27 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
+-- Los emails de Stripe/recordatorios se envían a profiles.email: si el usuario
+-- cambia su email en auth, hay que propagarlo o seguirían llegando al antiguo.
+create or replace function handle_user_email_updated()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.profiles set email = new.email where id = new.id;
+  return new;
+end;
+$$;
+revoke execute on function handle_user_email_updated() from anon, authenticated, public;
+
+create trigger on_auth_user_email_updated
+  after update of email on auth.users
+  for each row
+  when (old.email is distinct from new.email)
+  execute procedure handle_user_email_updated();
+
 -- Descuento atómico de créditos. Devuelve el saldo restante, -1 si es ilimitado,
 -- o null si el perfil no existe o no hay saldo suficiente.
 create or replace function deduct_credits(p_user_id uuid, p_amount integer)

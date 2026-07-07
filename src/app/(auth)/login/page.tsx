@@ -28,7 +28,11 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "expired_link"
+      ? "Ese enlace ha caducado o ya se usó. Inicia sesión o solicita uno nuevo."
+      : null
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -110,7 +114,12 @@ function LoginForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Contraseña</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Contraseña</Label>
+                <Link href="/recuperar" className="text-xs text-[var(--color-primary)] hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

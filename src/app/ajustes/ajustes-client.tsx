@@ -37,6 +37,7 @@ import {
   Package,
   User,
   LogOut,
+  Receipt,
 } from "lucide-react";
 
 const PLAN_BADGE: Record<string, "secondary" | "outline" | "purple" | "warning"> = {
@@ -79,8 +80,21 @@ const ACTION_LABELS: Record<string, string> = {
 
 const TOPUP_PRESETS = [5, 10, 25, 50, 100];
 
+const CARD_BRAND_LABELS: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  discover: "Discover",
+  diners: "Diners Club",
+  jcb: "JCB",
+  unionpay: "UnionPay",
+};
+
+const TAB_VALUES = ["cuenta", "ia", "seguridad", "plan", "facturacion"];
+
 type ChannelSnippet = Pick<Channel, "id" | "platform" | "niche" | "niche_description">;
 type UsageEntry = { action: string; total: number };
+type SavedCard = { brand: string; last4: string; expMonth: number; expYear: number };
 
 function formatMemberSince(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("es-ES", { month: "long", year: "numeric" });
@@ -132,16 +146,40 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
 
   const [activeTab, setActiveTab] = useState("cuenta");
 
+  const [savedCard, setSavedCard] = useState<SavedCard | null>(null);
+  const [cardLoaded, setCardLoaded] = useState(false);
+  const [loadingCard, setLoadingCard] = useState(false);
+  const [changingCard, setChangingCard] = useState(false);
+  const [cardUpdated, setCardUpdated] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
     if (params.get("topup") === "success") {
       setTopupSuccess(true);
       setActiveTab("plan");
       window.history.replaceState({}, "", "/ajustes");
-    } else if (params.get("tab") === "plan") {
-      setActiveTab("plan");
+    } else if (params.get("card") === "updated") {
+      setCardUpdated(true);
+      setActiveTab("facturacion");
+      window.history.replaceState({}, "", "/ajustes");
+    } else if (tab && TAB_VALUES.includes(tab)) {
+      setActiveTab(tab);
     }
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "facturacion" || cardLoaded || loadingCard) return;
+    setLoadingCard(true);
+    fetch("/api/stripe/payment-method")
+      .then((res) => res.json())
+      .then((data) => setSavedCard(data.card ?? null))
+      .catch(() => setSavedCard(null))
+      .finally(() => {
+        setLoadingCard(false);
+        setCardLoaded(true);
+      });
+  }, [activeTab, cardLoaded, loadingCard]);
 
   const validAmount = Math.max(5, Math.min(500, parseInt(topupInput) || 5));
   const topupCredits = getTopupCredits(validAmount);
@@ -233,14 +271,37 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
     }
   }
 
-  async function handleManageBilling() {
-    const res = await fetch("/api/stripe/portal", { method: "POST" });
+  async function handleManageBilling(returnTab?: "facturacion") {
+    const res = await fetch("/api/stripe/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(returnTab ? { returnTab } : {}),
+    });
     const { url, error } = await res.json();
     if (error === "NO_CUSTOMER") {
       alert("No tienes una suscripción activa.");
       return;
     }
     if (url) window.location.href = url;
+  }
+
+  async function handleChangeCard() {
+    setChangingCard(true);
+    try {
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow: "payment_method_update" }),
+      });
+      const { url, error } = await res.json();
+      if (error === "NO_CUSTOMER") {
+        alert("Aún no tienes ningún pago registrado. Tu tarjeta se guardará automáticamente con tu primer pago.");
+        return;
+      }
+      if (url) window.location.href = url;
+    } finally {
+      setChangingCard(false);
+    }
   }
 
   async function handleUpgrade(planId: string) {
@@ -334,11 +395,12 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full mb-6 grid grid-cols-4 h-auto">
-          <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
-          <TabsTrigger value="ia">IA</TabsTrigger>
-          <TabsTrigger value="seguridad">Seguridad</TabsTrigger>
-          <TabsTrigger value="plan">Plan</TabsTrigger>
+        <TabsList className="w-full mb-6 flex h-auto overflow-x-auto sm:grid sm:grid-cols-5">
+          <TabsTrigger value="cuenta" className="flex-1">Cuenta</TabsTrigger>
+          <TabsTrigger value="ia" className="flex-1">IA</TabsTrigger>
+          <TabsTrigger value="seguridad" className="flex-1">Seguridad</TabsTrigger>
+          <TabsTrigger value="plan" className="flex-1">Plan</TabsTrigger>
+          <TabsTrigger value="facturacion" className="flex-1">Facturación</TabsTrigger>
         </TabsList>
 
         {/* Tab: Cuenta */}
@@ -563,7 +625,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
                 </Badge>
               </div>
               {(profile.stripe_subscription_id || profile.stripe_customer_id) && (
-                <Button variant="outline" size="sm" onClick={handleManageBilling}>
+                <Button variant="outline" size="sm" onClick={() => handleManageBilling()}>
                   Gestionar suscripción
                 </Button>
               )}
@@ -859,6 +921,101 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               </div>
             </div>
           </section>
+        </TabsContent>
+
+        {/* Tab: Facturación */}
+        <TabsContent value="facturacion" className="space-y-6">
+          {cardUpdated && (
+            <div
+              className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
+              style={{ backgroundColor: "#ECFDF5", color: "var(--color-success)" }}
+            >
+              <Check className="w-4 h-4 shrink-0" />
+              Tarjeta actualizada correctamente. Se usará en tus próximos cobros.
+            </div>
+          )}
+
+          <section className="bg-white rounded-2xl border p-6" style={{ borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="w-5 h-5" style={{ color: "var(--color-muted-foreground)" }} />
+              <h2 className="text-base font-semibold">Método de pago</h2>
+            </div>
+            <p className="text-sm mb-5" style={{ color: "var(--color-muted-foreground)" }}>
+              Tu tarjeta se guarda de forma segura en Stripe y se usa para los cobros de tu plan y las recargas de créditos.
+            </p>
+
+            {loadingCard ? (
+              <div className="flex items-center gap-2 text-sm py-2" style={{ color: "var(--color-muted-foreground)" }}>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Cargando método de pago...
+              </div>
+            ) : savedCard ? (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="h-10 w-14 shrink-0 rounded-md flex items-center justify-center"
+                    style={{ backgroundColor: "var(--color-muted)" }}
+                  >
+                    <CreditCard className="w-5 h-5" style={{ color: "var(--color-muted-foreground)" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {CARD_BRAND_LABELS[savedCard.brand] ??
+                        savedCard.brand.charAt(0).toUpperCase() + savedCard.brand.slice(1)}{" "}
+                      •••• {savedCard.last4}
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                      Caduca {String(savedCard.expMonth).padStart(2, "0")}/{String(savedCard.expYear).slice(-2)}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleChangeCard} disabled={changingCard}>
+                  {changingCard ? "Redirigiendo..." : "Cambiar tarjeta"}
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="rounded-xl border border-dashed p-6 text-center"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <p className="text-sm font-medium mb-1">No tienes ninguna tarjeta guardada</p>
+                <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                  {profile.stripe_customer_id
+                    ? "Añade una tarjeta para los cobros de tu plan y recargas más rápidas."
+                    : "Se guardará automáticamente al contratar un plan o hacer tu primera recarga."}
+                </p>
+                {profile.stripe_customer_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={handleChangeCard}
+                    disabled={changingCard}
+                  >
+                    {changingCard ? "Redirigiendo..." : "Añadir tarjeta"}
+                  </Button>
+                )}
+              </div>
+            )}
+          </section>
+
+          {profile.stripe_customer_id && (
+            <section className="bg-white rounded-2xl border p-6" style={{ borderColor: "var(--color-border)" }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Receipt className="w-5 h-5" style={{ color: "var(--color-muted-foreground)" }} />
+                <h2 className="text-base font-semibold">Historial de facturación</h2>
+              </div>
+              <p className="text-sm mb-4" style={{ color: "var(--color-muted-foreground)" }}>
+                Consulta tus facturas y pagos anteriores en el portal seguro de Stripe.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => handleManageBilling("facturacion")}>
+                Ver historial de pagos
+              </Button>
+            </section>
+          )}
         </TabsContent>
       </Tabs>
 

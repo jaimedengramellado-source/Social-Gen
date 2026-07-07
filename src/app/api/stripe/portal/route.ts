@@ -21,10 +21,25 @@ export async function POST(request: NextRequest) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const { flow, returnTab } = await request
+    .json()
+    .catch(() => ({} as { flow?: string; returnTab?: string }));
+  const returnUrl = returnTab === "facturacion" ? `${appUrl}/ajustes?tab=facturacion` : `${appUrl}/ajustes`;
 
   const session = await getStripeClient().billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${appUrl}/ajustes`,
+    return_url: returnUrl,
+    ...(flow === "payment_method_update"
+      ? {
+          flow_data: {
+            type: "payment_method_update" as const,
+            after_completion: {
+              type: "redirect" as const,
+              redirect: { return_url: `${appUrl}/ajustes?card=updated` },
+            },
+          },
+        }
+      : {}),
   });
 
   return NextResponse.json({ url: session.url });

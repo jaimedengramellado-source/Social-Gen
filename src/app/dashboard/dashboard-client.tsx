@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Zap, ArrowRight, TrendingUp, FileText, Plus, Bookmark } from "lucide-react";
+import { Zap, ArrowRight, TrendingUp, FileText, Plus, Bookmark, Lightbulb, Check } from "lucide-react";
 import Link from "next/link";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
 import { SavedIdeasModal } from "@/components/creator/saved-ideas-modal";
@@ -42,6 +42,17 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showSavedIdeas, setShowSavedIdeas] = useState(false);
   const [sorpresas, setSorpresas] = useState<Idea[]>([]);
+  const [feedbackCopied, setFeedbackCopied] = useState(false);
+
+  async function copyFeedbackEmail() {
+    try {
+      await navigator.clipboard.writeText("service@socialflamingo.app");
+      setFeedbackCopied(true);
+      setTimeout(() => setFeedbackCopied(false), 2000);
+    } catch {
+      // portapapeles no disponible (contexto no seguro); el enlace del texto sigue funcionando
+    }
+  }
 
   const firstName = profile.full_name?.split(" ")[0] || "creador";
   const avgScore = (() => {
@@ -64,6 +75,40 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} plan={profile.plan} />
       <SavedIdeasModal open={showSavedIdeas} onClose={() => setShowSavedIdeas(false)} />
+
+      {/* ── Feedback banner ── */}
+      <div
+        className="mb-6 p-5 rounded-2xl border border-[var(--color-border)] bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        style={{ boxShadow: "var(--shadow-card)" }}
+      >
+        <div className="flex items-start gap-3">
+          <Lightbulb size={18} className="mt-0.5 flex-shrink-0 text-amber-500" />
+          <div>
+            <p className="text-sm font-semibold mb-0.5">¿Tienes una propuesta de mejora?</p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              Si echas en falta alguna función o algo no funciona como esperas, cuéntanoslo y lo
+              implementamos sin problema. Escríbenos a{" "}
+              <a href="mailto:service@socialflamingo.app" className="font-medium underline text-[var(--color-foreground)]">
+                service@socialflamingo.app
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={copyFeedbackEmail}
+          className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white whitespace-nowrap transition-opacity hover:opacity-80"
+          style={{ backgroundColor: YT_RED }}
+        >
+          {feedbackCopied ? (
+            <>
+              <Check size={14} /> Correo copiado
+            </>
+          ) : (
+            "Enviar feedback"
+          )}
+        </button>
+      </div>
 
       {/* ── Greeting ── */}
       <div className="flex items-start justify-between mb-8">

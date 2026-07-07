@@ -36,8 +36,12 @@ export async function POST(request: NextRequest) {
 
     const session = await getStripeClient().checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card"],
       ...customerOptions,
+      // En mode:payment Stripe no crea customer reutilizable por defecto; sin él no hay
+      // recarga instantánea con tarjeta guardada ni portal de facturación.
+      ...(profile?.stripe_customer_id ? {} : { customer_creation: "always" as const }),
+      // Guarda la tarjeta en el customer para recargas instantáneas y la pestaña Facturación.
+      payment_intent_data: { setup_future_usage: "off_session" },
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: { userId: user.id, type: "credit_pack", packId },
       success_url: `${appUrl}/ajustes?topup=success`,
@@ -63,7 +67,6 @@ export async function POST(request: NextRequest) {
     if (recurring) {
       const session = await getStripeClient().checkout.sessions.create({
         mode: "subscription",
-        payment_method_types: ["card"],
         ...customerOptions,
         line_items: [{
           price_data: {
@@ -85,8 +88,9 @@ export async function POST(request: NextRequest) {
     } else {
       const session = await getStripeClient().checkout.sessions.create({
         mode: "payment",
-        payment_method_types: ["card"],
         ...customerOptions,
+        ...(profile?.stripe_customer_id ? {} : { customer_creation: "always" as const }),
+        payment_intent_data: { setup_future_usage: "off_session" },
         line_items: [{
           price_data: {
             currency: "eur",
@@ -113,7 +117,6 @@ export async function POST(request: NextRequest) {
 
   const session = await getStripeClient().checkout.sessions.create({
     mode: "subscription",
-    payment_method_types: ["card"],
     ...customerOptions,
     line_items: [{ price: priceId, quantity: 1 }],
     metadata: { userId: user.id, plan, billing },

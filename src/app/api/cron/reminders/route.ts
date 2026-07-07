@@ -1,28 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { sendEmail, emailLayout, escapeHtml } from "@/lib/email";
 
 const supabaseAdmin = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-async function sendEmail(to: string, subject: string, html: string) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log(`[reminders] RESEND_API_KEY not set — skipping email to ${to}: ${subject}`);
-    return;
-  }
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL ?? "ViralCraft <onboarding@resend.dev>",
-      to: [to],
-      subject,
-      html,
-    }),
-  });
-}
 
 function offsetLabel(mins: number): string {
   if (mins < 60) return `${mins} min`;
@@ -38,12 +21,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Fetch events within a generous window: 2 days in the past (late cron runs) to 1 year ahead
+  // Ventana: 2 días atrás (cron caído/retrasado) a 3 días adelante — el offset máximo
+  // de aviso en la UI es 2 días (2880 min), así que nada más lejano puede estar due.
   const { data: allEvents, error } = await supabaseAdmin
     .from("calendar_events")
     .select("*")
     .gte("start_time", new Date(Date.now() - 2 * 86_400_000).toISOString())
-    .lte("start_time", new Date(Date.now() + 366 * 86_400_000).toISOString());
+    .lte("start_time", new Date(Date.now() + 3 * 86_400_000).toISOString());
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -87,42 +71,48 @@ export async function GET(request: NextRequest) {
     (profiles ?? []).map((p: { id: string; email: string }) => [p.id, p.email])
   );
 
+  // Un aviso con más de 3h de retraso (cron caído) ya no aporta: se marca como
+  // enviado sin mandar email para no avisar de eventos que ya pasaron.
+  const STALE_GRACE_MS = 3 * 3_600_000;
+
   let sent = 0;
   for (const { ev, offsets, isLegacy } of due) {
     const email = emailMap[ev.user_id as string];
     if (!email) continue;
 
     const eventTime = new Date((ev.start_time ?? ev.scheduled_at) as string);
-    const when = eventTime.toLocaleString("es-ES", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
+    const isStale = eventTime.getTime() < now - STALE_GRACE_MS;
 
-    const reminderNote =
-      offsets.length === 1
-        ? `Este aviso se envió ${offsetLabel(offsets[0])} antes del evento.`
-        : `Avisos enviados: ${offsets.map(offsetLabel).join(", ")} antes del evento.`;
+    if (!isStale) {
+      // El cron corre en UTC; sin timeZone las horas del email saldrían desfasadas 1-2h.
+      const when = eventTime.toLocaleString("es-ES", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid",
+      });
 
-    await sendEmail(
-      email,
-      `⏰ Recordatorio: ${ev.title as string}`,
-      `
-        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
-          <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Tienes un evento próximo</h2>
-          <div style="background:#f5f3ff;border-radius:12px;padding:20px;margin-bottom:20px">
-            <p style="font-size:16px;font-weight:600;margin:0 0 6px">${ev.title as string}</p>
+      const reminderNote =
+        offsets.length === 1
+          ? `Este aviso se envió ${offsetLabel(offsets[0])} antes del evento.`
+          : `Avisos enviados: ${offsets.map(offsetLabel).join(", ")} antes del evento.`;
+
+      const delivered = await sendEmail(
+        email,
+        `⏰ Recordatorio: ${ev.title as string}`,
+        emailLayout({
+          emoji: "📅",
+          heading: escapeHtml(ev.title as string),
+          bodyHtml: `
             <p style="color:#6b7280;font-size:14px;margin:0">📅 ${when}</p>
-            ${ev.description ? `<p style="color:#374151;font-size:14px;margin:12px 0 0;white-space:pre-line">📝 ${ev.description as string}</p>` : ""}
-          </div>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/calendario"
-             style="display:inline-block;background:#8C2230;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600">
-            Ver calendario →
-          </a>
-          <p style="color:#9ca3af;font-size:12px;margin-top:24px">${reminderNote}</p>
-          <p style="color:#9ca3af;font-size:12px;margin-top:4px">Social Flamingo · Gestiona tus avisos en el calendario.</p>
-        </div>
-      `
-    );
+            ${ev.description ? `<p style="margin:12px 0 0;white-space:pre-line">📝 ${escapeHtml(ev.description as string)}</p>` : ""}
+          `,
+          ctaHref: `${process.env.NEXT_PUBLIC_APP_URL}/calendario`,
+          ctaLabel: "Ver calendario →",
+          footerNote: reminderNote,
+        })
+      );
+      // Si Resend falla no se marca como enviado: se reintenta en el siguiente cron.
+      if (!delivered) continue;
+    }
 
     if (isLegacy) {
       await supabaseAdmin
@@ -138,7 +128,7 @@ export async function GET(request: NextRequest) {
         .update({ sent_reminder_offsets: [...new Set([...currentSent, ...offsets])] })
         .eq("id", ev.id as string);
     }
-    sent++;
+    if (!isStale) sent++;
   }
 
   return NextResponse.json({ sent });

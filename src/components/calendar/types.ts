@@ -28,8 +28,6 @@ export const EVENT_COLORS = [
   "#616161",
 ];
 
-export const HOUR_HEIGHT = 60; // px per hour → 1440px total
-
 export function minutesOfDay(d: Date): number {
   return d.getHours() * 60 + d.getMinutes();
 }
