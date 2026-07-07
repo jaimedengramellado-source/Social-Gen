@@ -2,6 +2,7 @@ import { createAdminClient, getUser } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { getViralScoreBorder, getViralScoreColor } from "@/lib/utils";
 import { PLATFORM_LABELS } from "@/types";
 import type { Script } from "@/types";
 
@@ -47,8 +48,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 mb-3">
             <h1 className="text-2xl md:text-3xl font-semibold leading-tight">{s.title}</h1>
-            <div className="shrink-0 flex items-center justify-center w-14 h-14 rounded-full border-2 font-bold text-lg
-              border-emerald-500 bg-emerald-50 text-emerald-700">
+            <div className={`shrink-0 flex items-center justify-center w-14 h-14 rounded-full border-2 font-bold text-lg ${getViralScoreBorder(s.viral_score)} ${getViralScoreColor(s.viral_score)}`}>
               {s.viral_score}
             </div>
           </div>

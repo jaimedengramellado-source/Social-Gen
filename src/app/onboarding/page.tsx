@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { safeInternalPath } from "@/lib/plan-intent";
 import { motion, AnimatePresence } from "framer-motion";
+import { PartyPopper } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { CelebrationBurst } from "@/components/shared/celebration-burst";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +48,12 @@ function OnboardingFlow() {
   const isPlanFlow = searchParams.get("payment") === "success";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowWelcome(false), 2400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [form, setForm] = useState({
     channelName: "",
@@ -66,32 +74,42 @@ function OnboardingFlow() {
 
   async function handleFinish() {
     setLoading(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    await supabase.from("channels").insert({
-      user_id: user.id,
-      platform: form.platform,
-      channel_name: form.channelName,
-      subscribers_range: form.subscribersRange,
-      niche: form.niche,
-      niche_description: form.nicheDescription,
-      main_goal: form.mainGoal,
-      audience_pain: form.audiencePain,
-      differentiator: form.differentiator,
-      content_format: form.platform?.includes("short") || form.platform === "tiktok" || form.platform === "reels" ? "short" : "long",
-    });
+      await supabase.from("channels").insert({
+        user_id: user.id,
+        platform: form.platform,
+        channel_name: form.channelName,
+        subscribers_range: form.subscribersRange,
+        niche: form.niche,
+        niche_description: form.nicheDescription,
+        main_goal: form.mainGoal,
+        audience_pain: form.audiencePain,
+        differentiator: form.differentiator,
+        content_format: form.platform?.includes("short") || form.platform === "tiktok" || form.platform === "reels" ? "short" : "long",
+      });
 
-    await supabase.from("profiles").update({
-      onboarding_completed: true,
-      channel_name: form.channelName || null,
-      main_platform: form.platform || null,
-      niche: form.niche || null,
-      tone: form.tone || null,
-      ai_instructions: form.aiInstructions || null,
-    }).eq("id", user.id);
-    router.push(nextPath);
+      const { error } = await supabase.from("profiles").update({
+        onboarding_completed: true,
+        channel_name: form.channelName || null,
+        main_platform: form.platform || null,
+        niche: form.niche || null,
+        tone: form.tone || null,
+        ai_instructions: form.aiInstructions || null,
+      }).eq("id", user.id);
+      if (error) throw error;
+
+      router.push(nextPath);
+    } catch {
+      setLoading(false);
+      alert("No se pudo guardar tu configuración. Inténtalo de nuevo.");
+    }
   }
 
   const canAdvance = [
@@ -108,6 +126,42 @@ function OnboardingFlow() {
       className="min-h-screen flex items-center justify-center px-4 py-12"
       style={{ backgroundColor: "var(--color-background)" }}
     >
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ backgroundColor: "var(--color-background)" }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          >
+            <div className="text-center">
+              <CelebrationBurst
+                className="mb-6"
+                icon={<PartyPopper className="h-9 w-9" style={{ color: "var(--color-primary)" }} />}
+              />
+              <motion.h1
+                className="text-3xl mb-2"
+                style={{ fontFamily: "var(--font-instrument-serif)" }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.2, ease: "easeOut" }}
+              >
+                Te damos la bienvenida a{" "}
+                <span style={{ color: "var(--color-primary)", fontStyle: "italic" }}>Social Flamingo</span>
+              </motion.h1>
+              <motion.p
+                className="text-sm text-[var(--color-muted-foreground)]"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.35, ease: "easeOut" }}
+              >
+                Tu cuenta está lista. Vamos a configurar tu IA en un par de minutos.
+              </motion.p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="w-full max-w-xl">
         {/* Logo */}
         <p className="text-center text-xl font-normal mb-10" style={{ fontFamily: "var(--font-instrument-serif)" }}>

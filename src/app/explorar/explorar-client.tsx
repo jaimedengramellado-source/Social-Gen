@@ -115,17 +115,22 @@ export function ExplorarClient({ profile, initialWatchlist }: Props) {
     if (!q.trim() && !nicho) return;
     setLoading(true);
     setSearched(true);
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    if (nicho) params.set("nicho", nicho);
-    if (activeSize) {
-      const s = SIZES.find(s => s.label === activeSize);
-      if (s) { params.set("minSubs", String(s.min)); params.set("maxSubs", String(s.max)); }
+    try {
+      const params = new URLSearchParams();
+      if (q.trim()) params.set("q", q.trim());
+      if (nicho) params.set("nicho", nicho);
+      if (activeSize) {
+        const s = SIZES.find(s => s.label === activeSize);
+        if (s) { params.set("minSubs", String(s.min)); params.set("maxSubs", String(s.max)); }
+      }
+      const res = await fetch(`/api/youtube/search?${params}`);
+      const data = await res.json();
+      setResults(data.channels ?? []);
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
     }
-    const res = await fetch(`/api/youtube/search?${params}`);
-    const data = await res.json();
-    setResults(data.channels ?? []);
-    setLoading(false);
   };
 
   const toggleWatchlist = async (channel: YTChannel) => {

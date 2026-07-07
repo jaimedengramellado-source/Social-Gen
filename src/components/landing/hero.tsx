@@ -2,6 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
+import { Badge } from "@/components/ui/badge";
+
+const LOADING_STAGES = [
+  "Analizando tu nicho…",
+  "Detectando patrones virales…",
+  "Puntuando el potencial de cada idea…",
+  "Escribiendo tu hook de apertura…",
+];
 
 const HERO_PLACEHOLDERS = [
   "Describe tu canal o tema… ej: recetas veganas para universitarios sin dinero",
@@ -54,14 +63,24 @@ export function LandingHero() {
     return () => clearInterval(id);
   }, []);
   const [result, setResult] = useState<{
+    plataforma: string;
+    ideas: Array<{ title: string; viral_score: number; hook_type: string; why_viral: string }>;
     hook: string;
     intro: string;
-    plataforma: string;
     por_que: string;
-    visuales?: Array<{ momento: string; tipo: string; descripcion: string }>;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadingStage, setLoadingStage] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!loading) return;
+    setLoadingStage(0);
+    const id = setInterval(() => {
+      setLoadingStage(s => Math.min(s + 1, LOADING_STAGES.length - 1));
+    }, 3500);
+    return () => clearInterval(id);
+  }, [loading]);
 
   const handleSubmit = async () => {
     if (!prompt.trim() || loading) return;
@@ -197,7 +216,18 @@ export function LandingHero() {
                 className="mt-8 flex flex-col items-center gap-4"
               >
                 <LogoLoader size={56} />
-                <p className="text-sm text-[var(--color-muted-foreground)]">Generando tu guion viral…</p>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={loadingStage}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25 }}
+                    className="text-sm text-[var(--color-muted-foreground)]"
+                  >
+                    {LOADING_STAGES[loadingStage]}
+                  </motion.p>
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
@@ -225,85 +255,98 @@ export function LandingHero() {
                 transition={{ duration: 0.35 }}
                 className="mt-5 rounded-2xl border border-[var(--color-border)] bg-white text-left shadow-[var(--shadow-popup)] overflow-hidden"
               >
-                {/* Visible part — hook + intro */}
+                {/* Visible part — ideas con potencial + preview del guion */}
                 <div className="p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2.5 py-1 rounded-full">
-                      Variante 1 de 3 · {result.plataforma}
+                      Análisis IA · {result.plataforma}
                     </span>
-                    <span className="text-xs text-[var(--color-muted-foreground)]">Vista previa parcial</span>
+                    <span className="text-xs text-[var(--color-muted-foreground)]">Vista previa gratuita</span>
                   </div>
 
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1.5">Hook de apertura</p>
-                  <p
-                    className="text-lg font-normal leading-snug mb-4"
-                    style={{ fontFamily: "var(--font-instrument-serif)" }}
-                  >
-                    "{result.hook}"
-                  </p>
-
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1.5">Primeros 30 segundos</p>
-
-                  {/* Texto que se desvanece */}
-                  <div className="relative">
-                    <p className="text-sm leading-relaxed text-[var(--color-foreground)]"
-                      style={{
-                        maskImage: "linear-gradient(to bottom, black 30%, transparent 100%)",
-                        WebkitMaskImage: "linear-gradient(to bottom, black 30%, transparent 100%)",
-                      }}
-                    >
-                      {result.intro}
-                    </p>
-                    {/* Capa de blur sobre el fade */}
-                    <div
-                      className="absolute bottom-0 left-0 right-0 h-16"
-                      style={{
-                        backdropFilter: "blur(3px)",
-                        WebkitBackdropFilter: "blur(3px)",
-                        maskImage: "linear-gradient(to bottom, transparent, black)",
-                        WebkitMaskImage: "linear-gradient(to bottom, transparent, black)",
-                      }}
-                    />
-                  </div>
-
-                  {result.por_que && (
-                    <p className="mt-2 text-xs text-[var(--color-muted-foreground)] italic border-t border-[var(--color-border)] pt-3">
-                      ✦ {result.por_que}
-                    </p>
-                  )}
-
-                  {/* Sugerencias visuales */}
-                  {result.visuales && result.visuales.length > 0 && (
-                    <div className="mt-4 border-t border-[var(--color-border)] pt-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
-                        Dirección visual
+                  {result.ideas && result.ideas.length > 0 && (
+                    <>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2.5">
+                        {result.ideas.length} ideas con potencial viral para tu nicho
                       </p>
-                      <div className="flex flex-col gap-2">
-                        {result.visuales.map((v, i) => (
-                          <div key={i} className="flex gap-3 items-start">
-                            <span
-                              className="flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-0.5"
-                              style={{
-                                backgroundColor: "var(--color-muted)",
-                                color: "var(--color-muted-foreground)",
-                              }}
-                            >
-                              {v.momento}
-                            </span>
-                            <div className="min-w-0">
-                              <span
-                                className="text-[10px] font-medium uppercase tracking-wide mr-1.5"
-                                style={{ color: "var(--color-primary)" }}
-                              >
-                                {v.tipo}
-                              </span>
-                              <span className="text-xs text-[var(--color-foreground)]">{v.descripcion}</span>
+                      <div className="flex flex-col gap-2.5 mb-5">
+                        {result.ideas.slice(0, 3).map((idea, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.15 + i * 0.12 }}
+                            className="rounded-xl border border-[var(--color-border)] p-4 hover:shadow-[var(--shadow-card)] transition-shadow"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <Badge variant="purple" className="text-xs">{idea.hook_type}</Badge>
+                                  {i === 0 && (
+                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                                      Mejor idea
+                                    </span>
+                                  )}
+                                </div>
+                                <h3 className="font-semibold text-sm leading-snug mb-1.5">{idea.title}</h3>
+                                <p
+                                  className={`text-xs text-[var(--color-primary)] bg-[var(--color-primary-light)] rounded-lg px-2.5 py-1.5 inline-block ${
+                                    i === 0 ? "" : "select-none"
+                                  }`}
+                                  style={i === 0 ? undefined : { filter: "blur(4px)" }}
+                                >
+                                  💡 {idea.why_viral}
+                                </p>
+                              </div>
+                              <ViralScoreBadge score={idea.viral_score} size="sm" animate />
                             </div>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
-                    </div>
+                    </>
                   )}
+
+                  <div className="border-t border-[var(--color-border)] pt-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1.5">
+                      Hook de apertura · Mejor idea
+                    </p>
+                    <p
+                      className="text-lg font-normal leading-snug mb-4"
+                      style={{ fontFamily: "var(--font-instrument-serif)" }}
+                    >
+                      "{result.hook}"
+                    </p>
+
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1.5">Primeros 30 segundos</p>
+
+                    {/* Texto que se desvanece */}
+                    <div className="relative">
+                      <p className="text-sm leading-relaxed text-[var(--color-foreground)]"
+                        style={{
+                          maskImage: "linear-gradient(to bottom, black 30%, transparent 100%)",
+                          WebkitMaskImage: "linear-gradient(to bottom, black 30%, transparent 100%)",
+                        }}
+                      >
+                        {result.intro}
+                      </p>
+                      {/* Capa de blur sobre el fade */}
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-16"
+                        style={{
+                          backdropFilter: "blur(3px)",
+                          WebkitBackdropFilter: "blur(3px)",
+                          maskImage: "linear-gradient(to bottom, transparent, black)",
+                          WebkitMaskImage: "linear-gradient(to bottom, transparent, black)",
+                        }}
+                      />
+                    </div>
+
+                    {result.por_que && (
+                      <p className="mt-2 text-xs text-[var(--color-muted-foreground)] italic">
+                        ✦ {result.por_que}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Locked section */}
@@ -317,11 +360,11 @@ export function LandingHero() {
                     <p className="text-sm leading-relaxed text-[var(--color-foreground)] mb-3">
                       Aquí el algoritmo detecta que el espectador ya lleva 45 segundos y necesita un nuevo estímulo. Introduce el giro inesperado que cambia la narrativa y mantiene la retención por encima del 70%...
                     </p>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1.5">Retención + CTA</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1.5">Dirección visual + Retención + CTA</p>
                     <p className="text-sm leading-relaxed text-[var(--color-foreground)]">
                       Cierra con el loop abierto que genera comentarios y fuerza al algoritmo a distribuirlo...
                     </p>
-                    <p className="text-xs text-[var(--color-muted-foreground)] mt-3">Variante 2 · Variante 3 disponibles</p>
+                    <p className="text-xs text-[var(--color-muted-foreground)] mt-3">Guion completo de las 3 ideas · Dirección visual · Análisis de retención</p>
                   </div>
 
                   {/* Lock overlay */}
@@ -330,17 +373,17 @@ export function LandingHero() {
                   >
                     <div className="mt-8 text-center px-6">
                       <p className="text-sm font-semibold text-[var(--color-foreground)] mb-1">
-                        El guion completo + 2 variantes más te esperan
+                        ¿Quieres ver el análisis completo y ganar el juego de las redes sociales?
                       </p>
                       <p className="text-xs text-[var(--color-muted-foreground)] mb-4">
-                        Regístrate gratis. Sin tarjeta de crédito.
+                        Guion completo, dirección visual y las 3 ideas desbloqueadas. Regístrate gratis, sin tarjeta de crédito.
                       </p>
                       <a
                         href="/signup"
                         className="inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-all hover:-translate-y-px"
                         style={{ backgroundColor: "var(--color-foreground)" }}
                       >
-                        Ver guion completo →
+                        Ver análisis completo gratis →
                       </a>
                     </div>
                   </div>

@@ -1496,6 +1496,10 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
       if (pendingDocExport) setExportedDoc(pendingDocExport);
       if (hitMaxTokens) setMaxTokensHit(true);
       await saveSession(finalMessages, content.trim());
+    } catch {
+      // Fallo de red o stream interrumpido: sin esto la promesa quedaría rechazada
+      // sin manejar y el usuario no vería ningún feedback.
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Se ha perdido la conexión mientras se generaba la respuesta. Inténtalo de nuevo." }]);
     } finally {
       if (revealId !== undefined) window.clearInterval(revealId);
       setLoading(false);

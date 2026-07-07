@@ -18,14 +18,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
 
+  // Validamos la entrada ANTES de cobrar: un body inválido no debe costar créditos.
+  const body = await request.json().catch(() => null);
+  const { scriptId, section, currentContent, context } = body ?? {};
+  if (typeof section !== "string" || !section || typeof currentContent !== "string") {
+    return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+  }
+
   const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "regenerate_section");
   if (!credit.ok) {
     return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
   }
-
-  const body = await request.json();
-  const { scriptId, section, currentContent, context } = body;
 
   const systemPrompt = SYSTEM_PROMPTS.script + `
 
@@ -60,8 +64,10 @@ Mejora el impacto sin perder el hilo narrativo con el resto del guion. Solo devu
       newContent = raw.trim();
     }
 
-    // Update script in DB if scriptId provided
-    if (scriptId && section !== "main_content") {
+    // Solo columnas de texto del guion: `section` viene del cliente y sin esta
+    // whitelist podría usarse para escribir cualquier columna de la fila (mass assignment).
+    const UPDATABLE_SECTIONS = new Set(["hook", "intro", "cta"]);
+    if (scriptId && UPDATABLE_SECTIONS.has(section)) {
       await supabase
         .from("scripts")
         .update({ [section]: newContent, updated_at: new Date().toISOString() })

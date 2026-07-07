@@ -18,14 +18,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
 
+  // Validamos la entrada ANTES de cobrar: un body inválido no debe costar créditos.
+  const body = await request.json().catch(() => null);
+  const { channelName, channelUrl, platform, niche, subscribers } = body ?? {};
+  if (typeof channelName !== "string" || !channelName.trim()) {
+    return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+  }
+
   const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "analyze_channel");
   if (!credit.ok) {
     return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
   }
-
-  const body = await request.json();
-  const { channelName, channelUrl, platform, niche, subscribers } = body;
 
   const userPrompt = `Analiza este canal competidor y devuelve insights estratégicos accionables:
 

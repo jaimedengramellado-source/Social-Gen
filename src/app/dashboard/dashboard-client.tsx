@@ -64,11 +64,16 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
 
   async function handleSorprendeme() {
     setSorprendiendome(true);
-    const res = await fetch("/api/ai/sorprendeme", { method: "POST" });
-    const data = await res.json();
-    if (res.status === 402) { setShowUpgrade(true); setSorprendiendome(false); return; }
-    if (data.ideas) setSorpresas(data.ideas);
-    setSorprendiendome(false);
+    try {
+      const res = await fetch("/api/ai/sorprendeme", { method: "POST" });
+      const data = await res.json();
+      if (res.status === 402) { setShowUpgrade(true); return; }
+      if (data.ideas) setSorpresas(data.ideas);
+    } catch {
+      // Fallo de red: el finally evita que el botón quede en "Generando…" para siempre.
+    } finally {
+      setSorprendiendome(false);
+    }
   }
 
   return (

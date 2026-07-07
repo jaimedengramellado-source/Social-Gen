@@ -2,6 +2,8 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { Check, MailOpen } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { planCheckoutPath } from "@/lib/plan-intent";
 import { PlanSteps } from "@/components/shared/plan-steps";
+import { CelebrationBurst } from "@/components/shared/celebration-burst";
 import { PRICING_PLANS } from "@/types";
 
 export default function SignupPage() {
@@ -18,6 +21,20 @@ export default function SignupPage() {
       <SignupForm />
     </Suspense>
   );
+}
+
+// Supabase devuelve los errores de auth en inglés; traducimos los habituales.
+function signupErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "Ya existe una cuenta con ese email. Prueba a iniciar sesión.";
+  if (m.includes("password") && (m.includes("at least") || m.includes("weak")))
+    return "La contraseña debe tener al menos 8 caracteres.";
+  if (m.includes("invalid email") || m.includes("valid email"))
+    return "Ese email no parece válido. Revísalo e inténtalo de nuevo.";
+  if (m.includes("rate limit") || m.includes("too many"))
+    return "Demasiados intentos seguidos. Espera un momento e inténtalo de nuevo.";
+  return "No se ha podido crear la cuenta. Inténtalo de nuevo en unos segundos.";
 }
 
 function SignupForm() {
@@ -53,7 +70,7 @@ function SignupForm() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(signupErrorMessage(error.message));
       setLoading(false);
       return;
     }
@@ -83,15 +100,36 @@ function SignupForm() {
       >
         <div className="w-full max-w-sm text-center">
           {nextPath && <PlanSteps current={1} />}
-          <div className="text-4xl mb-4">📬</div>
-          <h2 className="text-xl font-semibold mb-2">Revisa tu email</h2>
-          <p className="text-[var(--color-muted-foreground)] text-sm">
+          <CelebrationBurst
+            className="mb-6"
+            icon={<MailOpen className="h-9 w-9" style={{ color: "var(--color-primary)" }} />}
+            badge={<Check className="h-4 w-4 text-white" strokeWidth={3} />}
+          />
+          <motion.h2
+            className="text-xl font-semibold mb-2"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.15, ease: "easeOut" }}
+          >
+            ¡Cuenta creada!
+          </motion.h2>
+          <motion.p
+            className="text-[var(--color-muted-foreground)] text-sm"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.25, ease: "easeOut" }}
+          >
             Hemos enviado un enlace de confirmación a <strong>{email}</strong>. Haz clic en el enlace para activar tu cuenta.
-          </p>
+          </motion.p>
           {nextPath && (
-            <p className="text-[var(--color-muted-foreground)] text-sm mt-3">
+            <motion.p
+              className="text-[var(--color-muted-foreground)] text-sm mt-3"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.35, ease: "easeOut" }}
+            >
               Al confirmar, continuarás con el pago y después configurarás tu IA.
-            </p>
+            </motion.p>
           )}
         </div>
       </div>

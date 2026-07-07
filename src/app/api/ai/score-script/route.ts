@@ -18,17 +18,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
 
+  // Validamos la entrada ANTES de cobrar: un guion inválido no debe costar créditos.
+  const body = await request.json().catch(() => null);
+  const { script, platform, niche } = body ?? {};
+
+  if (typeof script !== "string" || script.trim().length < 50) {
+    return NextResponse.json({ error: "SCRIPT_TOO_SHORT" }, { status: 400 });
+  }
+
   const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "score_script");
   if (!credit.ok) {
     return NextResponse.json({ error: credit.error, creditsRemaining: credit.creditsRemaining }, { status: 402 });
-  }
-
-  const body = await request.json();
-  const { script, platform, niche } = body;
-
-  if (!script || script.trim().length < 50) {
-    return NextResponse.json({ error: "SCRIPT_TOO_SHORT" }, { status: 400 });
   }
 
   const userPrompt = `Analiza y puntúa este guion:

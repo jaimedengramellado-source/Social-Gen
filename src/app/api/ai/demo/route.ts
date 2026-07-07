@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, THINKING_ADAPTIVE, extractText, cachedSystem } from "@/lib/anthropic";
+import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, THINKING_DISABLED, extractText, cachedSystem } from "@/lib/anthropic";
 
 const DEMO_LIMIT = 3;
 const DEMO_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -81,28 +81,44 @@ export async function POST(req: NextRequest) {
 
   const anthropic = getAnthropicClient();
 
-  const message = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 1200,
-    thinking: THINKING_ADAPTIVE,
-    messages: [{ role: "user", content: prompt.trim() }],
-    system: cachedSystem(SYSTEM_PROMPTS.script + `
+  let message;
+  try {
+    message = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 3000,
+      // Sin thinking: el demo de la landing prioriza latencia; con thinking adaptativo
+      // el razonamiento consumía el presupuesto de tokens y el JSON llegaba truncado.
+      thinking: THINKING_DISABLED,
+      messages: [{ role: "user", content: prompt.trim() }],
+      system: cachedSystem(SYSTEM_PROMPTS.script + `
 
-TAREA ESPECÍFICA: El usuario te da un tema o contexto. Genera el inicio de un guion que pare el scroll y obligue a seguir viendo.
+TAREA ESPECÍFICA: El usuario te da un tema o contexto. Genera un mini-análisis que demuestre valor inmediato: 3 ideas de vídeo con potencial viral + el inicio del guion de la mejor idea.
 
 Responde SOLO con este JSON (sin markdown, sin texto extra):
 {
-  "hook": "Primera frase exacta que se dice en cámara. Para el scroll en 2 segundos.",
-  "intro": "Los siguientes 25-30 segundos: desarrolla el loop de curiosidad, promete el valor, no lo entregues todavía.",
-  "plataforma": "YouTube / TikTok / Reels",
-  "por_que": "La palanca psicológica exacta que hace irresistible este hook (curiosidad, miedo, identidad, shock, contrarian)",
-  "visuales": [
-    { "momento": "Hook (0-2s)", "tipo": "entorno/acción/pantalla/encuadre", "descripcion": "qué se ve exactamente: plano, posición del creador, elementos en escena, texto en pantalla" },
-    { "momento": "Apertura (2-15s)", "tipo": "entorno/acción/pantalla/encuadre", "descripcion": "qué cambia, cómo evoluciona la escena, movimiento de cámara" },
-    { "momento": "Loop (15-30s)", "tipo": "entorno/acción/pantalla/encuadre", "descripcion": "el momento visual que refuerza la promesa y retiene al espectador" }
-  ]
-}`),
-  });
+  "plataforma": "YouTube / TikTok / Reels — la más adecuada para este nicho",
+  "ideas": [
+    {
+      "title": "Título listo para usar, máx 70 caracteres. Imposible de no hacer clic.",
+      "viral_score": <1-100, sé realista: entre 60 y 95>,
+      "hook_type": "Curiosidad|Shock|Identidad|Miedo|Contrarian|Revelación|Transformación|FOMO",
+      "why_viral": "La palanca psicológica exacta que hace irresistible esta idea, en 1 frase"
+    },
+    { ...idea 2 }, { ...idea 3 }
+  ],
+  "hook": "Primera frase exacta del guion de la idea 1. Para el scroll en 2 segundos.",
+  "intro": "Los siguientes 25-30 segundos del guion de la idea 1: desarrolla el loop de curiosidad, promete el valor, no lo entregues todavía.",
+  "por_que": "Por qué este hook funciona psicológicamente, en 1 frase"
+}
+Las ideas van ordenadas de mayor a menor viral_score. Exactamente 3 ideas.`),
+    });
+  } catch (err) {
+    console.error("[demo] Anthropic API error:", err);
+    return NextResponse.json(
+      { error: "La IA no está disponible ahora mismo. Inténtalo de nuevo en unos segundos." },
+      { status: 500 }
+    );
+  }
 
   const raw = extractText(message);
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -115,6 +131,10 @@ Responde SOLO con este JSON (sin markdown, sin texto extra):
       if (match) {
         try { return NextResponse.json(JSON.parse(match[0])); } catch { /* fall through */ }
       }
+      console.error(
+        `[demo] Failed to parse AI response (stop_reason=${message.stop_reason}, output_tokens=${message.usage.output_tokens}):`,
+        cleaned.slice(0, 500)
+      );
       return NextResponse.json({ error: "Error generando el guion." }, { status: 500 });
     }
   })();

@@ -47,7 +47,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            © 2025 Social Flamingo. Todos los derechos reservados.
+            © {new Date().getFullYear()} Social Flamingo. Todos los derechos reservados.
           </p>
           <div className="flex gap-6">
             <Link href="/pricing" className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">Precios</Link>

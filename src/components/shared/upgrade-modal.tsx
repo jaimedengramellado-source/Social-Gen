@@ -49,42 +49,46 @@ export function UpgradeModal({ open, onClose, creditsRemaining = 0, plan = "free
 
   async function handleUpgrade(planId: string) {
     setLoading(true);
-    const res = await fetch("/api/stripe/create-checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: planId, billing }),
-    });
-    const { url } = await res.json();
-    if (url) window.location.href = url;
-    setLoading(false);
+    try {
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planId, billing }),
+      });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleBuyCredits() {
     setBuyingCredits(true);
+    try {
+      // Intento 1: cobro instantáneo con la tarjeta guardada del cliente (sin salir del popup).
+      const instantRes = await fetch("/api/stripe/charge-topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: validTopupAmount, recurring: topupRecurring }),
+      });
+      const instantData = await instantRes.json();
+      if (instantData.instant) {
+        setTopupSuccess(true);
+        setTimeout(onClose, 1800);
+        return;
+      }
 
-    // Intento 1: cobro instantáneo con la tarjeta guardada del cliente (sin salir del popup).
-    const instantRes = await fetch("/api/stripe/charge-topup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: validTopupAmount, recurring: topupRecurring }),
-    });
-    const instantData = await instantRes.json();
-    if (instantData.instant) {
-      setTopupSuccess(true);
+      // Fallback: sin tarjeta guardada, requiere 3DS, o fue rechazada — Checkout hospedado.
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topup: { amount: validTopupAmount, recurring: topupRecurring } }),
+      });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } finally {
       setBuyingCredits(false);
-      setTimeout(onClose, 1800);
-      return;
     }
-
-    // Fallback: sin tarjeta guardada, requiere 3DS, o fue rechazada — Checkout hospedado.
-    const res = await fetch("/api/stripe/create-checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topup: { amount: validTopupAmount, recurring: topupRecurring } }),
-    });
-    const { url } = await res.json();
-    if (url) window.location.href = url;
-    setBuyingCredits(false);
   }
 
   return (

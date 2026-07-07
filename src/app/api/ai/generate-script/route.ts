@@ -18,6 +18,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
 
+  // Validamos la entrada ANTES de cobrar: un body inválido no debe costar créditos.
+  const body = await request.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+  const { ideaId, projectId, idea, platform, niche, tone = "conversacional", duration } = body;
+  if (!idea || !platform) {
+    return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
+  }
+
   const userContext = await fetchUserAIContext(supabase, user.id);
   const credit = await checkAndDeductCredits(user.id, "generate_script");
   if (!credit.ok) {
@@ -26,9 +34,6 @@ export async function POST(request: NextRequest) {
       { status: 402 }
     );
   }
-
-  const body = await request.json();
-  const { ideaId, projectId, idea, platform, niche, tone = "conversacional", duration } = body;
 
   const isShort = platform === "youtube_shorts" || platform === "tiktok" || platform === "reels";
 
