@@ -34,6 +34,11 @@ export async function GET(request: NextRequest) {
   });
   const tokens = await tokenRes.json();
   if (!tokens.access_token) {
+    console.error("YouTube token exchange failed:", JSON.stringify({
+      status: tokenRes.status,
+      error: tokens.error,
+      description: tokens.error_description,
+    }));
     return NextResponse.redirect(`${APP_URL}/estadisticas?error=token_failed`);
   }
 
