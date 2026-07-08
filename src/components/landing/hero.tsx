@@ -71,7 +71,9 @@ export function LandingHero() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingStage, setLoadingStage] = useState(0);
+  const [thinking, setThinking] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -82,11 +84,17 @@ export function LandingHero() {
     return () => clearInterval(id);
   }, [loading]);
 
+  useEffect(() => {
+    const el = thinkingRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [thinking]);
+
   const handleSubmit = async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    setThinking("");
 
     try {
       const res = await fetch("/api/ai/demo", {
@@ -94,13 +102,50 @@ export function LandingHero() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Algo salió mal."); return; }
-      setResult(data);
+
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Algo salió mal.");
+        return;
+      }
+
+      // Stream NDJSON: eventos "thinking" en directo y "result"/"error" al final
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finished = false;
+
+      const handleLine = (line: string) => {
+        if (!line.trim()) return;
+        let evt: { type: string; text?: string; data?: typeof result; message?: string };
+        try { evt = JSON.parse(line); } catch { return; }
+        if (evt.type === "thinking" && evt.text) {
+          setThinking(t => t + evt.text);
+        } else if (evt.type === "result" && evt.data) {
+          setResult(evt.data);
+          finished = true;
+        } else if (evt.type === "error") {
+          setError(evt.message || "Algo salió mal.");
+          finished = true;
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        lines.forEach(handleLine);
+      }
+      handleLine(buffer);
+
+      if (!finished) setError("Algo salió mal. Inténtalo de nuevo.");
     } catch {
       setError("Error de conexión. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
+      setThinking("");
     }
   };
 
@@ -187,7 +232,7 @@ export function LandingHero() {
               onClick={handleSubmit}
               disabled={!prompt.trim() || loading}
               className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-foreground)" }}
+              style={{ backgroundColor: "var(--color-primary)" }}
               aria-label="Generar"
             >
               {loading ? (
@@ -204,30 +249,74 @@ export function LandingHero() {
             Sin tarjeta de crédito · Pulsa Enter para generar
           </p>
 
-          {/* Logo loader centrado */}
+          {/* Panel de pensamiento en vivo */}
           <AnimatePresence>
             {loading && (
               <motion.div
                 key="loader"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
-                className="mt-8 flex flex-col items-center gap-4"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.25 }}
+                className="mt-6 rounded-2xl border border-[var(--color-border)] bg-white p-5 text-left shadow-[var(--shadow-popup)] relative overflow-hidden"
               >
-                <LogoLoader size={56} />
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={loadingStage}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.25 }}
-                    className="text-sm text-[var(--color-muted-foreground)]"
+                {/* Barra de progreso animada */}
+                <motion.div
+                  className="absolute top-0 left-0 h-[2px] w-1/3 rounded-full"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                  animate={{ x: ["-100%", "300%"] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                />
+
+                <div className="flex items-center gap-3 mb-3">
+                  <LogoLoader size={28} />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-[var(--color-foreground)]">
+                      La IA está pensando
+                    </span>
+                    {[0, 1, 2].map((i) => (
+                      <motion.span
+                        key={i}
+                        className="w-1 h-1 rounded-full inline-block"
+                        style={{ backgroundColor: "var(--color-primary)" }}
+                        animate={{ opacity: [0.2, 1, 0.2], y: [0, -2, 0] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                      />
+                    ))}
+                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={loadingStage}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.25 }}
+                      className="ml-auto text-xs text-[var(--color-muted-foreground)] hidden sm:block"
+                    >
+                      {LOADING_STAGES[loadingStage]}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
+
+                {/* Razonamiento en directo */}
+                <div className="relative">
+                  <div
+                    ref={thinkingRef}
+                    className="max-h-32 overflow-hidden text-xs leading-relaxed text-[var(--color-muted-foreground)] whitespace-pre-wrap scroll-smooth"
+                    style={{
+                      maskImage: "linear-gradient(to bottom, transparent 0%, black 25%)",
+                      WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 25%)",
+                    }}
                   >
-                    {LOADING_STAGES[loadingStage]}
-                  </motion.p>
-                </AnimatePresence>
+                    {thinking || "Leyendo tu contexto y preparando el análisis…"}
+                    <motion.span
+                      className="inline-block w-[2px] h-3 ml-0.5 align-middle"
+                      style={{ backgroundColor: "var(--color-primary)" }}
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.9, repeat: Infinity }}
+                    />
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -259,7 +348,7 @@ export function LandingHero() {
                 <div className="p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary-light)] px-2.5 py-1 rounded-full">
-                      Análisis IA · {result.plataforma}
+                      Análisis IA · {result.plataforma?.split(/[—(/]/)[0].trim().slice(0, 24)}
                     </span>
                     <span className="text-xs text-[var(--color-muted-foreground)]">Vista previa gratuita</span>
                   </div>

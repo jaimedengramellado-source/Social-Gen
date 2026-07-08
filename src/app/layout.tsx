@@ -20,13 +20,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: {
-    default: "Social Flamingo — Guiones virales con IA",
+    default: "Social Flamingo | Viralidad en un click",
     template: "%s | Social Flamingo",
   },
   description:
     "Genera guiones e ideas virales para YouTube, TikTok e Instagram con IA. Optimizado para el algoritmo.",
   openGraph: {
-    title: "Social Flamingo — Guiones virales con IA",
+    title: "Social Flamingo | Viralidad en un click",
     description:
       "La herramienta definitiva para creadores de contenido. Genera guiones e ideas virales en segundos.",
     type: "website",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Social Flamingo — Guiones virales con IA",
+    title: "Social Flamingo | Viralidad en un click",
     description: "Genera guiones e ideas virales para YouTube, TikTok e Instagram.",
   },
 };

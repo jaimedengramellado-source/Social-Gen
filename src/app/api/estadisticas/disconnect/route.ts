@@ -8,9 +8,18 @@ export async function DELETE() {
 
   const { data: conn } = await supabase
     .from("youtube_connections")
-    .select("access_token, refresh_token")
+    .select("access_token, refresh_token, reporting_job_id")
     .eq("user_id", user.id)
     .single();
+
+  // Best-effort: borra el job de la YouTube Reporting API para no acumular
+  // jobs huérfanos si el usuario reconecta más adelante.
+  if (conn?.reporting_job_id && conn.access_token) {
+    await fetch(`https://youtubereporting.googleapis.com/v1/jobs/${conn.reporting_job_id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${conn.access_token}` },
+    }).catch(() => {});
+  }
 
   // Revoking the refresh token invalidates the whole grant; best-effort so
   // local disconnect never fails because of Google

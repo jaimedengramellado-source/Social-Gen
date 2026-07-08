@@ -129,8 +129,24 @@ create table youtube_connections (
   refresh_token text,
   expires_at timestamptz not null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  reporting_job_id text, -- YouTube Reporting API job (channel_reach_basic_a1), creado por el cron youtube-reach-sync
+  reach_synced_until timestamptz -- último sync de CTR/impresiones; esos datos llegan con ~48h de retraso
 );
+
+-- CTR e impresiones de miniatura: solo disponibles vía YouTube Reporting API (bulk,
+-- ~48h de retraso). Nunca se piden a la API interactiva de Analytics (no existen ahí).
+create table youtube_reach_stats (
+  user_id uuid not null references profiles(id) on delete cascade,
+  video_id text not null,
+  date date not null,
+  impressions bigint not null default 0,
+  ctr numeric not null default 0,
+  synced_at timestamptz not null default now(),
+  primary key (user_id, video_id, date)
+);
+
+create index youtube_reach_stats_user_date_idx on youtube_reach_stats (user_id, date);
 
 create table calendar_events (
   id uuid primary key default gen_random_uuid(),
@@ -242,6 +258,9 @@ create policy "own scripts" on scripts for all using ((select auth.uid()) = user
 create policy "own watchlist" on watchlist_channels for all using ((select auth.uid()) = user_id);
 create policy "own logs" on usage_logs for all using ((select auth.uid()) = user_id);
 create policy "Users manage own youtube connections" on youtube_connections for all using ((select auth.uid()) = user_id);
+alter table youtube_reach_stats enable row level security;
+-- Solo lectura para el dueño; el cron (service role) es el único que escribe.
+create policy "own reach stats" on youtube_reach_stats for select to authenticated using ((select auth.uid()) = user_id);
 create policy "Users can manage their own calendar events" on calendar_events
   for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "Users can manage their own todos" on todos

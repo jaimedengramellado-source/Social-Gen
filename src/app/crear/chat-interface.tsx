@@ -1941,7 +1941,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
         </div>
 
       {/* Messages area */}
-      <div ref={setScrollRef} className="flex-1 overflow-y-auto space-y-6 pb-4">
+      <div ref={setScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 pb-4">
         {messages.map((msg, i) => (
           <div
             key={i}

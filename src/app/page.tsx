@@ -27,7 +27,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center rounded-lg bg-[var(--color-foreground)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-zinc-800 hover:-translate-y-px"
+              className="inline-flex items-center justify-center rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[var(--color-primary-hover)] hover:-translate-y-px"
             >
               Empieza gratis →
             </Link>

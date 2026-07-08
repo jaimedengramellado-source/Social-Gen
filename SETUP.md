@@ -220,3 +220,14 @@ create policy "Users read own chat images"
 on storage.objects for select to authenticated
 using (bucket_id = 'chat-attachments' and (storage.foldername(name))[1] = auth.uid()::text);
 ```
+
+## 9. YouTube Analytics (/estadisticas)
+
+Usa `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (mismo proyecto de Google Cloud del paso 1.3) y `YOUTUBE_API_KEY` (API key, no OAuth).
+
+En [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Library, habilitar las 3 APIs:
+1. **YouTube Data API v3** — info de canal/vídeos.
+2. **YouTube Analytics API** — vistas, tiempo de visualización, retención, etc. (tiempo real).
+3. **YouTube Reporting API** — CTR e impresiones de miniatura. Estos datos **no existen** en la API de Analytics en tiempo real, solo vía reportes bulk que Google genera con ~48h de retraso (`reportTypeId: channel_reach_basic_a1`). Los sincroniza el cron `/api/cron/youtube-reach-sync` (diario, `vercel.json`) hacia la tabla `youtube_reach_stats`. No requiere pedir un scope OAuth nuevo — `yt-analytics.readonly` (ya solicitado en `/api/auth/youtube/connect`) cubre también la Reporting API.
+
+Añadir `http://localhost:3000/api/auth/youtube/callback` (y el equivalente de producción) como Redirect URI en las credenciales OAuth de Google Console.

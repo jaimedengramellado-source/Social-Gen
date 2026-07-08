@@ -130,7 +130,7 @@ export function LandingPricing({
                 {plan.id === "free" ? (
                   <Link
                     href={loggedIn ? "/dashboard" : "/signup"}
-                    className="block w-full text-center rounded-lg py-2.5 text-sm font-medium transition-all hover:-translate-y-px mb-6 bg-[var(--color-foreground)] text-white hover:bg-zinc-800"
+                    className="block w-full text-center rounded-lg py-2.5 text-sm font-medium transition-all hover:-translate-y-px mb-6 bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]"
                   >
                     {loggedIn ? "Ir a mi panel" : "Empieza gratis"}
                   </Link>

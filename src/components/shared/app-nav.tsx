@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon, Sparkles } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon, Video, Sparkles } from "lucide-react";
 
 const ITEMS = [
   { href: "/dashboard",    label: "Inicio",       Icon: LayoutDashboard },
   { href: "/imagenes",     label: "Imágenes",     Icon: ImageIcon },
+  { href: "/video",        label: "Vídeo",        Icon: Video },
   { href: "/documentos",   label: "Documentos",   Icon: FolderOpen },
   { href: "/explorar",     label: "Explorar",     Icon: Search },
   { href: "/estadisticas", label: "Estadísticas", Icon: BarChart2 },
@@ -44,10 +45,11 @@ export function AppNav() {
           <Link
             key={href}
             href={href}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 hover:scale-105"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150 hover:scale-105"
             style={{
-              backgroundColor: active ? "var(--color-muted)" : "transparent",
-              color: active ? "var(--color-foreground)" : "var(--color-nav-foreground)",
+              backgroundColor: active ? "var(--color-primary)" : "transparent",
+              color: active ? "white" : "var(--color-nav-foreground)",
+              boxShadow: active ? "0 2px 10px rgba(140,34,48,0.4)" : undefined,
             }}
           >
             <Icon size={14} strokeWidth={1.8} />
