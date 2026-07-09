@@ -32,21 +32,14 @@ export async function POST(request: NextRequest) {
   try {
     const model = getGeminiClient().getGenerativeModel({
       model: IMAGEN_MODEL,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      generationConfig: { responseModalities: ["IMAGE", "TEXT"] } as any,
+      generationConfig: {
+        responseModalities: ["IMAGE", "TEXT"],
+        imageConfig: { aspectRatio },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
     });
 
-    const RATIO_HINT: Record<string, string> = {
-      "16:9": "Generate in widescreen horizontal format (16:9 aspect ratio, landscape).",
-      "9:16": "Generate in vertical portrait format (9:16 aspect ratio, tall).",
-      "4:3": "Generate in standard horizontal format (4:3 aspect ratio).",
-      "1:1": "Generate in square format (1:1 aspect ratio).",
-    };
-    const fullPrompt = `${prompt} ${RATIO_HINT[aspectRatio] ?? ""}`.trim();
-
-    const result = await model.generateContent([
-      { text: fullPrompt },
-    ]);
+    const result = await model.generateContent([{ text: prompt }]);
 
     await recordTokenUsage(credit.logId, IMAGEN_MODEL, {
       input_tokens: result.response.usageMetadata?.promptTokenCount,

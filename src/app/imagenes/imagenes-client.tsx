@@ -85,8 +85,6 @@ export function ImagenesClient({ profile, initialImages }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [noCredits, setNoCredits] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [variacionesEnabled, setVariacionesEnabled] = useState(false);
-  const [variacionesCount, setVariacionesCount] = useState<1 | 2>(1);
   const [lightboxImage, setLightboxImage] = useState<GeneratedImage | null>(null);
 
   const [iteratePrompt, setIteratePrompt] = useState("");
@@ -183,28 +181,22 @@ export function ImagenesClient({ profile, initialImages }: Props) {
         setGallery((prev) => [result, ...prev]);
         if (data.creditsRemaining != null) setCreditsRemaining(data.creditsRemaining);
       } else {
-        const count = variacionesEnabled ? variacionesCount : 1;
-        const results: GeneratedImage[] = [];
-
-        for (let i = 0; i < count; i++) {
-          const res = await fetch("/api/ai/generate-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt, aspectRatio, mode: "generate" }),
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            setNoCredits(data.error === "NO_CREDITS");
-            if (data.error === "NO_CREDITS") setShowUpgrade(true);
-            setError(getErrorMessage(data.error));
-            return;
-          }
-          results.push(data.images[0]);
-          if (data.creditsRemaining != null) setCreditsRemaining(data.creditsRemaining);
+        const res = await fetch("/api/ai/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, aspectRatio, mode: "generate" }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setNoCredits(data.error === "NO_CREDITS");
+          if (data.error === "NO_CREDITS") setShowUpgrade(true);
+          setError(getErrorMessage(data.error));
+          return;
         }
-
-        setCurrentImage(results[results.length - 1]);
-        setGallery((prev) => [...results.reverse(), ...prev]);
+        const result: GeneratedImage = data.images[0];
+        setCurrentImage(result);
+        setGallery((prev) => [result, ...prev]);
+        if (data.creditsRemaining != null) setCreditsRemaining(data.creditsRemaining);
       }
     } catch {
       setError("Error inesperado. Inténtalo de nuevo.");
@@ -327,8 +319,6 @@ export function ImagenesClient({ profile, initialImages }: Props) {
     ? "Generando..."
     : mode === "editar"
     ? "Editar imagen"
-    : variacionesEnabled
-    ? `Generar ${variacionesCount} variación${variacionesCount > 1 ? "es" : ""}`
     : "Generar imagen";
 
   const displayAspectRatio = (currentImage?.aspect_ratio as AspectRatio | undefined) ?? aspectRatio;
@@ -651,68 +641,6 @@ export function ImagenesClient({ profile, initialImages }: Props) {
               </div>
             </div>
 
-            {/* Variaciones */}
-            {mode === "generar" && (
-              <div
-                className="rounded-xl border px-4 py-3 space-y-3"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-sm font-medium"
-                    style={{ color: "var(--color-foreground)" }}
-                  >
-                    Variaciones
-                  </span>
-                  <button
-                    onClick={() => setVariacionesEnabled((v) => !v)}
-                    className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-                    style={{
-                      backgroundColor: variacionesEnabled
-                        ? "var(--color-primary)"
-                        : "var(--color-border)",
-                    }}
-                  >
-                    <span
-                      className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow"
-                      style={{
-                        transform: variacionesEnabled
-                          ? "translateX(18px)"
-                          : "translateX(3px)",
-                      }}
-                    />
-                  </button>
-                </div>
-                {variacionesEnabled && (
-                  <div className="flex gap-2">
-                    {([1, 2] as const).map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => setVariacionesCount(n)}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all"
-                        style={{
-                          borderColor:
-                            variacionesCount === n
-                              ? "var(--color-primary)"
-                              : "var(--color-border)",
-                          backgroundColor:
-                            variacionesCount === n
-                              ? "var(--color-primary-light)"
-                              : "transparent",
-                          color:
-                            variacionesCount === n
-                              ? "var(--color-primary)"
-                              : "var(--color-muted-foreground)",
-                        }}
-                      >
-                        {n} {n === 1 ? "variación" : "variaciones"}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Model chip */}
             <div
               className="text-xs px-3 py-2 rounded-lg"
@@ -792,9 +720,21 @@ export function ImagenesClient({ profile, initialImages }: Props) {
                 <div className="absolute inset-0">
                   {loading ? (
                     <div
-                      className="w-full h-full animate-pulse rounded-2xl"
+                      className="w-full h-full flex flex-col items-center justify-center gap-3 rounded-2xl"
                       style={{ backgroundColor: "var(--color-muted)" }}
-                    />
+                    >
+                      <Loader2
+                        size={28}
+                        className="animate-spin"
+                        style={{ color: "var(--color-primary)" }}
+                      />
+                      <p
+                        className="text-sm font-medium"
+                        style={{ color: "var(--color-muted-foreground)" }}
+                      >
+                        {mode === "editar" ? "Editando imagen..." : "Generando imagen..."}
+                      </p>
+                    </div>
                   ) : currentImage ? (
                     <div
                       className="relative w-full h-full group"

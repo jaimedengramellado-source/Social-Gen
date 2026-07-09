@@ -71,17 +71,12 @@ export async function POST(request: NextRequest) {
 
     const model = getGeminiClient().getGenerativeModel({
       model: GEMINI_EDIT_MODEL,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      generationConfig: { responseModalities: ["IMAGE", "TEXT"] } as any,
+      generationConfig: {
+        responseModalities: ["IMAGE", "TEXT"],
+        imageConfig: { aspectRatio },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
     });
-
-    const RATIO_HINT: Record<string, string> = {
-      "16:9": "Output in widescreen horizontal format (16:9 aspect ratio, landscape).",
-      "9:16": "Output in vertical portrait format (9:16 aspect ratio, tall).",
-      "4:3": "Output in standard horizontal format (4:3 aspect ratio).",
-      "1:1": "Output in square format (1:1 aspect ratio).",
-    };
-    const ratioHint = RATIO_HINT[aspectRatio] ?? "";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const contents: any[] = maskBase64
@@ -94,7 +89,7 @@ export async function POST(request: NextRequest) {
         ]
       : [
           { inlineData: { mimeType: mimeType, data: base64Image } },
-          { text: `${editPrompt} ${ratioHint}`.trim() },
+          { text: editPrompt },
         ];
 
     let result;
