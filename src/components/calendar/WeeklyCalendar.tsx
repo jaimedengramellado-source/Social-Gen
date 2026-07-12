@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { getWeekStart, getWeekDays, toDateStr } from "./types";
+import { getWeekStart, getWeekDays, toDateStr, EVENT_TAGS } from "./types";
 import type { CalendarEvent, Script } from "./types";
 import { CalendarProvider, useCalSettings } from "./CalendarContext";
 import { CalendarHeader } from "./CalendarHeader";
@@ -10,6 +10,7 @@ import { CalendarGrid } from "./CalendarGrid";
 import { MonthlyGrid, getMonthCalendarRange } from "./MonthlyGrid";
 import { EventModal } from "./EventModal";
 import { CalendarSettingsModal } from "./CalendarSettingsModal";
+import { BestTimesPanel } from "./BestTimesPanel";
 
 const MONTH_NAMES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -31,6 +32,9 @@ function CalendarInner({ scripts, userEmail }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [bestTimesOpen, setBestTimesOpen] = useState(false);
+  const [modalDefaultTag, setModalDefaultTag] = useState<string>("");
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -58,6 +62,15 @@ function CalendarInner({ scripts, userEmail }: Props) {
     if (sM !== eM) return `${MONTH_NAMES[sM]} – ${MONTH_NAMES[eM]} ${sY}`;
     return `${MONTH_NAMES[sM]} ${sY}`;
   }, [view, weekStart, days, month, year]);
+
+  const usedTags = useMemo(
+    () => EVENT_TAGS.filter((t) => events.some((e) => e.tag === t.id)),
+    [events]
+  );
+  const visibleEvents = useMemo(
+    () => (tagFilter ? events.filter((e) => e.tag === tagFilter) : events),
+    [events, tagFilter]
+  );
 
   const loadEvents = useCallback(async (start: Date, end: Date) => {
     setLoading(true);
@@ -101,12 +114,22 @@ function CalendarInner({ scripts, userEmail }: Props) {
     setView(v);
   }
 
-  function openCreate(day: Date, hour: number, minute: number) {
+  function openCreate(day: Date, hour: number, minute: number, defaultTag = "") {
     setEditing(null);
     setModalDate(day);
     setModalHour(hour);
     setModalMinute(minute);
+    setModalDefaultTag(defaultTag);
     setModalOpen(true);
+  }
+
+  function pickBestTimeSlot(weekday: number, hour: number) {
+    setBestTimesOpen(false);
+    // Próxima fecha (hoy incluido) que caiga en ese día de la semana
+    const d = new Date(today);
+    d.setDate(d.getDate() + ((weekday - d.getDay() + 7) % 7));
+    setAnchor(new Date(d));
+    openCreate(d, hour, 0, "publicar");
   }
 
   function openEdit(event: CalendarEvent) {
@@ -164,6 +187,7 @@ function CalendarInner({ scripts, userEmail }: Props) {
         start_time: newStart.toISOString(),
         end_time: newEnd.toISOString(),
         color: ev.color,
+        tag: ev.tag,
         script_id: ev.script_id,
         remind_times: ev.remind_times ?? [],
         remind_before_minutes: ev.remind_before_minutes,
@@ -189,7 +213,41 @@ function CalendarInner({ scripts, userEmail }: Props) {
         onToday={goToday}
         onNewEvent={() => openCreate(today, 9, 0)}
         onSettingsOpen={() => setSettingsOpen(true)}
+        onBestTimesOpen={() => setBestTimesOpen(true)}
       />
+
+      {usedTags.length > 0 && (
+        <div className="flex items-center gap-1.5 px-3 md:px-5 py-2 border-b border-[var(--color-border)] flex-shrink-0 bg-white overflow-x-auto">
+          <button
+            onClick={() => setTagFilter(null)}
+            className="px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors flex-shrink-0"
+            style={{
+              borderColor: tagFilter === null ? "var(--color-primary)" : "var(--color-border)",
+              backgroundColor: tagFilter === null ? "var(--color-primary)" : "transparent",
+              color: tagFilter === null ? "white" : "var(--color-muted-foreground)",
+            }}
+          >
+            Todos
+          </button>
+          {usedTags.map((t) => {
+            const active = tagFilter === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTagFilter(active ? null : t.id)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors flex-shrink-0"
+                style={{
+                  borderColor: active ? "var(--color-primary)" : "var(--color-border)",
+                  backgroundColor: active ? "var(--color-primary-light)" : "transparent",
+                  color: active ? "var(--color-primary)" : "var(--color-muted-foreground)",
+                }}
+              >
+                <span aria-hidden>{t.emoji}</span> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* flex flex-col es imprescindible: sin ello el grid no acota su alto y el
           scroll interno de la vista semanal nunca se activa */}
@@ -200,7 +258,7 @@ function CalendarInner({ scripts, userEmail }: Props) {
         {view === "week" ? (
           <CalendarGrid
             days={days}
-            events={events}
+            events={visibleEvents}
             today={today}
             onCellClick={openCreate}
             onEventEdit={openEdit}
@@ -211,7 +269,7 @@ function CalendarInner({ scripts, userEmail }: Props) {
           <MonthlyGrid
             year={year}
             month={month}
-            events={events}
+            events={visibleEvents}
             today={today}
             onCellClick={openCreate}
             onEventEdit={openEdit}
@@ -228,6 +286,7 @@ function CalendarInner({ scripts, userEmail }: Props) {
         defaultDate={modalDate}
         defaultHour={modalHour}
         defaultMinute={modalMinute}
+        defaultTag={modalDefaultTag}
         scripts={scripts}
         userEmail={userEmail}
         onSave={handleSave}
@@ -236,6 +295,13 @@ function CalendarInner({ scripts, userEmail }: Props) {
 
       {settingsOpen && (
         <CalendarSettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
+
+      {bestTimesOpen && (
+        <BestTimesPanel
+          onClose={() => setBestTimesOpen(false)}
+          onPickSlot={pickBestTimeSlot}
+        />
       )}
     </div>
   );

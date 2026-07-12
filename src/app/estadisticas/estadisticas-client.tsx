@@ -3,14 +3,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { PlayCircle, RefreshCw, LogOut } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Connection, AnalyticsData, VideoDetail, PERIODS, YT_RED, PRIMARY, fmtNum,
+  Connection, AnalyticsData, VideoDetail, StatsSection, PERIODS, YT_RED, PRIMARY, fmtNum,
+  StatsSidebar, StatsMobileTabs,
 } from "./shared";
 import { OverviewTab } from "./overview-tab";
 import { ContentTab } from "./content-tab";
 import { AudienceTab } from "./audience-tab";
 import { EngagementTab } from "./engagement-tab";
+import { TrafficTab } from "./traffic-tab";
 import { VideoDetailView } from "./video-detail";
 
 function ComingSoonCard({
@@ -99,6 +100,7 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
   const [loading, setLoading] = useState(!!connection);
   const [error, setError] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [section, setSection] = useState<StatsSection>("overview");
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [videoDetail, setVideoDetail] = useState<VideoDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -121,6 +123,12 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
 
   function handlePeriodChange(p: string) {
     setPeriod(p);
+    setSelectedVideo(null);
+    setVideoDetail(null);
+  }
+
+  function handleSectionChange(s: StatsSection) {
+    setSection(s);
     setSelectedVideo(null);
     setVideoDetail(null);
   }
@@ -166,7 +174,7 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
               </div>
               <h3 className="text-base font-bold text-white mb-1">YouTube Analytics</h3>
               <p className="text-xs leading-relaxed mb-5" style={{ color: "rgba(255,255,255,0.5)" }}>
-                Accede a CTR, retención, fuentes de tráfico y mucho más. Nunca publicamos nada en tu canal.
+                Accede a CTR, retención, fuentes de tráfico y mucho más. Solo pedimos permisos de lectura.
               </p>
               {oauthError && (
                 <p className="text-[10px] mb-3" style={{ color: "rgba(255,100,100,0.9)" }}>
@@ -178,6 +186,16 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
                 style={{ backgroundColor: YT_RED }}>
                 <PlayCircle size={13} /> Conectar YouTube
               </a>
+              <p className="text-[10px] mt-3 leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Al conectar aceptas los{" "}
+                <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                  Términos de YouTube
+                </a>{" "}
+                y la{" "}
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                  Política de Privacidad de Google
+                </a>.
+              </p>
             </div>
           </div>
 
@@ -239,19 +257,9 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
   );
   if (!data) return null;
 
-  // ── Video detail view ──
-  if (selectedVideo) {
-    const videoRow = data.videos.find(v => v.id === selectedVideo);
-    return (
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <VideoDetailView detail={videoDetail} videoRow={videoRow} loading={loadingDetail} onBack={handleBack} />
-      </div>
-    );
-  }
-
   // ── Main dashboard ──
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
 
       {/* Channel header */}
       <div className="flex items-center justify-between mb-6">
@@ -294,23 +302,43 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
         </span>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="content">Contenido</TabsTrigger>
-          <TabsTrigger value="audience">Audiencia</TabsTrigger>
-          <TabsTrigger value="engagement">Interacción</TabsTrigger>
-        </TabsList>
+      {/* Section nav — pills on mobile */}
+      <div className="mb-4">
+        <StatsMobileTabs active={section} onChange={handleSectionChange} />
+      </div>
 
-        <TabsContent value="overview"><OverviewTab data={data} /></TabsContent>
-        <TabsContent value="content"><ContentTab data={data} onSelectVideo={handleSelectVideo} /></TabsContent>
-        <TabsContent value="audience"><AudienceTab period={period} /></TabsContent>
-        <TabsContent value="engagement"><EngagementTab data={data} /></TabsContent>
-      </Tabs>
+      <div className="flex gap-6 items-start">
+        {/* Section nav — sidebar on desktop */}
+        <aside className="hidden md:block w-56 flex-shrink-0 sticky top-20">
+          <StatsSidebar active={section} onChange={handleSectionChange} />
+        </aside>
 
-      {/* ── Próximas integraciones ── */}
-      <div className="mt-10">
-        <ComingSoonPlatforms />
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          {selectedVideo ? (
+            <VideoDetailView
+              detail={videoDetail}
+              videoRow={data.videos.find(v => v.id === selectedVideo)}
+              loading={loadingDetail}
+              onBack={handleBack}
+            />
+          ) : (
+            <>
+              {section === "overview" && <OverviewTab data={data} />}
+              {section === "content" && <ContentTab data={data} onSelectVideo={handleSelectVideo} />}
+              {section === "traffic" && <TrafficTab period={period} />}
+              {section === "audience" && <AudienceTab period={period} />}
+              {section === "engagement" && <EngagementTab data={data} />}
+            </>
+          )}
+
+          {/* ── Próximas integraciones ── */}
+          {!selectedVideo && (
+            <div className="mt-10">
+              <ComingSoonPlatforms />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

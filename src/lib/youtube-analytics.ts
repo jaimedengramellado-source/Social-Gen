@@ -101,6 +101,53 @@ export function str(row: AnalyticsRow | undefined, key: string): string {
   return String(row[key] ?? "");
 }
 
+// Returns every video ID in the channel's uploads playlist (not just ones with
+// activity in a given date range) so the Content tab can list the full catalog,
+// matching what YouTube Studio shows regardless of the selected period.
+export async function getAllUploadedVideoIds(token: string, maxVideos = 150): Promise<string[]> {
+  const chanRes = await fetch(
+    "https://www.googleapis.com/youtube/v3/channels?part=contentDetails&mine=true",
+    { headers: { Authorization: `Bearer ${token}` } }
+  ).then(r => r.json());
+  const uploadsPlaylistId = chanRes.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+  if (!uploadsPlaylistId) return [];
+
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({ part: "contentDetails", playlistId: uploadsPlaylistId, maxResults: "50" });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?${params}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).then(r => r.json());
+    for (const item of res.items ?? []) {
+      const vid = item.contentDetails?.videoId;
+      if (vid) ids.push(vid);
+    }
+    pageToken = res.nextPageToken;
+  } while (pageToken && ids.length < maxVideos);
+
+  return ids.slice(0, maxVideos);
+}
+
+// videos.list only accepts up to 50 IDs per call.
+export async function fetchVideoDetailsBatched(
+  token: string,
+  videoIds: string[]
+): Promise<Record<string, { snippet: Record<string, unknown>; contentDetails: Record<string, unknown> }>> {
+  const result: Record<string, { snippet: Record<string, unknown>; contentDetails: Record<string, unknown> }> = {};
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const batch = videoIds.slice(i, i + 50);
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?id=${batch.join(",")}&part=snippet,contentDetails`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).then(r => r.json());
+    for (const item of res.items ?? []) result[item.id] = item;
+  }
+  return result;
+}
+
 export interface ReachStat { impressions: number; ctr: number }
 
 // Reads cached reach stats (video_thumbnail_impressions / ctr) written by the

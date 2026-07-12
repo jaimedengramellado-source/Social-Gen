@@ -1,6 +1,6 @@
 "use client";
 
-import { minutesOfDay, formatTime } from "./types";
+import { minutesOfDay, formatTime, getEventTag } from "./types";
 import { useCalSettings } from "./CalendarContext";
 import type { LayoutEvent } from "./types";
 
@@ -71,6 +71,7 @@ export function EventBlock({ event, dayIdx, hourHeight, isDragging, onDragStart,
       }}
     >
       <p className="text-white text-[11px] font-semibold leading-tight truncate">
+        {getEventTag(event.tag) && <span aria-hidden className="mr-0.5">{getEventTag(event.tag)!.emoji}</span>}
         {event.title}
       </p>
       {height >= 40 && (

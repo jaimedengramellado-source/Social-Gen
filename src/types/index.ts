@@ -19,6 +19,69 @@ export interface Profile {
   ai_instructions: string | null;
   main_platform: string | null;
   channel_name: string | null;
+  weekly_digest: boolean;
+}
+
+export type ScheduledPostStatus = "uploading" | "scheduled" | "publishing" | "published" | "failed";
+export type PublishPlatform = "youtube" | "instagram" | "tiktok";
+
+export interface ScheduledPost {
+  id: string;
+  user_id: string;
+  platform: PublishPlatform;
+  title: string;
+  description: string | null;
+  tags: string[];
+  privacy: "public" | "unlisted" | "private";
+  scheduled_at: string | null;
+  status: ScheduledPostStatus;
+  youtube_video_id: string | null;
+  platform_post_id: string | null;
+  storage_path: string | null;
+  attempts: number;
+  settings: Record<string, unknown>;
+  error: string | null;
+  script_id: string | null;
+  calendar_event_id: string | null;
+  file_name: string | null;
+  file_size: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SocialConnection {
+  id: string;
+  user_id: string;
+  platform: "instagram" | "tiktok";
+  account_id: string;
+  account_name: string | null;
+  account_avatar: string | null;
+  page_id: string | null;
+  scopes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostAutomation {
+  id: string;
+  user_id: string;
+  platform: string;
+  trigger: string;
+  threshold: number;
+  action: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface Snippet {
+  id: string;
+  user_id: string;
+  name: string;
+  content: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Channel {

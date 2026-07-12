@@ -1,4 +1,5 @@
 import React from "react";
+import { LayoutDashboard, PlayCircle, Compass, Users, Heart } from "lucide-react";
 
 export const YT_RED = "#FF0000";
 export const PRIMARY = "var(--color-primary)";
@@ -41,6 +42,8 @@ export type AudienceData = {
   period: { startDate: string; endDate: string; days: number };
 };
 
+export type RetentionPoint = { elapsed: number; audienceWatchRatio: number; relativeRetentionPerformance: number };
+
 export type VideoDetail = {
   video: { id: string; title: string; thumbnail: string | null; publishedAt: string | null };
   metrics: {
@@ -53,6 +56,15 @@ export type VideoDetail = {
   trafficSources: (Breakdown & { source: string })[];
   playbackLocations: (Breakdown & { location: string })[];
   devices: (Breakdown & { device: string })[];
+  retention: RetentionPoint[];
+  period: { startDate: string; endDate: string; days: number };
+};
+
+export type TrafficData = {
+  sources: (Breakdown & { source: string })[];
+  playbackLocations: (Breakdown & { location: string })[];
+  searchTerms: { term: string; views: number }[];
+  sharingServices: (Breakdown & { service: string })[];
   period: { startDate: string; endDate: string; days: number };
 };
 
@@ -111,6 +123,33 @@ export const GENDER_LABELS: Record<string, string> = {
 export const SUB_STATUS_LABELS: Record<string, string> = {
   SUBSCRIBED: "Suscriptores",
   UNSUBSCRIBED: "No suscriptores",
+};
+
+export const SHARING_SERVICE_LABELS: Record<string, string> = {
+  WHATS_APP: "WhatsApp",
+  FACEBOOK: "Facebook",
+  TWITTER: "X (Twitter)",
+  COPY_PASTE: "Copiar enlace",
+  SMS: "Mensaje de texto",
+  EMBED: "Insertado",
+  GMAIL: "Gmail",
+  TELEGRAM: "Telegram",
+  MESSENGER: "Messenger",
+  REDDIT: "Reddit",
+  LINE: "LINE",
+  LINKEDIN: "LinkedIn",
+  PINTEREST: "Pinterest",
+  TUMBLR: "Tumblr",
+  VIBER: "Viber",
+  KAKAO_STORY: "KakaoStory",
+  KAKAO_TALK: "KakaoTalk",
+  HANGOUTS: "Hangouts",
+  ANDROID_MESSAGING: "Mensajería Android",
+  IOS_SYSTEM_ACTIVITY_DIALOG: "Compartir de iOS",
+  DIRECT: "Directo",
+  BLOGGER: "Blogger",
+  UNKNOWN: "Desconocido",
+  OTHER: "Otro",
 };
 
 export function fmtAgeGroup(ageGroup: string): string {
@@ -177,9 +216,10 @@ export function ReachBadge({ hasReachData, reachSyncedUntil }: { hasReachData: b
   );
 }
 
-export function BreakdownBars({ items, labelFor }: {
+export function BreakdownBars({ items, labelFor, unit = "vistas" }: {
   items: { label: string; views: number; pct: number }[];
   labelFor?: (label: string) => string;
+  unit?: string;
 }) {
   if (items.length === 0) return <p className="text-xs text-[var(--color-muted-foreground)] py-4 text-center">Sin datos en este período.</p>;
   return (
@@ -188,7 +228,7 @@ export function BreakdownBars({ items, labelFor }: {
         <div key={item.label}>
           <div className="flex justify-between text-xs mb-1">
             <span>{labelFor ? labelFor(item.label) : item.label}</span>
-            <span className="font-semibold">{fmtNum(item.views)} vistas · {item.pct}%</span>
+            <span className="font-semibold">{fmtNum(item.views)} {unit} · {item.pct}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-[var(--color-muted)] overflow-hidden">
             <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: PRIMARY }} />
@@ -203,6 +243,69 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
   return (
     <div className={`bg-white rounded-2xl border border-[var(--color-border)] p-5 ${className}`} style={{ boxShadow: "var(--shadow-card)" }}>
       {children}
+    </div>
+  );
+}
+
+export type StatsSection = "overview" | "content" | "traffic" | "audience" | "engagement";
+
+export const STATS_SECTIONS: { id: StatsSection; label: string; description: string; icon: React.ElementType }[] = [
+  { id: "overview", label: "Resumen", description: "Vistas, retención y suscriptores", icon: LayoutDashboard },
+  { id: "content", label: "Contenido", description: "Rendimiento por vídeo", icon: PlayCircle },
+  { id: "traffic", label: "Tráfico", description: "De dónde vienen tus vistas", icon: Compass },
+  { id: "audience", label: "Audiencia", description: "Quién te ve", icon: Users },
+  { id: "engagement", label: "Interacción", description: "Likes, comentarios y shares", icon: Heart },
+];
+
+export function StatsSidebar({ active, onChange }: { active: StatsSection; onChange: (s: StatsSection) => void }) {
+  return (
+    <nav className="space-y-1">
+      {STATS_SECTIONS.map(s => {
+        const isActive = s.id === active;
+        return (
+          <button
+            key={s.id}
+            onClick={() => onChange(s.id)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors"
+            style={{
+              backgroundColor: isActive ? "var(--color-primary-light)" : "transparent",
+              color: isActive ? "var(--color-primary)" : "var(--color-foreground)",
+            }}
+          >
+            <s.icon size={16} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight">{s.label}</p>
+              <p className="text-[11px] leading-tight mt-0.5 truncate" style={{ color: isActive ? "var(--color-primary)" : "var(--color-muted-foreground)", opacity: isActive ? 0.8 : 1 }}>
+                {s.description}
+              </p>
+            </div>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function StatsMobileTabs({ active, onChange }: { active: StatsSection; onChange: (s: StatsSection) => void }) {
+  return (
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 md:hidden" style={{ scrollbarWidth: "none" }}>
+      {STATS_SECTIONS.map(s => {
+        const isActive = s.id === active;
+        return (
+          <button
+            key={s.id}
+            onClick={() => onChange(s.id)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
+            style={{
+              backgroundColor: isActive ? PRIMARY : "var(--color-muted)",
+              color: isActive ? "white" : "var(--color-muted-foreground)",
+            }}
+          >
+            <s.icon size={13} />
+            {s.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

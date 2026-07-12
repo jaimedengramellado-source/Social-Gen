@@ -19,8 +19,10 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { LogoutOverlay } from "@/components/shared/logout-overlay";
+import { SnippetsSection } from "./snippets-section";
 import { PRICING_PLANS, PLAN_CREDITS, CREDIT_COSTS } from "@/types";
 import type { Profile, Channel } from "@/types";
 import { getTopupCredits, getTopupTier, CREDIT_TIERS } from "@/lib/stripe";
@@ -38,6 +40,7 @@ import {
   User,
   LogOut,
   Receipt,
+  Mail,
 } from "lucide-react";
 
 const PLAN_BADGE: Record<string, "secondary" | "outline" | "purple" | "warning"> = {
@@ -146,6 +149,9 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
 
   const [activeTab, setActiveTab] = useState("cuenta");
 
+  const [weeklyDigest, setWeeklyDigest] = useState(profile.weekly_digest ?? true);
+  const [savingDigest, setSavingDigest] = useState(false);
+
   const [savedCard, setSavedCard] = useState<SavedCard | null>(null);
   const [cardLoaded, setCardLoaded] = useState(false);
   const [loadingCard, setLoadingCard] = useState(false);
@@ -220,6 +226,18 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
     setSavingProfile(false);
     setSavedProfile(true);
     setTimeout(() => setSavedProfile(false), 2000);
+  }
+
+  async function handleToggleDigest(checked: boolean) {
+    setWeeklyDigest(checked);
+    setSavingDigest(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ weekly_digest: checked })
+      .eq("id", profile.id);
+    if (error) setWeeklyDigest(!checked);
+    setSavingDigest(false);
   }
 
   async function handleSaveAI() {
@@ -464,6 +482,28 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
             </div>
           </section>
 
+          {/* Preferencias de email */}
+          <section className="bg-white rounded-2xl border p-6 mt-6" style={{ borderColor: "var(--color-border)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Mail className="w-5 h-5" style={{ color: "var(--color-muted-foreground)" }} />
+              <h2 className="text-base font-semibold">Emails</h2>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Resumen semanal</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
+                  Cada lunes: tu actividad de la semana, próximos eventos y tu racha de creación.
+                </p>
+              </div>
+              <Switch
+                checked={weeklyDigest}
+                onCheckedChange={handleToggleDigest}
+                disabled={savingDigest}
+                aria-label="Activar o desactivar el resumen semanal"
+              />
+            </div>
+          </section>
+
           <Button
             variant="outline"
             size="sm"
@@ -545,6 +585,8 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               </Button>
             </div>
           </section>
+
+          <SnippetsSection />
         </TabsContent>
 
         {/* Tab: Seguridad */}
@@ -1047,7 +1089,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               size="sm"
               disabled={deleteConfirm !== profile.email || deletingAccount}
               onClick={handleDeleteAccount}
-              style={{ backgroundColor: "var(--color-destructive)", color: "#fff" }}
+              style={{ backgroundColor: "var(--color-destructive-bg)", color: "#fff" }}
             >
               {deletingAccount ? "Eliminando..." : "Eliminar cuenta definitivamente"}
             </Button>

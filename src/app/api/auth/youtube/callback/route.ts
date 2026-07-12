@@ -67,10 +67,15 @@ export async function GET(request: NextRequest) {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token ?? null,
     expires_at: new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000).toISOString(),
+    scopes: tokens.scope ?? null,
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id" });
 
-  const response = NextResponse.redirect(`${APP_URL}/estadisticas`);
+  const from = cookieStore.get("yt_oauth_from")?.value;
+  const response = NextResponse.redirect(
+    `${APP_URL}${from === "publicar" ? "/publicar" : "/estadisticas"}`
+  );
   response.cookies.delete("yt_oauth_state");
+  response.cookies.delete("yt_oauth_from");
   return response;
 }

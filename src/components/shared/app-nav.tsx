@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon, Video, Sparkles } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon, Video, Sparkles, Send } from "lucide-react";
 
 const ITEMS = [
   { href: "/dashboard",    label: "Inicio",       Icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/video",        label: "Vídeo",        Icon: Video },
   { href: "/documentos",   label: "Documentos",   Icon: FolderOpen },
   { href: "/explorar",     label: "Explorar",     Icon: Search },
+  { href: "/publicar",     label: "Publicar",     Icon: Send },
   { href: "/estadisticas", label: "Estadísticas", Icon: BarChart2 },
   { href: "/calendario",   label: "Calendario",   Icon: CalendarDays },
   { href: "/todos",        label: "Tareas",       Icon: ListTodo },

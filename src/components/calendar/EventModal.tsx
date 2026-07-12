@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import { X, Trash2, Bell, Plus } from "lucide-react";
-import { EVENT_COLORS, toDateStr } from "./types";
+import { EVENT_COLORS, EVENT_TAGS, toDateStr } from "./types";
 import type { CalendarEvent, Script } from "./types";
 
 const REMIND_OPTIONS = [
@@ -21,12 +21,13 @@ type EventForm = {
   startTime: string;
   endTime: string;
   color: string;
+  tag: string;
   description: string;
   script_id: string;
   reminders: number[];
 };
 
-function defaultForm(date: Date, hour: number, minute: number): EventForm {
+function defaultForm(date: Date, hour: number, minute: number, tag = ""): EventForm {
   const h = hour.toString().padStart(2, "0");
   const m = minute.toString().padStart(2, "0");
   const endH = hour < 23 ? (hour + 1).toString().padStart(2, "0") : "23";
@@ -37,6 +38,7 @@ function defaultForm(date: Date, hour: number, minute: number): EventForm {
     startTime: `${h}:${m}`,
     endTime: `${endH}:${endM}`,
     color: EVENT_COLORS[0],
+    tag,
     description: "",
     script_id: "",
     reminders: [],
@@ -64,6 +66,7 @@ function formFromEvent(ev: CalendarEvent): EventForm {
     startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
     endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
     color: ev.color ?? EVENT_COLORS[0],
+    tag: ev.tag ?? "",
     description: ev.description ?? "",
     script_id: ev.script_id ?? "",
     reminders,
@@ -77,6 +80,7 @@ interface Props {
   defaultDate: Date;
   defaultHour: number;
   defaultMinute: number;
+  defaultTag?: string;
   scripts: Script[];
   userEmail: string;
   onSave: (ev: CalendarEvent) => void;
@@ -90,13 +94,14 @@ export function EventModal({
   defaultDate,
   defaultHour,
   defaultMinute,
+  defaultTag = "",
   scripts,
   userEmail,
   onSave,
   onDelete,
 }: Props) {
   const [form, setForm] = useState<EventForm>(() =>
-    defaultForm(defaultDate, defaultHour, defaultMinute)
+    defaultForm(defaultDate, defaultHour, defaultMinute, defaultTag)
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -111,9 +116,9 @@ export function EventModal({
     setForm(
       editing
         ? formFromEvent(editing)
-        : defaultForm(defaultDate, defaultHour, defaultMinute)
+        : defaultForm(defaultDate, defaultHour, defaultMinute, defaultTag)
     );
-  }, [open, editing, defaultDate, defaultHour, defaultMinute]);
+  }, [open, editing, defaultDate, defaultHour, defaultMinute, defaultTag]);
 
   useEffect(() => {
     if (!open) return;
@@ -157,6 +162,7 @@ export function EventModal({
       start_time,
       end_time,
       color: form.color,
+      tag: form.tag || null,
       script_id: form.script_id || null,
       remind_times: form.reminders,
       remind_before_minutes: form.reminders[0] ?? null,
@@ -266,6 +272,31 @@ export function EventModal({
                 onChange={set("endTime")}
                 className="w-full text-sm border border-[var(--color-border)] rounded-xl px-2 py-2.5 outline-none focus:border-[var(--color-primary)] transition-colors"
               />
+            </div>
+          </div>
+
+          {/* Tag de flujo de trabajo */}
+          <div>
+            <label className="text-xs font-medium block mb-1.5">Tipo</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {EVENT_TAGS.map((t) => {
+                const active = form.tag === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, tag: active ? "" : t.id }))}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-medium border transition-colors"
+                    style={{
+                      borderColor: active ? "var(--color-primary)" : "var(--color-border)",
+                      backgroundColor: active ? "var(--color-primary-light)" : "transparent",
+                      color: active ? "var(--color-primary)" : "var(--color-muted-foreground)",
+                    }}
+                  >
+                    <span aria-hidden>{t.emoji}</span> {t.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 const BRAND_COLOR = "#8C2230";
-const BRAND_COLOR_LIGHT = "#F7DEE2";
+const BRAND_COLOR_LIGHT = "#EFE1CB";
 
 // Para interpolar datos del usuario (títulos de eventos, etc.) en el HTML del email.
 export function escapeHtml(value: string): string {

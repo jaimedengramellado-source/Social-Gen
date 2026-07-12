@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Eye, TrendingUp, Users, ThumbsUp, MessageSquare, Share2, MousePointerClick } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
 import {
   VideoDetail, VideoMetric, Card, MetricCard, ReachBadge, BreakdownBars, PRIMARY,
   SOURCE_LABELS, PLAYBACK_LOCATION_LABELS, DEVICE_LABELS,
@@ -96,6 +96,47 @@ export function VideoDetailView({
                   }} />
                   <Area type="monotone" dataKey="views" stroke={PRIMARY} strokeWidth={2} fill="url(#videoViewsGradient)" />
                 </AreaChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {detail.retention.length > 0 && (
+            <Card>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-semibold">Retención de audiencia</p>
+                <span className="text-[10px] text-[var(--color-muted-foreground)]">% de espectadores que siguen viendo</span>
+              </div>
+              <p className="text-[10px] text-[var(--color-muted-foreground)] mb-3">
+                Incluye repeticiones y saltos, por eso puede superar el 100% al inicio.
+              </p>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={detail.retention} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--color-border)" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="elapsed"
+                    tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
+                    tick={{ fontSize: 10, fill: "#6B6B6B" }}
+                    axisLine={false} tickLine={false} minTickGap={30}
+                    type="number" domain={[0, 1]}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
+                    tick={{ fontSize: 10, fill: "#6B6B6B" }}
+                    axisLine={false} tickLine={false} width={40}
+                  />
+                  <ReferenceLine y={0} stroke="var(--color-border)" />
+                  <Tooltip content={({ active, payload }) => {
+                    if (!active || !payload?.[0]) return null;
+                    const d = payload[0].payload as { elapsed: number; audienceWatchRatio: number };
+                    return (
+                      <div className="bg-white border border-[var(--color-border)] rounded-xl p-3 shadow-lg">
+                        <p className="text-[10px] text-[var(--color-muted-foreground)] mb-1">{Math.round(d.elapsed * 100)}% del vídeo</p>
+                        <p className="text-sm font-semibold">{Math.round(d.audienceWatchRatio * 100)}% de audiencia</p>
+                      </div>
+                    );
+                  }} />
+                  <Line type="monotone" dataKey="audienceWatchRatio" stroke={PRIMARY} strokeWidth={2} dot={false} />
+                </LineChart>
               </ResponsiveContainer>
             </Card>
           )}

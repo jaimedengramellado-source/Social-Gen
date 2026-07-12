@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Sparkles, Library, Telescope,
-  MoreHorizontal, X, Settings, BarChart2, CalendarDays, ListTodo, Image as ImageIcon, Video, LogOut,
+  MoreHorizontal, X, Settings, BarChart2, CalendarDays, ListTodo, Image as ImageIcon, Video, LogOut, Send,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { LogoutOverlay } from "./logout-overlay";
@@ -20,6 +20,7 @@ const primaryItems = [
 const moreItems = [
   { href: "/imagenes",     icon: ImageIcon,     label: "Imágenes" },
   { href: "/video",        icon: Video,         label: "Vídeo" },
+  { href: "/publicar",     icon: Send,          label: "Publicar" },
   { href: "/estadisticas", icon: BarChart2,    label: "Estadísticas" },
   { href: "/calendario",   icon: CalendarDays,  label: "Calendario" },
   { href: "/todos",        icon: ListTodo,      label: "To Do" },

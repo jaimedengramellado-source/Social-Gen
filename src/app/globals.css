@@ -13,16 +13,18 @@
   --color-primary: #8C2230;
   --color-primary-foreground: #FFFFFF;
   --color-primary-hover: #731C27;
-  --color-primary-light: #F7DEE2;
+  --color-primary-light: #EFE1CB;
   --color-secondary: #F4F4F5;
   --color-secondary-foreground: #0D0D0D;
   --color-muted: #F4F4F5;
   --color-muted-foreground: #6B6B6B;
   --color-nav-foreground: #4A4A4A;
-  --color-accent: #F7DEE2;
+  --color-accent: #EFE1CB;
   --color-accent-foreground: #8C2230;
   --color-destructive: #DC2626;
   --color-destructive-foreground: #FFFFFF;
+  --color-destructive-bg: #290007;
+  --color-destructive-bg-hover: #42000B;
   --color-success: #059669;
   --color-success-foreground: #FFFFFF;
   --color-warning: #D97706;
@@ -141,9 +143,9 @@ html.dark ::-webkit-calendar-picker-indicator {
   --text-primary: #0D0D0D;
   --text-secondary: #3D3D3D;
   --text-muted: #6B6B6B;
-  --bg-pro: #F7DEE2;
+  --bg-pro: #EFE1CB;
   --bg-success: #D1FAE5;
-  --bg-accent: #F7DEE2;
+  --bg-accent: #EFE1CB;
   --bg-info: #DBEAFE;
   --text-pro: #8C2230;
   --text-success: #059669;
@@ -182,9 +184,9 @@ html.dark {
   --text-primary: #F0EFE9;
   --text-secondary: #C0BFB8;
   --text-muted: #8A8A9A;
-  --bg-pro: #43191F;
+  --bg-pro: #2E2116;
   --bg-success: #064E3B;
-  --bg-accent: #43191F;
+  --bg-accent: #2E2116;
   --bg-info: #1A2E4D;
   --text-pro: #D77582;
   --text-success: #34D399;
@@ -209,8 +211,8 @@ html.dark {
   --color-input: #2A2A38;
   --color-secondary: #1E1E28;
   --color-secondary-foreground: #F0EFE9;
-  --color-primary-light: #43191F;
-  --color-accent: #43191F;
+  --color-primary-light: #2E2116;
+  --color-accent: #2E2116;
   --color-accent-foreground: #D77582;
 
   /* Calendar grid lines */

@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { X, Pencil, Trash2, Clock, AlignLeft } from "lucide-react";
-import { formatTime } from "./types";
+import { formatTime, getEventTag } from "./types";
 import { useCalSettings } from "./CalendarContext";
 import type { CalendarEvent } from "./types";
 
@@ -96,6 +96,14 @@ export function EventPopover({ event, anchorRect, onClose, onEdit, onDelete }: P
             <span>
               {formatTime(event.start_time, settings.timeFormat)} – {formatTime(endIso, settings.timeFormat)}
             </span>
+            {getEventTag(event.tag) && (
+              <span
+                className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary)" }}
+              >
+                <span aria-hidden>{getEventTag(event.tag)!.emoji}</span> {getEventTag(event.tag)!.label}
+              </span>
+            )}
           </div>
 
           {event.description && (

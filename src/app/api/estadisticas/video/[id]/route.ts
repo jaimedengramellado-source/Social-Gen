@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const filters = { video: videoId };
 
-  const [overview, dailyResult, sourcesResult, playbackResult, deviceResult, detailRes, reachDaily] = await Promise.all([
+  const [overview, dailyResult, sourcesResult, playbackResult, deviceResult, detailRes, reachDaily, retentionResult] = await Promise.all([
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views", "estimatedMinutesWatched", "averageViewDuration", "averageViewPercentage", "subscribersGained", "likes", "comments", "shares"] }),
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views", "estimatedMinutesWatched"], dimensions: ["day"], sort: "day" }),
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views"], dimensions: ["insightTrafficSourceType"], sort: "-views" }),
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views"], dimensions: ["deviceType"], sort: "-views" }),
     fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     getReachStatsDaily(supabase, user.id, videoId, startDate, endDate),
+    queryAnalytics({ token, startDate, endDate, filters, metrics: ["audienceWatchRatio", "relativeRetentionPerformance"], dimensions: ["elapsedVideoTimeRatio"], sort: "elapsedVideoTimeRatio" }),
   ]);
 
   const ovRow = overview.rows[0];
@@ -66,6 +67,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const totalImpressions = reachDaily.reduce((s, r) => s + r.impressions, 0);
   const weightedCtr = reachDaily.reduce((s, r) => s + r.impressions * r.ctr, 0);
 
+  const retention = retentionResult.rows.map(row => ({
+    elapsed: num(row, "elapsedVideoTimeRatio"),
+    audienceWatchRatio: num(row, "audienceWatchRatio"),
+    relativeRetentionPerformance: num(row, "relativeRetentionPerformance"),
+  }));
+
   const item = detailRes.items?.[0];
   const snippet = item?.snippet ?? {};
   const thumbnails = snippet.thumbnails ?? {};
@@ -96,6 +103,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     trafficSources,
     playbackLocations,
     devices,
+    retention,
     period: { startDate, endDate, days },
   });
 }

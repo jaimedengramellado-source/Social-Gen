@@ -5,12 +5,28 @@ export type CalendarEvent = {
   start_time: string;
   end_time: string | null;
   color: string | null;
+  tag: string | null;
   script_id: string | null;
   remind_before_minutes: number | null;
   remind_times: number[] | null;
   sent_reminder_offsets: number[] | null;
   scheduled_at: string;
 };
+
+export const EVENT_TAGS = [
+  { id: "grabar", label: "Grabar", emoji: "🎥" },
+  { id: "editar", label: "Editar", emoji: "✂️" },
+  { id: "publicar", label: "Publicar", emoji: "🚀" },
+  { id: "idea", label: "Idea", emoji: "💡" },
+  { id: "reunion", label: "Reunión", emoji: "🤝" },
+] as const;
+
+export type EventTagId = (typeof EVENT_TAGS)[number]["id"];
+
+export function getEventTag(id: string | null | undefined) {
+  if (!id) return null;
+  return EVENT_TAGS.find((t) => t.id === id) ?? null;
+}
 
 export type LayoutEvent = CalendarEvent & {
   colIdx: number;

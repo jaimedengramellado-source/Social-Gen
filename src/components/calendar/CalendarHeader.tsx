@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings2, Clock } from "lucide-react";
 
 export type CalendarView = "week" | "month";
 
@@ -13,6 +13,7 @@ interface Props {
   onToday: () => void;
   onNewEvent: () => void;
   onSettingsOpen: () => void;
+  onBestTimesOpen: () => void;
 }
 
 export function CalendarHeader({
@@ -24,6 +25,7 @@ export function CalendarHeader({
   onToday,
   onNewEvent,
   onSettingsOpen,
+  onBestTimesOpen,
 }: Props) {
   return (
     <div className="flex flex-wrap items-center justify-between px-3 md:px-5 py-3 border-b border-[var(--color-border)] flex-shrink-0 bg-white gap-x-3 gap-y-2">
@@ -91,6 +93,15 @@ export function CalendarHeader({
             Mes
           </button>
         </div>
+
+        <button
+          onClick={onBestTimesOpen}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-muted)] transition-colors text-xs font-medium"
+          style={{ color: "var(--color-primary)" }}
+          aria-label="Mejores horas para publicar"
+        >
+          <Clock size={14} /> <span className="hidden md:inline">Mejores horas</span>
+        </button>
 
         <button
           onClick={onSettingsOpen}

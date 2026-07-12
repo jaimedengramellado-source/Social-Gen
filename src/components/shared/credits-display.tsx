@@ -36,7 +36,7 @@ export function CreditsDisplay({ profile }: { profile: Profile }) {
         {!unlimited && <span className="text-xs text-[var(--color-muted-foreground)] mb-0.5">/ {credits_total}</span>}
       </div>
 
-      <Progress value={pct} className={`h-1.5 mb-3 ${isCritical ? "[&>*]:bg-[var(--color-destructive)]" : isLow ? "[&>*]:bg-[var(--color-warning)]" : ""}`} />
+      <Progress value={pct} className={`h-1.5 mb-3 ${isCritical ? "[&>*]:bg-[var(--color-destructive-bg)]" : isLow ? "[&>*]:bg-[var(--color-warning)]" : ""}`} />
 
       {isCritical && (
         <Button asChild size="sm" className="w-full" variant="destructive">

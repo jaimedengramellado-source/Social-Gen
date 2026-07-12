@@ -8,11 +8,19 @@ const protectedRoutes = [
 const authRoutes = ["/login", "/signup"];
 
 export async function proxy(request: NextRequest) {
-  const { response, user } = await updateSession(request);
   const pathname = request.nextUrl.pathname;
 
   const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
   const isAuthRoute = authRoutes.some((r) => pathname.startsWith(r));
+
+  // Páginas públicas (landing, precios, legal, /api/*, etc.) no necesitan el
+  // round-trip a Supabase: ni redirigen por auth ni leen `user`. Cada Route
+  // Handler bajo /api valida su propia sesión con createClient()+getUser().
+  if (!isProtected && !isAuthRoute) {
+    return NextResponse.next({ request });
+  }
+
+  const { response, user } = await updateSession(request);
 
   if (isProtected && !user) {
     return NextResponse.redirect(new URL("/login", request.url));

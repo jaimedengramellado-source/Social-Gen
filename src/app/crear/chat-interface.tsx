@@ -9,14 +9,16 @@ import {
   Lightbulb, Anchor, TrendingUp, Sparkles, Calendar, Hash,
   Users, X, Check, ExternalLink, Loader2,
   Search, ChevronUp, ChevronDown, PanelRightOpen, PanelRightClose, History,
-  Reply, Wand2, MonitorPlay, Smartphone, Briefcase, AlertTriangle,
+  Reply, Wand2, MonitorPlay, Smartphone, Briefcase, AlertTriangle, Folder,
+  PenLine,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Profile } from "@/types";
+import type { Profile, Snippet } from "@/types";
 import { uploadChatImage, uploadChatFile } from "@/lib/upload";
 import { extractJSON } from "@/lib/utils";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
+import { PlatformPreviewModal } from "@/components/creator/platform-preview";
 
 const CREATORS = [
   {
@@ -45,6 +47,15 @@ const CREATORS = [
     photo: "/creators/traxnyc.webp",
     color: "#C9A84C",
     initial: "T",
+  },
+  {
+    id: "collinskey",
+    handle: "@collinskey",
+    name: "Collins Key",
+    description: "Formato corto viral · Trend-jacking en TikTok/Reels · Clips de millones de vistas",
+    photo: "/creators/collinskey.jpg",
+    color: "#00A8E8",
+    initial: "C",
   },
 ];
 
@@ -695,13 +706,14 @@ function QuestionCard({ item, onAnswer }: { item: QuestionItem; onAnswer: (a: st
   );
 }
 
-function MessageBubble({ msg, msgIndex, streaming, onCreateScript, onExport, onAnswer }: {
+function MessageBubble({ msg, msgIndex, streaming, onCreateScript, onExport, onAnswer, onPreview }: {
   msg: Message;
   msgIndex: number;
   streaming?: boolean;
   onCreateScript?: (idea: { title: string; hook?: string }) => void;
   onExport?: (content: string, title: string) => Promise<void>;
   onAnswer?: (answer: string) => void;
+  onPreview?: (content: string) => void;
 }) {
   const isUser = msg.role === "user";
   const creator = msg.creatorId ? CREATORS.find(c => c.id === msg.creatorId) ?? null : null;
@@ -783,26 +795,41 @@ function MessageBubble({ msg, msgIndex, streaming, onCreateScript, onExport, onA
               )}
             </div>
           </div>
-          {!streaming && !isUser && msg.content.length > 80 && onExport && (
-            <div className="mt-2">
-              <button
-                onClick={handleBtnExport}
-                disabled={exportState === "exporting"}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all hover:shadow-sm disabled:opacity-60"
-                style={{
-                  borderColor: exportState === "done" ? "var(--color-success)" : "var(--color-border)",
-                  color: exportState === "done" ? "var(--color-success)" : "var(--color-muted-foreground)",
-                  backgroundColor: "white",
-                }}
-              >
-                {exportState === "exporting" ? (
-                  <><Loader2 size={11} className="animate-spin" /> Guardando...</>
-                ) : exportState === "done" ? (
-                  <><Check size={11} /> Guardado en Documentos</>
-                ) : (
-                  <><ExternalLink size={11} /> Exportar a Documentos</>
-                )}
-              </button>
+          {!streaming && !isUser && msg.content.length > 80 && (onExport || onPreview) && (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {onExport && (
+                <button
+                  onClick={handleBtnExport}
+                  disabled={exportState === "exporting"}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all hover:shadow-sm disabled:opacity-60"
+                  style={{
+                    borderColor: exportState === "done" ? "var(--color-success)" : "var(--color-border)",
+                    color: exportState === "done" ? "var(--color-success)" : "var(--color-muted-foreground)",
+                    backgroundColor: "white",
+                  }}
+                >
+                  {exportState === "exporting" ? (
+                    <><Loader2 size={11} className="animate-spin" /> Guardando...</>
+                  ) : exportState === "done" ? (
+                    <><Check size={11} /> Guardado en Documentos</>
+                  ) : (
+                    <><ExternalLink size={11} /> Exportar a Documentos</>
+                  )}
+                </button>
+              )}
+              {onPreview && (
+                <button
+                  onClick={() => onPreview(msg.content)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all hover:shadow-sm"
+                  style={{
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-muted-foreground)",
+                    backgroundColor: "white",
+                  }}
+                >
+                  <Smartphone size={11} /> Vista previa
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -834,12 +861,14 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
   const [attachment, setAttachment] = useState<{ url: string; mime_type: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [snippets, setSnippets] = useState<Snippet[] | null>(null);
   const [contentFormat, setContentFormat] = useState<ContentFormat | null>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
   const [activeCreator, setActiveCreator] = useState<Creator | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [exportedDoc, setExportedDoc] = useState<{ id: string; title: string } | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [maxTokensHit, setMaxTokensHit] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [welcomeKey, setWelcomeKey] = useState(0);
@@ -1349,6 +1378,72 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
     }, 0);
   }
 
+  useEffect(() => {
+    if (!showAttachMenu || snippets !== null) return;
+    fetch("/api/snippets")
+      .then(r => r.json())
+      .then(data => setSnippets(Array.isArray(data) ? data : []))
+      .catch(() => setSnippets([]));
+  }, [showAttachMenu, snippets]);
+
+  function renderSnippetsMenuSection() {
+    if (snippets === null) return null;
+    return (
+      <>
+        <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
+        <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
+          <PenLine size={11} /> Firmas
+        </p>
+        {snippets.length === 0 ? (
+          <a
+            href="/ajustes?tab=ia"
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+            style={{ color: "var(--color-muted-foreground)" }}
+          >
+            <Plus size={13} className="flex-shrink-0" />
+            Crear firmas y CTAs en Ajustes
+          </a>
+        ) : (
+          snippets.map(s => (
+            <button
+              key={s.id}
+              onClick={() => insertSnippet(s.content)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+              style={{ color: "var(--color-foreground)" }}
+              title={s.content}
+            >
+              <PenLine size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+              <span className="flex-1 truncate">{s.name}</span>
+            </button>
+          ))
+        )}
+      </>
+    );
+  }
+
+  function insertSnippet(content: string) {
+    setShowAttachMenu(false);
+    const ta = textareaRef.current;
+    if (!ta) {
+      setInput(prev => (prev ? `${prev}\n${content}` : content));
+      return;
+    }
+    const start = ta.selectionStart ?? input.length;
+    const end = ta.selectionEnd ?? input.length;
+    const before = input.slice(0, start);
+    const after = input.slice(end);
+    const sep = before && !/[\s\n]$/.test(before) ? "\n" : "";
+    const next = before + sep + content + after;
+    setInput(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = (before + sep + content).length;
+      ta.setSelectionRange(pos, pos);
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
+    });
+  }
+
   async function send(content: string) {
     if ((!content.trim() && !attachment) || loading) return;
     setMentionQuery(null);
@@ -1601,7 +1696,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
             className="flex items-center gap-2 mb-5 px-4 py-2 rounded-full border"
             style={{ backgroundColor: "var(--color-primary-light)", borderColor: "rgba(140,34,48,0.2)" }}
           >
-            <i className="ti ti-folder" style={{ fontSize: 13, color: "var(--color-primary)" }} />
+            <Folder size={13} color="var(--color-primary)" />
             <span className="text-sm font-medium" style={{ color: "var(--color-primary)" }}>
               {projectName}
             </span>
@@ -1716,6 +1811,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                     <Clapperboard size={13} className="flex-shrink-0" />
                     Guiado
                   </button>
+                  {renderSnippetsMenuSection()}
                   <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
                   <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
                     <Users size={11} /> Crear con creador
@@ -1949,7 +2045,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
             className="rounded-xl transition-colors duration-700 -mx-2 px-2"
             style={{ backgroundColor: highlightedMsgIndex === i ? "var(--color-primary-light)" : "transparent" }}
           >
-            <MessageBubble msg={msg} msgIndex={i} onCreateScript={handleCreateScriptFromIdea} onExport={handleExportMessage} onAnswer={send} />
+            <MessageBubble msg={msg} msgIndex={i} onCreateScript={handleCreateScriptFromIdea} onExport={handleExportMessage} onAnswer={send} onPreview={setPreviewContent} />
           </div>
         ))}
 
@@ -2175,6 +2271,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                     <Clapperboard size={13} className="flex-shrink-0" />
                     Guiado
                   </button>
+                  {renderSnippetsMenuSection()}
                   <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
                   <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
                     <Users size={11} /> Crear con creador
@@ -2371,6 +2468,14 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
         </div>
       </div>,
       document.body
+    )}
+
+    {previewContent && (
+      <PlatformPreviewModal
+        content={previewContent}
+        channelName={profile.channel_name}
+        onClose={() => setPreviewContent(null)}
+      />
     )}
 
     <UpgradeModal

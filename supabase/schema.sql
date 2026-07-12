@@ -18,7 +18,8 @@ create table profiles (
   ai_instructions text,
   main_platform text,
   channel_name text,
-  credits_refreshed_at timestamptz default now()
+  credits_refreshed_at timestamptz default now(),
+  weekly_digest boolean not null default true -- opt-out del resumen semanal por email
 );
 
 create table channels (
@@ -131,7 +132,75 @@ create table youtube_connections (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   reporting_job_id text, -- YouTube Reporting API job (channel_reach_basic_a1), creado por el cron youtube-reach-sync
-  reach_synced_until timestamptz -- último sync de CTR/impresiones; esos datos llegan con ~48h de retraso
+  reach_synced_until timestamptz, -- último sync de CTR/impresiones; esos datos llegan con ~48h de retraso
+  scopes text -- scopes OAuth concedidos; si no incluye youtube.upload hay que reconectar para subir vídeos
+);
+
+-- Cola de publicaciones en redes.
+-- YouTube: programación nativa (publishAt), el vídeo sube directo navegador→YouTube.
+-- Instagram/TikTok: sin publishAt nativo — el vídeo espera en el bucket publish-videos
+-- y el cron /api/cron/publish-scheduled lo publica a su hora.
+create table scheduled_posts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  platform text not null default 'youtube', -- youtube | instagram | tiktok
+  title text not null,
+  description text,
+  tags text[] not null default '{}',
+  privacy text not null default 'public', -- public | unlisted | private (solo publicación inmediata)
+  scheduled_at timestamptz, -- null = publicar ya
+  status text not null default 'uploading', -- uploading | scheduled | publishing | published | failed
+  youtube_video_id text,
+  platform_post_id text, -- IG: container/media id · TikTok: publish_id (permite continuar en el siguiente cron)
+  storage_path text, -- vídeo en bucket publish-videos (solo IG/TikTok)
+  attempts integer not null default 0,
+  settings jsonb not null default '{}'::jsonb, -- privacy_level TikTok, etc.
+  error text,
+  script_id uuid references scripts(id) on delete set null,
+  calendar_event_id uuid references calendar_events(id) on delete set null,
+  file_name text,
+  file_size bigint,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Conexiones a redes sociales distintas de YouTube (Instagram vía Meta Graph, TikTok)
+create table social_connections (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  platform text not null, -- 'instagram' | 'tiktok'
+  account_id text not null, -- IG business account id / TikTok open_id
+  account_name text,
+  account_avatar text,
+  access_token text not null,
+  refresh_token text,
+  expires_at timestamptz,
+  page_id text, -- IG: id de la página de Facebook vinculada
+  scopes text,
+  metadata jsonb not null default '{}'::jsonb, -- IG: candidates de cuentas; TikTok: creator_info
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, platform)
+);
+
+-- Automatizaciones post-publicación (fase 1: alertas de hitos de visitas en YouTube)
+create table post_automations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  platform text not null default 'youtube',
+  trigger text not null default 'views_milestone',
+  threshold integer not null,
+  action text not null default 'email',
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Idempotencia: cada automatización dispara una sola vez por vídeo (escribe el cron/service role)
+create table automation_events (
+  automation_id uuid not null references post_automations(id) on delete cascade,
+  video_id text not null,
+  fired_at timestamptz not null default now(),
+  primary key (automation_id, video_id)
 );
 
 -- CTR e impresiones de miniatura: solo disponibles vía YouTube Reporting API (bulk,
@@ -160,8 +229,20 @@ create table calendar_events (
   start_time timestamptz,
   end_time timestamptz,
   color text default '#1a73e8',
+  tag text, -- flujo de trabajo: grabar | editar | publicar | idea | reunion
   remind_times jsonb default '[]'::jsonb,
   sent_reminder_offsets jsonb default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Firmas/snippets reutilizables (CTAs, hashtags, cierres) — se insertan en el chat de /crear
+create table snippets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  name text not null,
+  content text not null,
+  sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -238,6 +319,11 @@ alter table watchlist_channels enable row level security;
 alter table usage_logs enable row level security;
 alter table youtube_connections enable row level security;
 alter table calendar_events enable row level security;
+alter table snippets enable row level security;
+alter table scheduled_posts enable row level security;
+alter table social_connections enable row level security;
+alter table post_automations enable row level security;
+alter table automation_events enable row level security;
 alter table todos enable row level security;
 alter table chat_projects enable row level security;
 alter table chat_sessions enable row level security;
@@ -263,6 +349,17 @@ alter table youtube_reach_stats enable row level security;
 create policy "own reach stats" on youtube_reach_stats for select to authenticated using ((select auth.uid()) = user_id);
 create policy "Users can manage their own calendar events" on calendar_events
   for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "own snippets" on snippets
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "own scheduled posts" on scheduled_posts
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "own social connections" on social_connections
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "own automations" on post_automations
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "own automation events" on automation_events
+  for select to authenticated
+  using (automation_id in (select id from post_automations where user_id = (select auth.uid())));
 create policy "Users can manage their own todos" on todos
   for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "own projects" on chat_projects for all using ((select auth.uid()) = user_id);
@@ -290,6 +387,13 @@ create index if not exists scripts_channel_id_idx on scripts (channel_id);
 create index if not exists scripts_idea_id_idx on scripts (idea_id);
 create index if not exists scripts_project_id_idx on scripts (project_id);
 create index if not exists scripts_user_id_idx on scripts (user_id);
+create index if not exists snippets_user_id_idx on snippets (user_id, sort_order);
+create index if not exists scheduled_posts_user_created_idx on scheduled_posts (user_id, created_at desc);
+create index if not exists scheduled_posts_script_id_idx on scheduled_posts (script_id);
+create index if not exists scheduled_posts_calendar_event_id_idx on scheduled_posts (calendar_event_id);
+create index if not exists scheduled_posts_due_idx on scheduled_posts (status, scheduled_at)
+  where status in ('scheduled', 'publishing');
+create index if not exists post_automations_user_idx on post_automations (user_id);
 create index if not exists todos_parent_id_idx on todos (parent_id);
 create index if not exists watchlist_channels_user_id_idx on watchlist_channels (user_id);
 
@@ -411,3 +515,9 @@ grant execute on function add_credits(uuid, integer) to service_role;
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('chat-attachments', 'chat-attachments', false);
 -- CREATE POLICY "Users upload own chat images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);
 -- CREATE POLICY "Users read own chat images" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'chat-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);
+--
+-- Vídeos en espera de publicarse en Instagram/TikTok (los borra el cron al publicar)
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('publish-videos', 'publish-videos', false);
+-- CREATE POLICY "Users upload own publish videos" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'publish-videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+-- CREATE POLICY "Users read own publish videos" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'publish-videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+-- CREATE POLICY "Users delete own publish videos" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'publish-videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);

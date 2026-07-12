@@ -13,7 +13,7 @@ const buttonVariants = cva(
         default:
           "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:-translate-y-px active:translate-y-0",
         destructive:
-          "bg-[var(--color-destructive)] text-white shadow-sm hover:bg-red-700 hover:-translate-y-px",
+          "bg-[var(--color-destructive-bg)] text-white shadow-sm hover:bg-[var(--color-destructive-bg-hover)] hover:-translate-y-px",
         outline:
           "border border-[var(--color-border)] bg-transparent shadow-sm hover:bg-[var(--color-muted)] hover:-translate-y-px",
         secondary:

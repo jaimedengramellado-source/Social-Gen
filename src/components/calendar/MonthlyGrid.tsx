@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { isSameDay, formatTime } from "./types";
+import { isSameDay, formatTime, getEventTag } from "./types";
 import { useCalSettings } from "./CalendarContext";
 import type { CalendarEvent } from "./types";
 import { EventPopover } from "./EventPopover";
@@ -205,6 +205,7 @@ export function MonthlyGrid({
                       opacity: draggingId === ev.id ? 0.4 : 1,
                     }}
                   >
+                    {getEventTag(ev.tag) && <span aria-hidden className="mr-0.5">{getEventTag(ev.tag)!.emoji}</span>}
                     {formatTime(ev.start_time, settings.timeFormat)} {ev.title}
                   </button>
                 ))}

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Search, BarChart2, UserCircle2, CalendarDays, ListTodo, Image as ImageIcon, Send } from "lucide-react";
 import type { Profile } from "@/types";
 
 const BASE = 32;
@@ -23,6 +23,7 @@ const ITEMS: DockItem[] = [
   { href: "/imagenes",   label: "Imágenes",    type: "icon", Icon: ImageIcon },
   { href: "/documentos", label: "Documentos",   type: "icon", Icon: FolderOpen },
   { href: "/explorar",      label: "Explorar",       type: "icon", Icon: Search },
+  { href: "/publicar",      label: "Publicar",       type: "icon", Icon: Send },
   { href: "/estadisticas",  label: "Estadísticas",   type: "icon", Icon: BarChart2 },
   { href: "/calendario",   label: "Calendario",     type: "icon", Icon: CalendarDays },
   { href: "/todos",        label: "To Do",          type: "icon", Icon: ListTodo },

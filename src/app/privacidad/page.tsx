@@ -25,7 +25,7 @@ export default function PrivacidadPage() {
           Política de Privacidad
         </h1>
         <p className="text-sm text-[var(--color-muted-foreground)] mb-12">
-          Última actualización: 7 de julio de 2026
+          Última actualización: 12 de julio de 2026
         </p>
 
         <div className="prose prose-zinc max-w-none space-y-10 text-[var(--color-foreground)]">
@@ -75,7 +75,7 @@ export default function PrivacidadPage() {
               <li><strong>Supabase</strong> — base de datos y autenticación. Los datos se almacenan en servidores de la UE.</li>
               <li><strong>Anthropic</strong> — procesamiento de las solicitudes de generación de contenido mediante IA. Las solicitudes se envían a sus servidores; consulta su política en <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">anthropic.com/privacy</a>.</li>
               <li><strong>Stripe</strong> — procesamiento de pagos. Consulta su política en <a href="https://stripe.com/es/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">stripe.com/es/privacy</a>.</li>
-              <li><strong>Google</strong> — inicio de sesión con Google OAuth y, opcionalmente, conexión con YouTube Analytics.</li>
+              <li><strong>Google</strong> — inicio de sesión con Google OAuth y, opcionalmente, conexión con YouTube para consultar estadísticas y publicar vídeos (ver sección 5).</li>
               <li><strong>Vercel</strong> — infraestructura de alojamiento de la aplicación.</li>
             </ul>
           </section>
@@ -83,19 +83,23 @@ export default function PrivacidadPage() {
           <section>
             <h2 className="text-xl font-semibold mb-3">5. Servicios API de Google y datos de YouTube</h2>
             <p className="text-[var(--color-muted-foreground)] leading-relaxed mb-3">
-              Social Flamingo utiliza los Servicios API de YouTube (YouTube Data API y YouTube Analytics API) cuando decides, de forma voluntaria, conectar tu canal de YouTube desde la sección Estadísticas. Al usar esta función aceptas los{" "}
+              Social Flamingo utiliza los Servicios API de YouTube (YouTube Data API y YouTube Analytics API) cuando decides, de forma voluntaria, conectar tu canal de YouTube desde las secciones Estadísticas o Publicar. Al usar estas funciones aceptas los{" "}
               <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
                 Términos de Servicio de YouTube
               </a>{" "}
               y la{" "}
               <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
                 Política de Privacidad de Google
-              </a>.
+              </a>. Los permisos se solicitan de forma incremental: cada uno se pide únicamente cuando activas la función que lo necesita.
             </p>
             <ul className="list-disc list-inside space-y-2 text-[var(--color-muted-foreground)]">
-              <li><strong>Qué datos accedemos:</strong> información básica de tu canal (nombre, identificador, miniatura, número de suscriptores) y métricas de analíticas (visualizaciones, CTR, retención, fuentes de tráfico y similares). El acceso es de <strong>solo lectura</strong>: nunca publicamos, modificamos ni eliminamos nada en tu canal.</li>
-              <li><strong>Qué datos almacenamos:</strong> únicamente la información básica del canal y los tokens de acceso OAuth necesarios para consultar las métricas en tu nombre. Las métricas de analíticas se consultan a YouTube en tiempo real cada vez que visitas Estadísticas y no se almacenan en nuestros servidores.</li>
-              <li><strong>Cómo los usamos:</strong> exclusivamente para mostrarte tus propias estadísticas dentro de la aplicación. No compartimos estos datos con terceros, no los usamos con fines publicitarios y no los transferimos a los proveedores de IA.</li>
+              <li><strong>Qué datos accedemos:</strong> información básica de tu canal (nombre, identificador, miniatura, número de suscriptores) y métricas de analíticas (visualizaciones, CTR, retención, fuentes de tráfico y similares), ambas con permisos de <strong>solo lectura</strong>. Si activas la publicación desde la sección Publicar, solicitamos además el permiso de <strong>subida de vídeos</strong> (youtube.upload).</li>
+              <li><strong>Qué hacemos en tu canal:</strong> con el permiso de subida, únicamente subimos o programamos los vídeos que tú eliges de forma explícita, con el título, la descripción, las etiquetas y la visibilidad que tú indicas en cada caso. Nunca publicamos, modificamos ni eliminamos nada en tu canal sin una acción tuya directa.</li>
+              <li><strong>Qué datos almacenamos:</strong> la información básica del canal, los tokens de acceso OAuth necesarios para actuar en tu nombre y los metadatos de las publicaciones que creas (título, descripción, etiquetas, visibilidad e identificador del vídeo). Las métricas de analíticas se consultan a YouTube en tiempo real y no se almacenan en nuestros servidores. Los archivos de vídeo se suben directamente desde tu navegador a YouTube: <strong>nunca pasan por nuestros servidores ni se guardan en ellos</strong>.</li>
+              <li><strong>Cómo los usamos:</strong> exclusivamente para funciones que tú ves y usas: mostrarte tus propias estadísticas, recomendarte las mejores horas de publicación (cálculo realizado en nuestros servidores a partir de tus métricas, sin intervención de IA) y subir o programar tus vídeos cuando tú lo pides.</li>
+              <li><strong>Con quién los compartimos:</strong> con nadie. No vendemos ni transferimos datos de Google a terceros, no los usamos con fines publicitarios, no los enviamos a los proveedores de IA y no los utilizamos para desarrollar, mejorar o entrenar modelos de inteligencia artificial o aprendizaje automático.</li>
+              <li><strong>Cómo los protegemos:</strong> todas las comunicaciones van cifradas mediante TLS; los datos se almacenan cifrados en reposo en nuestra base de datos (Supabase, servidores en la UE); los tokens OAuth solo son accesibles desde nuestro servidor, nunca desde el navegador; y políticas de seguridad a nivel de fila (RLS) garantizan que cada usuario solo puede acceder a sus propios datos.</li>
+              <li><strong>Retención y eliminación:</strong> si desconectas tu canal, eliminamos inmediatamente los tokens y revocamos el permiso ante Google. Si eliminas tu cuenta, todos los datos vinculados a la conexión (información del canal, tokens y metadatos de publicaciones) se borran en un plazo máximo de 30 días.</li>
               <li><strong>Cómo revocar el acceso:</strong> puedes desconectar tu canal en cualquier momento desde Estadísticas (eliminamos los tokens y revocamos el permiso ante Google) o directamente desde la{" "}
                 <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
                   configuración de seguridad de tu cuenta de Google

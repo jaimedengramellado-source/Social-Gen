@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseDuration } from "@/lib/youtube";
-import { refreshAccessToken, queryAnalytics, num, str, getReachStatsByVideo } from "@/lib/youtube-analytics";
+import {
+  refreshAccessToken, queryAnalytics, num, str, getReachStatsByVideo,
+  getAllUploadedVideoIds, fetchVideoDetailsBatched, AnalyticsRow,
+} from "@/lib/youtube-analytics";
 
 const PERIOD_DAYS: Record<string, number> = { "7": 7, "28": 28, "90": 90, "365": 365 };
 
@@ -29,19 +32,17 @@ export async function GET(request: NextRequest) {
 
     const coreMetrics = ["views", "estimatedMinutesWatched", "averageViewDuration", "averageViewPercentage", "subscribersGained", "subscribersLost", "likes", "comments", "shares"];
 
-    const [overview, videosResult, viewsTrend, subscribersTrend] = await Promise.all([
+    const [overview, uploadedVideoIds, viewsTrend, subscribersTrend] = await Promise.all([
       queryAnalytics({ token, startDate, endDate, metrics: coreMetrics }),
-      queryAnalytics({ token, startDate, endDate, metrics: coreMetrics, dimensions: ["video"], sort: "-views", maxResults: 50 }),
+      getAllUploadedVideoIds(token),
       queryAnalytics({ token, startDate, endDate, metrics: ["views", "estimatedMinutesWatched", "likes", "comments", "shares"], dimensions: ["day"], sort: "day" }),
       queryAnalytics({ token, startDate, endDate, metrics: ["subscribersGained", "subscribersLost"], dimensions: ["day"], sort: "day" }),
     ]);
 
     const ovRow = overview.rows[0];
 
-    if (videosResult.rows.length === 0) {
-      const debug = process.env.NODE_ENV !== "production" ? {
-        videosError: videosResult.error, overviewError: overview.error,
-      } : undefined;
+    if (uploadedVideoIds.length === 0) {
+      const debug = process.env.NODE_ENV !== "production" ? { overviewError: overview.error } : undefined;
       return NextResponse.json({
         channel: { id: conn.channel_id, name: conn.channel_name, thumbnail: conn.channel_thumbnail, subscriberCount: conn.subscriber_count },
         overview: { views: 0, watchTimeHours: 0, avgViewPercentage: 0, subscribersGained: 0, subscribersLost: 0, likes: 0, comments: 0, shares: 0, ctr: 0, impressions: 0, hasReachData: false },
@@ -54,25 +55,27 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const videoIds = videosResult.rows.map(r => str(r, "video")).filter(Boolean);
-
-    const [detailsRes, reachStats] = await Promise.all([
-      fetch(
-        `https://www.googleapis.com/youtube/v3/videos?id=${videoIds.join(",")}&part=snippet,contentDetails&key=${process.env.YOUTUBE_API_KEY}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      ).then(r => r.json()),
-      getReachStatsByVideo(supabase, user.id, videoIds, startDate, endDate),
+    // Per-video metrics only cover videos with activity in the period — videos
+    // outside the range (or with zero views) simply won't have a row here, and
+    // default to zero below. This keeps the catalog complete regardless of period.
+    const [videosResult, videoDetails, reachStats] = await Promise.all([
+      queryAnalytics({ token, startDate, endDate, metrics: coreMetrics, dimensions: ["video"], sort: "-views", maxResults: 200 }),
+      fetchVideoDetailsBatched(token, uploadedVideoIds),
+      getReachStatsByVideo(supabase, user.id, uploadedVideoIds, startDate, endDate),
     ]);
 
-    const videoDetails: Record<string, { snippet: Record<string, unknown>; contentDetails: Record<string, unknown> }> = {};
-    for (const item of detailsRes.items ?? []) videoDetails[item.id] = item;
+    const videoMetrics: Record<string, AnalyticsRow> = {};
+    for (const row of videosResult.rows) {
+      const id = str(row, "video");
+      if (id) videoMetrics[id] = row;
+    }
 
     const hasReachData = Object.keys(reachStats).length > 0;
 
-    const videos = videosResult.rows
-      .map(row => {
-        const id = str(row, "video");
+    const videos = uploadedVideoIds
+      .map(id => {
         const detail = videoDetails[id];
+        const row = videoMetrics[id];
         const durationSec = detail ? parseDuration(String(detail.contentDetails?.duration ?? "PT0S")).secs : 0;
         const snippet = detail?.snippet ?? {};
         const thumbnails = (snippet.thumbnails as Record<string, { url: string }> | undefined) ?? {};

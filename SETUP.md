@@ -231,3 +231,56 @@ En [console.cloud.google.com](https://console.cloud.google.com) → APIs & Servi
 3. **YouTube Reporting API** — CTR e impresiones de miniatura. Estos datos **no existen** en la API de Analytics en tiempo real, solo vía reportes bulk que Google genera con ~48h de retraso (`reportTypeId: channel_reach_basic_a1`). Los sincroniza el cron `/api/cron/youtube-reach-sync` (diario, `vercel.json`) hacia la tabla `youtube_reach_stats`. No requiere pedir un scope OAuth nuevo — `yt-analytics.readonly` (ya solicitado en `/api/auth/youtube/connect`) cubre también la Reporting API.
 
 Añadir `http://localhost:3000/api/auth/youtube/callback` (y el equivalente de producción) como Redirect URI en las credenciales OAuth de Google Console.
+
+## 10. Publicar en YouTube (/publicar)
+
+La subida usa el mismo proyecto OAuth del paso 9 más el scope **`youtube.upload`** (sensible). Pasos manuales en [console.cloud.google.com](https://console.cloud.google.com):
+
+1. **OAuth consent screen → Data access (Scopes)**: añadir `https://www.googleapis.com/auth/youtube.upload`. Mientras la app esté en modo *Testing* funciona para los test users sin verificación; para producción hay que **re-enviar la verificación de Google** incluyendo el scope nuevo (justificación + vídeo demo).
+2. **Cuota de YouTube Data API**: `videos.insert` cuesta **1.600 unidades** y la cuota por defecto es 10.000/día por proyecto → ~6 subidas diarias para toda la app. Para escalar, solicitar ampliación con el [YouTube API Services quota audit form](https://support.google.com/youtube/contact/yt_api_form).
+3. Los usuarios que conectaron su canal antes de este cambio tienen tokens sin el scope de subida (columna `youtube_connections.scopes` en null): la página `/publicar` les pide reconectar automáticamente.
+
+Notas de funcionamiento (sin pasos manuales):
+- El vídeo sube **directo del navegador a YouTube** (sesión resumable creada por `/api/youtube/upload-session`); nunca pasa por Vercel ni por Supabase Storage.
+- La programación es nativa de YouTube (`status.publishAt`): el vídeo se sube en privado y YouTube lo publica solo. No hay cron de publicación.
+- Estado de las publicaciones en la tabla `scheduled_posts` (sync perezoso en `GET /api/publicaciones`).
+
+### 10.1 Activación
+
+La feature está detrás del flag **`ENABLE_YOUTUBE_PUBLISHING`** (env var de servidor, sin `NEXT_PUBLIC_`). Mientras no valga `true`:
+- `/publicar` muestra "Próximamente".
+- El OAuth de `/api/auth/youtube/connect` NO pide el scope `youtube.upload` (evita el aviso de "app no verificada" al conectar desde /estadisticas).
+- `/api/youtube/upload-session` responde 503.
+
+Cuando los pasos 1–2 de arriba estén hechos: añadir `ENABLE_YOUTUBE_PUBLISHING=true` en Vercel (y `.env.local` para dev) y redeploy.
+
+## 11. Publicar en Instagram (/publicar)
+
+Flag: **`ENABLE_INSTAGRAM_PUBLISHING=true`** + env vars **`META_APP_ID`** y **`META_APP_SECRET`**.
+
+Pasos manuales en [developers.facebook.com](https://developers.facebook.com):
+1. Crear una **app de tipo Business** y añadir el producto **Facebook Login for Business**.
+2. Registrar el redirect URI: `https://socialflamingo.app/api/auth/instagram/callback` (y localhost para dev).
+3. Pasar **App Review** con estos permisos (requiere vídeo demo de cada uno): `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`, `business_management`. En modo Development funciona sin review para usuarios con rol en la app.
+4. La cuenta de Instagram del usuario debe ser **business o creator y estar vinculada a una página de Facebook** — avisarlo en el onboarding de la conexión.
+
+Funcionamiento: publicación de Reels por contenedores (`/{ig-user-id}/media` con la URL firmada del vídeo → poll de `status_code` → `media_publish`). No hay programación nativa: publica el cron `publish-scheduled` (cada 5 min). Límite de la API: 100 posts por cuenta/24h (de sobra).
+
+## 12. Publicar en TikTok (/publicar)
+
+Flag: **`ENABLE_TIKTOK_PUBLISHING=true`** + env vars **`TIKTOK_CLIENT_KEY`** y **`TIKTOK_CLIENT_SECRET`**.
+
+Pasos manuales en [developers.tiktok.com](https://developers.tiktok.com):
+1. Crear app y añadir **Login Kit** + **Content Posting API**.
+2. Scopes: `user.info.basic`, `video.publish`, `video.upload`.
+3. Redirect URI: `https://socialflamingo.app/api/auth/tiktok/callback`.
+4. **Solicitar el audit de Content Posting API**: hasta que TikTok lo apruebe, todos los posts van forzados a visibilidad "Solo yo" (SELF_ONLY) — la UI ya lo avisa leyendo `creator_info`.
+
+Funcionamiento: subida por `FILE_UPLOAD` en chunks (init → PUT por rangos desde el bucket → poll de `status/fetch`). OJO: no usar `PULL_FROM_URL` para vídeos — está roto del lado de TikTok. El access token caduca en 24h: el cron refresca siempre antes de publicar.
+
+## 13. Cola de publicación y bucket
+
+- Los vídeos de IG/TikTok esperan en el bucket privado **`publish-videos`** (creado por migración; SQL de referencia en schema.sql). El cron los borra al publicar o fallar definitivamente.
+- **Límite de tamaño**: la UI corta en 200 MB, pero el límite real lo pone el proyecto de Supabase (Settings → Storage → Upload file size limit, 50 MB por defecto) — subirlo a 200 MB.
+- Cron `/api/cron/publish-scheduled` cada 5 min (vercel.json): publica IG/TikTok pendientes, con 3 reintentos y continuación de estado entre ejecuciones (si Meta/TikTok siguen procesando, el siguiente run lo retoma).
+- Cron `/api/cron/automations` cada hora: alertas de hitos de visitas (flag `ENABLE_AUTOMATIONS=true`, sin pasos externos).

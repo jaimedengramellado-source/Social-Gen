@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  FileText, Sparkles, Anchor, Image as ImageIcon, MessageCircle,
+  MoreHorizontal, Pencil, Trash2, Search, X, Plus, Folder,
+  ChevronRight, Settings, type LucideIcon,
+} from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import type { Profile } from "@/types";
 
@@ -56,13 +61,13 @@ function detectChatType(title: string): ChatType {
   return "chat";
 }
 
-function chatTypeIcon(type: ChatType): { icon: string; bg: string; color: string } {
+function chatTypeIcon(type: ChatType): { Icon: LucideIcon; bg: string; color: string } {
   switch (type) {
-    case "guion":  return { icon: "ti-file-text", bg: "var(--surface-2)", color: "var(--text-secondary)" };
-    case "idea":   return { icon: "ti-sparkles",  bg: "var(--bg-pro)",    color: "var(--text-pro)" };
-    case "hook":   return { icon: "ti-anchor",    bg: "var(--bg-pro)",    color: "var(--text-pro)" };
-    case "imagen": return { icon: "ti-photo",     bg: "var(--bg-success)", color: "var(--text-success)" };
-    default:       return { icon: "ti-message",   bg: "var(--surface-2)", color: "var(--text-secondary)" };
+    case "guion":  return { Icon: FileText,   bg: "var(--surface-2)", color: "var(--text-secondary)" };
+    case "idea":   return { Icon: Sparkles,   bg: "var(--bg-pro)",    color: "var(--text-pro)" };
+    case "hook":   return { Icon: Anchor,     bg: "var(--bg-pro)",    color: "var(--text-pro)" };
+    case "imagen": return { Icon: ImageIcon,  bg: "var(--bg-success)", color: "var(--text-success)" };
+    default:       return { Icon: MessageCircle, bg: "var(--surface-2)", color: "var(--text-secondary)" };
   }
 }
 
@@ -184,7 +189,7 @@ export function ChatSidebar({
     const isEditing = editingSessionId === s.id;
     const menuOpen  = openMenuId === `s-${s.id}`;
     const type      = detectChatType(s.title);
-    const { icon, bg, color } = chatTypeIcon(type);
+    const { Icon, bg, color } = chatTypeIcon(type);
     const active    = activeId === s.id;
     const fresh     = isNew(s.created_at);
 
@@ -199,7 +204,7 @@ export function ChatSidebar({
         >
           {/* Type icon */}
           <span style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: bg, color, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <i className={`ti ${icon}`} style={{ fontSize: 13 }} />
+            <Icon size={13} />
           </span>
 
           {/* Text */}
@@ -243,7 +248,7 @@ export function ChatSidebar({
               className="opacity-0 group-hover:opacity-100"
               aria-label="Opciones"
             >
-              <i className="ti ti-dots" style={{ fontSize: 14 }} />
+              <MoreHorizontal size={14} />
             </button>
           )}
         </div>
@@ -256,7 +261,7 @@ export function ChatSidebar({
               onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
               onMouseLeave={e => (e.currentTarget.style.background = "none")}
             >
-              <i className="ti ti-pencil" style={{ fontSize: 13 }} /> Renombrar
+              <Pencil size={13} /> Renombrar
             </button>
             <button
               onClick={e => { e.stopPropagation(); onDelete(s.id); setOpenMenuId(null); }}
@@ -264,7 +269,7 @@ export function ChatSidebar({
               onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
               onMouseLeave={e => (e.currentTarget.style.background = "none")}
             >
-              <i className="ti ti-trash" style={{ fontSize: 13 }} /> Eliminar
+              <Trash2 size={13} /> Eliminar
             </button>
           </div>
         )}
@@ -282,7 +287,7 @@ export function ChatSidebar({
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: searchActive ? 10 : 0 }}>
           {searchActive ? (
             <div className="transition-colors focus-within:border-[var(--color-muted-foreground)]" style={{ background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", padding: "7px 10px", display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
-              <i className="ti ti-search" style={{ fontSize: 14, color: "var(--text-muted)", flexShrink: 0 }} />
+              <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <input
                 autoFocus
                 placeholder="Buscar chats..."
@@ -296,7 +301,7 @@ export function ChatSidebar({
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 2, borderRadius: 4, display: "inline-flex", alignItems: "center", flexShrink: 0 }}
                 aria-label="Cerrar búsqueda"
               >
-                <i className="ti ti-x" style={{ fontSize: 13 }} />
+                <X size={13} />
               </button>
             </div>
           ) : (
@@ -305,14 +310,14 @@ export function ChatSidebar({
               style={{ width: 32, height: 32, background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               aria-label="Buscar chats"
             >
-              <i className="ti ti-search" style={{ fontSize: 14 }} />
+              <Search size={14} />
             </button>
           )}
           <button
             onClick={onNew}
             style={{ background: "var(--bg-accent)", color: "var(--text-accent)", borderRadius: "var(--radius)", padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: "pointer", fontWeight: 500, flexShrink: 0, marginLeft: searchActive ? 0 : "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}
           >
-            <i className="ti ti-plus" style={{ fontSize: 13 }} />
+            <Plus size={13} />
             Nuevo
           </button>
         </div>
@@ -347,7 +352,7 @@ export function ChatSidebar({
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; (e.currentTarget as HTMLElement).style.background = "none"; }}
             >
-              <i className="ti ti-plus" style={{ fontSize: 13 }} />
+              <Plus size={13} />
             </button>
           </div>
             {projects.map(project => {
@@ -369,7 +374,7 @@ export function ChatSidebar({
                   >
                     {/* Folder icon */}
                     <span style={{ width: 26, height: 26, borderRadius: 6, background: "var(--bg-pro)", color: "var(--text-pro)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <i className="ti ti-folder" style={{ fontSize: 13 }} />
+                      <Folder size={13} />
                     </span>
 
                     {/* Title */}
@@ -405,7 +410,7 @@ export function ChatSidebar({
                             className="opacity-0 group-hover:opacity-100"
                             aria-label="Renombrar proyecto"
                           >
-                            <i className="ti ti-pencil" style={{ fontSize: 12 }} />
+                            <Pencil size={12} />
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); setConfirmDeleteProjectId(isConfirming ? null : project.id); }}
@@ -413,13 +418,13 @@ export function ChatSidebar({
                             className={isConfirming ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
                             aria-label="Eliminar proyecto"
                           >
-                            <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                            <Trash2 size={12} />
                           </button>
                         </>
                       )}
-                      <i
-                        className="ti ti-chevron-right"
-                        style={{ fontSize: 13, color: "var(--text-muted)", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}
+                      <ChevronRight
+                        size={13}
+                        style={{ color: "var(--text-muted)", transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}
                       />
                     </div>
                   </div>
@@ -432,7 +437,7 @@ export function ChatSidebar({
                       </p>
                       <button
                         onClick={e => { e.stopPropagation(); onDeleteProject(project.id); setConfirmDeleteProjectId(null); }}
-                        style={{ fontSize: 11, color: "#fff", background: "var(--color-destructive)", border: "none", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontWeight: 500, flexShrink: 0 }}
+                        style={{ fontSize: 11, color: "#fff", background: "var(--color-destructive-bg)", border: "none", borderRadius: 4, padding: "3px 8px", cursor: "pointer", fontWeight: 500, flexShrink: 0 }}
                       >
                         Eliminar
                       </button>
@@ -441,7 +446,7 @@ export function ChatSidebar({
                         style={{ background: "none", border: "none", padding: "3px 4px", cursor: "pointer", color: "var(--color-destructive)", opacity: 0.6, flexShrink: 0, display: "inline-flex", alignItems: "center" }}
                         aria-label="Cancelar"
                       >
-                        <i className="ti ti-x" style={{ fontSize: 12 }} />
+                        <X size={12} />
                       </button>
                     </div>
                   )}
@@ -460,7 +465,7 @@ export function ChatSidebar({
                         onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "none")}
                       >
-                        <i className="ti ti-plus" style={{ fontSize: 11 }} /> Nuevo chat
+                        <Plus size={11} /> Nuevo chat
                       </button>
                     </div>
                   )}
@@ -507,7 +512,7 @@ export function ChatSidebar({
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
           aria-label="Ajustes"
         >
-          <i className="ti ti-settings" style={{ fontSize: 16 }} />
+          <Settings size={16} />
         </a>
       </div>
     </aside>

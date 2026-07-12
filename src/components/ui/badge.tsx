@@ -9,7 +9,7 @@ const badgeVariants = cva(
       variant: {
         default: "border-transparent bg-[var(--color-primary)] text-white",
         secondary: "border-transparent bg-[var(--color-secondary)] text-[var(--color-secondary-foreground)]",
-        destructive: "border-transparent bg-[var(--color-destructive)] text-white",
+        destructive: "border-transparent bg-[var(--color-destructive-bg)] text-white",
         outline: "text-[var(--color-foreground)] border-[var(--color-border)]",
         success: "border-transparent bg-emerald-100 text-emerald-700",
         warning: "border-transparent bg-amber-100 text-amber-700",
