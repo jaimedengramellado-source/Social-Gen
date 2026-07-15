@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { refreshAccessToken, queryAnalytics, num, str, getReachStatsDaily } from "@/lib/youtube-analytics";
+import { refreshAccessToken, queryAnalytics, num, str, getReachStatsDaily, LIFETIME_START_DATE, TREND_WINDOW_DAYS } from "@/lib/youtube-analytics";
 
-const PERIOD_DAYS: Record<string, number> = { "7": 7, "28": 28, "90": 90, "365": 365 };
-
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { id: videoId } = await params;
-  const periodParam = request.nextUrl.searchParams.get("period") ?? "28";
-  const days = PERIOD_DAYS[periodParam] ?? 28;
   const endDate = new Date().toISOString().split("T")[0];
-  const startDate = new Date(Date.now() - days * 86_400_000).toISOString().split("T")[0];
+  const startDate = LIFETIME_START_DATE;
+  const dailyStartDate = new Date(Date.now() - TREND_WINDOW_DAYS * 86_400_000).toISOString().split("T")[0];
 
   const { data: conn } = await supabase.from("youtube_connections").select("*").eq("user_id", user.id).single();
   if (!conn) return NextResponse.json({ error: "NOT_CONNECTED" }, { status: 404 });
@@ -25,8 +22,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const filters = { video: videoId };
 
   const [overview, dailyResult, sourcesResult, playbackResult, deviceResult, detailRes, reachDaily, retentionResult] = await Promise.all([
-    queryAnalytics({ token, startDate, endDate, filters, metrics: ["views", "estimatedMinutesWatched", "averageViewDuration", "averageViewPercentage", "subscribersGained", "likes", "comments", "shares"] }),
-    queryAnalytics({ token, startDate, endDate, filters, metrics: ["views", "estimatedMinutesWatched"], dimensions: ["day"], sort: "day" }),
+    queryAnalytics({ token, startDate, endDate, filters, metrics: ["views", "estimatedMinutesWatched", "averageViewDuration", "averageViewPercentage", "subscribersGained", "subscribersLost", "likes", "comments", "shares"] }),
+    queryAnalytics({ token, startDate: dailyStartDate, endDate, filters, metrics: ["views", "estimatedMinutesWatched"], dimensions: ["day"], sort: "day" }),
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views"], dimensions: ["insightTrafficSourceType"], sort: "-views" }),
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views"], dimensions: ["insightPlaybackLocationType"], sort: "-views" }),
     queryAnalytics({ token, startDate, endDate, filters, metrics: ["views"], dimensions: ["deviceType"], sort: "-views" }),
@@ -97,6 +94,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       comments: num(ovRow, "comments"),
       shares: num(ovRow, "shares"),
       subscribersGained: num(ovRow, "subscribersGained"),
+      subscribersLost: num(ovRow, "subscribersLost"),
     },
     daily,
     reachDaily,
@@ -104,6 +102,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     playbackLocations,
     devices,
     retention,
-    period: { startDate, endDate, days },
+    trendDays: TREND_WINDOW_DAYS,
   });
 }

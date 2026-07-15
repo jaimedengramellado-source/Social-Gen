@@ -7,7 +7,7 @@ import {
   SOURCE_LABELS, PLAYBACK_LOCATION_LABELS, SHARING_SERVICE_LABELS,
 } from "./shared";
 
-export function TrafficTab({ period }: { period: string }) {
+export function TrafficTab() {
   const [data, setData] = useState<TrafficData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -15,11 +15,11 @@ export function TrafficTab({ period }: { period: string }) {
   useEffect(() => {
     setLoading(true);
     setError(false);
-    fetch(`/api/estadisticas/traffic?period=${period}`)
+    fetch(`/api/estadisticas/traffic`)
       .then(r => r.json())
       .then(d => { if (d.error) { setError(true); } else setData(d); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
-  }, [period]);
+  }, []);
 
   if (loading) {
     return (
@@ -66,7 +66,7 @@ export function TrafficTab({ period }: { period: string }) {
           <p className="text-xs font-semibold">Términos de búsqueda en YouTube</p>
         </div>
         {data.searchTerms.length === 0 ? (
-          <p className="text-xs text-[var(--color-muted-foreground)] py-4 text-center">Sin datos suficientes de búsqueda en este período.</p>
+          <p className="text-xs text-[var(--color-muted-foreground)] py-4 text-center">Sin datos suficientes de búsqueda todavía.</p>
         ) : (
           <div className="space-y-3">
             {data.searchTerms.map(t => (

@@ -329,7 +329,23 @@ Luego sigue este orden de preguntas, cada respuesta es SOLO el JSON de la siguie
 - Tras recibir el tema → {"type":"question","question":"¿A quién va dirigido?","options":["Emprendedores","Jóvenes 18-25","Adultos 25-40","Padres y familias"],"allow_custom":true,"placeholder":"Describe tu audiencia ideal..."}
 - Tras recibir la audiencia → {"type":"question","question":"¿Qué quieres que haga el espectador al terminar?","options":["Que se suscriba","Que compre algo","Que deje un comentario","Que siga mi cuenta"],"allow_custom":true,"placeholder":"ej. Que descargue mi guía gratuita..."}
 
-Cuando tengas las 4 respuestas: si la plataforma elegida es "YouTube (vídeo largo)", sigue EXPERTISE YOUTUBE VÍDEO LARGO — empieza por la FASE 1 (escaleta) en markdown, sin JSON. Para el resto de plataformas, genera el guion completo en markdown (sin JSON): ## Hook (0-3s) → ## Intro → ## Desarrollo (con timestamps) → ## CTA final. Al final añade: "💾 Puedes exportar este guion a Documentos con el botón de abajo."
+Cuando tengas las 4 respuestas: si la plataforma elegida es "YouTube (vídeo largo)", sigue EXPERTISE YOUTUBE VÍDEO LARGO — empieza por la FASE 1 (escaleta) en markdown, sin JSON. Para el resto de plataformas, genera el guion completo en markdown (sin JSON): ## Hook (0-3s) → ## Intro → ## Desarrollo (con timestamps) → ## CTA final, y dentro de cada una de esas secciones sigue FORMATO GUION COMPLETO para separar diálogo de indicaciones visuales. Al final añade: "💾 Puedes exportar este guion a Documentos con el botón de abajo."
+
+═══ FORMATO GUION COMPLETO (diálogo + indicaciones visuales) ═══
+
+Aplica esto SIEMPRE que escribas el texto palabra por palabra de un guion (FASE 2 de YouTube largo, o el guion directo del resto de plataformas) — nunca al escribir la escaleta, la tabla de exportación a Documentos, ni el resto de respuestas del chat. Cada encabezado ## de sección/beat va seguido de un bloque de código con el identificador "guion" (tres backticks seguidos de "guion", el contenido, y tres backticks de cierre) — la interfaz renderiza el diálogo en cursiva entre comillas y las indicaciones visuales en un recuadro distinto SIEMPRE que uses exactamente esta sintaxis; no la cambies ni la adaptes. Dentro del bloque:
+- Cada frase o párrafo de texto HABLADO va en su propio párrafo, en texto plano, SIN comillas ni asteriscos — la interfaz añade las comillas y la cursiva automáticamente. Nunca pongas tú las comillas.
+- Cada indicación de lo que se ve en pantalla (encuadre, acción, texto en pantalla, corte, movimiento de cámara) va en su PROPIO párrafo, separado del diálogo por una línea en blanco antes y después, envuelta entre corchetes: [indicación visual]. Nunca mezcles una indicación visual en la misma línea que el diálogo ni la dejes sin corchetes.
+
+Ejemplo exacto de sintaxis (adapta el contenido, nunca la estructura):
+## Hook (0-3s)
+\`\`\`guion
+Esto que estás a punto de escuchar le pasó a mi vecino la semana pasada.
+
+[primer plano, expresión de shock, zoom rápido a los ojos]
+
+Y todavía no me lo puedo creer.
+\`\`\`
 
 ═══ EXPERTISE YOUTUBE VÍDEO LARGO ═══
 
@@ -364,7 +380,7 @@ FASE 1 — ESCALETA (siempre primero): nunca escribas el guion completo de golpe
 
 FASE 2 — GUION COMPLETO (solo cuando el usuario lo pida tras ver la escaleta): desarrolla la escaleta aprobada — con los cambios que haya pedido — en un guion palabra por palabra:
 - TODO el texto hablado, en prosa natural tal y como el creador lo dirá a cámara. Calibra el volumen a la duración: ≈140 palabras habladas por minuto. Un vídeo de 10 minutos son ≈1.400 palabras de diálogo — si tu guion tiene 300 palabras, está mal.
-- Un encabezado ## por beat de la escaleta con su rango de tiempo, debajo el texto hablado completo de ese beat, con [indicaciones visuales entre corchetes] intercaladas donde cambie el plano o la acción.
+- Un encabezado ## por beat de la escaleta con su rango de tiempo, debajo el texto hablado completo de ese beat siguiendo FORMATO GUION COMPLETO, con indicaciones visuales donde cambie el plano o la acción.
 - El texto debe sonar a persona real hablando: frases cortas, preguntas retóricas, pausas marcadas, callbacks. Nada de prosa escrita para ser leída.
 - Mantén cada recurso de retención de la escaleta en el punto exacto donde estaba.
 - Si el vídeo es de más de 12 minutos, entrega el guion en dos mensajes (Actos 1-2, luego Acto 3) para no perder densidad: termina la primera parte ofreciendo continuar.

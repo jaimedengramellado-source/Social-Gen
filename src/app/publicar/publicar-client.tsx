@@ -1,54 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  Clock, Trash2, ExternalLink, Film, MonitorPlay, AtSign, Music2,
-} from "lucide-react";
-import type { ScheduledPost, Snippet, SocialConnection, PostAutomation } from "@/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Clock, Trash2, ExternalLink, Film, Loader2, Unplug, Zap } from "lucide-react";
+import type { CrosspostRule, PublishPlatform, ScheduledPost, Snippet, SocialConnection, PostAutomation } from "@/types";
 import { STATUS_META, PLATFORM_LABELS, formatDateTime, postPermalink } from "./shared";
 import type { BestSlot } from "./shared";
-import { YoutubePanel } from "./youtube-panel";
-import type { YoutubeConnectionSummary } from "./youtube-panel";
-import { SocialPanel } from "./social-panel";
+import { Composer, PLATFORM_ICONS } from "./composer";
+import type { PublishFlags, YoutubeConnectionSummary } from "./composer";
 import { AutomationsSection } from "./automations-section";
 
-type PlatformTab = "youtube" | "instagram" | "tiktok";
-
-const PLATFORM_ICONS: Record<PlatformTab, React.ElementType> = {
-  youtube: MonitorPlay,
-  instagram: AtSign,
-  tiktok: Music2,
+const RULE_STATUS_META: Record<CrosspostRule["status"], { label: string; color: string; bg: string }> = {
+  waiting: { label: "En espera", color: "var(--text-info)", bg: "var(--bg-info)" },
+  fired: { label: "Disparada", color: "var(--color-success)", bg: "var(--bg-success)" },
+  expired: { label: "Caducada", color: "var(--color-muted-foreground)", bg: "var(--color-muted)" },
+  failed: { label: "Error", color: "var(--color-destructive)", bg: "var(--destructive-muted)" },
 };
-
-export interface PublishFlags {
-  youtube: boolean;
-  instagram: boolean;
-  tiktok: boolean;
-  automations: boolean;
-}
 
 interface Props {
   flags: PublishFlags;
   youtubeConnection: YoutubeConnectionSummary | null;
   socialConnections: SocialConnection[];
   initialPosts: ScheduledPost[];
+  initialRules: CrosspostRule[];
   initialAutomations: PostAutomation[];
 }
 
 export function PublicarClient({
-  flags, youtubeConnection, socialConnections, initialPosts, initialAutomations,
+  flags, youtubeConnection, socialConnections, initialPosts, initialRules, initialAutomations,
 }: Props) {
-  const firstEnabled: PlatformTab = flags.youtube ? "youtube" : flags.instagram ? "instagram" : "tiktok";
-  const [tab, setTab] = useState<PlatformTab>(firstEnabled);
   const [posts, setPosts] = useState<ScheduledPost[]>(initialPosts);
+  const [rules, setRules] = useState<CrosspostRule[]>(initialRules);
   const [snippets, setSnippets] = useState<Snippet[] | null>(null);
   const [bestSlots, setBestSlots] = useState<BestSlot[] | null>(null);
   const [connections, setConnections] = useState<SocialConnection[]>(socialConnections);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   const refreshPosts = useCallback(() => {
     fetch("/api/publicaciones")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setPosts(data); })
+      .catch(() => {});
+  }, []);
+
+  const refreshRules = useCallback(() => {
+    fetch("/api/publicaciones/rules")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setRules(data); })
       .catch(() => {});
   }, []);
 
@@ -81,82 +78,78 @@ export function PublicarClient({
   async function deletePost(id: string) {
     setPosts((prev) => prev.filter((p) => p.id !== id));
     await fetch(`/api/publicaciones/${id}`, { method: "DELETE" }).catch(() => {});
+    refreshRules();
   }
 
-  const igConnection = connections.find((c) => c.platform === "instagram") ?? null;
-  const ttConnection = connections.find((c) => c.platform === "tiktok") ?? null;
+  // Una regla multi origen/destino son varias filas con rule_group_id común:
+  // en la UI se muestran y se borran como una sola
+  const ruleGroups = useMemo(() => {
+    const map = new Map<string, CrosspostRule[]>();
+    for (const r of rules) {
+      const list = map.get(r.rule_group_id) ?? [];
+      list.push(r);
+      map.set(r.rule_group_id, list);
+    }
+    return [...map.values()];
+  }, [rules]);
+
+  async function deleteRuleGroup(group: CrosspostRule[]) {
+    const groupId = group[0].rule_group_id;
+    setRules((prev) => prev.filter((r) => r.rule_group_id !== groupId));
+    await fetch(`/api/publicaciones/rules/${group[0].id}?group=1`, { method: "DELETE" }).catch(() => {});
+  }
+
+  async function disconnect(platform: string) {
+    setDisconnecting(platform);
+    try {
+      await fetch("/api/auth/social/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform }),
+      });
+      setConnections((prev) => prev.filter((c) => c.platform !== platform));
+    } finally {
+      setDisconnecting(null);
+    }
+  }
+
+  const showYoutubeDisclosure =
+    flags.youtube && (!youtubeConnection || !youtubeConnection.canUpload);
 
   return (
-    <div className="p-6 md:p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">Publicar</h1>
+    <div className="p-6 md:p-8 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-semibold mb-1.5">Publicar</h1>
+      <p className="text-sm mb-6" style={{ color: "var(--color-muted-foreground)" }}>
+        Un mismo vídeo, todas tus redes: elige dónde publicarlo, adapta el texto a cada
+        una y prográmalo para la mejor hora.
+      </p>
 
-      {/* Selector de plataforma */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto">
-        {(["youtube", "instagram", "tiktok"] as PlatformTab[]).map((p) => {
-          const Icon = PLATFORM_ICONS[p];
-          const enabled = flags[p];
-          const active = tab === p;
-          return (
-            <button
-              key={p}
-              onClick={() => setTab(p)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-sm font-medium transition-colors flex-shrink-0"
-              style={{
-                borderColor: active ? "var(--color-primary)" : "var(--color-border)",
-                backgroundColor: active ? "var(--color-primary-light)" : "var(--color-card)",
-                color: active ? "var(--color-primary)" : "var(--color-muted-foreground)",
-              }}
-            >
-              <Icon size={14} />
-              {PLATFORM_LABELS[p]}
-              {!enabled && (
-                <span
-                  className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide"
-                  style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary)" }}
-                >
-                  Pronto
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <Composer
+        flags={flags}
+        youtubeConnection={youtubeConnection}
+        connections={connections}
+        bestSlots={bestSlots}
+        snippets={snippets}
+        onLoadSnippets={loadSnippets}
+        refreshPosts={refreshPosts}
+        refreshRules={refreshRules}
+      />
 
-      {/* Panel de la plataforma activa */}
-      {!flags[tab] ? (
-        <div
-          className="bg-white rounded-2xl border border-dashed p-10 text-center"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          {(() => { const Icon = PLATFORM_ICONS[tab]; return (
-            <Icon size={22} className="mx-auto mb-3" style={{ color: "var(--color-primary)" }} />
-          ); })()}
-          <h2 className="text-lg font-semibold mb-1.5" style={{ fontFamily: "var(--font-serif)" }}>
-            {PLATFORM_LABELS[tab]}, próximamente
-          </h2>
-          <p className="text-sm max-w-sm mx-auto" style={{ color: "var(--color-muted-foreground)" }}>
-            Publicar en {PLATFORM_LABELS[tab]} desde Social Flamingo está en preparación.
-            Mientras tanto puedes planificarlo en el calendario.
-          </p>
-        </div>
-      ) : tab === "youtube" ? (
-        <YoutubePanel
-          connection={youtubeConnection}
-          bestSlots={bestSlots}
-          snippets={snippets}
-          onLoadSnippets={loadSnippets}
-          refreshPosts={refreshPosts}
-        />
-      ) : (
-        <SocialPanel
-          platform={tab}
-          connection={tab === "instagram" ? igConnection : ttConnection}
-          bestSlots={bestSlots}
-          snippets={snippets}
-          onLoadSnippets={loadSnippets}
-          refreshPosts={refreshPosts}
-          onDisconnected={() => setConnections((prev) => prev.filter((c) => c.platform !== tab))}
-        />
+      {showYoutubeDisclosure && (
+        <p className="text-xs mt-4 leading-relaxed" style={{ color: "var(--color-muted-foreground)" }}>
+          Al conectar YouTube autorizas a Social Flamingo a subir vídeos a tu canal únicamente
+          cuando tú lo pidas, y aceptas los{" "}
+          <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-foreground)]">
+            Términos de Servicio de YouTube
+          </a>{" "}
+          y la{" "}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-foreground)]">
+            Política de Privacidad de Google
+          </a>. Más detalles en nuestra{" "}
+          <a href="/privacidad" target="_blank" className="underline hover:text-[var(--color-foreground)]">
+            Política de Privacidad
+          </a>.
+        </p>
       )}
 
       {/* Lista de publicaciones */}
@@ -172,7 +165,7 @@ export function PublicarClient({
           <div className="space-y-2.5">
             {posts.map((p) => {
               const meta = STATUS_META[p.status];
-              const PlatformIcon = PLATFORM_ICONS[(p.platform as PlatformTab)] ?? Film;
+              const PlatformIcon = PLATFORM_ICONS[(p.platform as PublishPlatform)] ?? Film;
               const permalink = postPermalink(p);
               return (
                 <div
@@ -247,6 +240,128 @@ export function PublicarClient({
           </div>
         )}
       </section>
+
+      {/* Reglas condicionales */}
+      {ruleGroups.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "var(--color-muted-foreground)" }}>
+            Reglas condicionales
+          </h2>
+          <div className="space-y-2">
+            {ruleGroups.map((group) => {
+              const first = group[0];
+              const sources = [...new Set(group.map((r) => r.source_platform))];
+              const targets = [...new Set(group.map((r) => r.target_platform))];
+              const status: CrosspostRule["status"] = group.some((r) => r.status === "fired")
+                ? "fired"
+                : group.some((r) => r.status === "waiting")
+                  ? "waiting"
+                  : group.some((r) => r.status === "failed")
+                    ? "failed"
+                    : "expired";
+              const meta = RULE_STATUS_META[status];
+              const bestViews = Math.max(...group.map((r) => Number(r.last_views ?? -1)));
+              const failedError = group.find((r) => r.status === "failed" && r.error)?.error;
+              return (
+                <div
+                  key={first.rule_group_id}
+                  className="flex items-center gap-3 bg-white rounded-2xl border px-4 py-3"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  <Zap size={15} className="flex-shrink-0" style={{ color: "var(--color-primary)" }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      Si <span className="font-medium">«{first.text.slice(0, 40)}{first.text.length > 40 ? "…" : ""}»</span>{" "}
+                      supera las {first.threshold.toLocaleString("es-ES")} visitas en{" "}
+                      {sources.map((s) => PLATFORM_LABELS[s]).join(" o ")} → publicar en{" "}
+                      <span className="font-medium">{targets.map((t) => PLATFORM_LABELS[t]).join(" y ")}</span>
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                        style={{ color: meta.color, backgroundColor: meta.bg }}
+                      >
+                        {meta.label}
+                      </span>
+                      {status === "waiting" && bestViews >= 0 && (
+                        <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
+                          lleva {bestViews.toLocaleString("es-ES")} visitas
+                        </span>
+                      )}
+                      {status === "failed" && failedError && (
+                        <span className="text-[11px] truncate max-w-[240px]" style={{ color: "var(--color-destructive)" }}>
+                          {failedError}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deleteRuleGroup(group)}
+                    className="p-2 rounded-lg transition-colors hover:bg-[var(--destructive-muted)] flex-shrink-0"
+                    title={status === "waiting" ? "Cancelar regla" : "Quitar de la lista"}
+                  >
+                    <Trash2 size={14} style={{ color: "var(--color-destructive)" }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Cuentas conectadas */}
+      {connections.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: "var(--color-muted-foreground)" }}>
+            Cuentas conectadas
+          </h2>
+          <div className="space-y-2">
+            {connections.map((c) => {
+              const Icon = PLATFORM_ICONS[c.platform] ?? Film;
+              return (
+                <div
+                  key={c.platform}
+                  className="flex items-center gap-2.5 bg-white rounded-2xl border px-4 py-2.5"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  {c.account_avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.account_avatar} alt="" className="w-7 h-7 rounded-full object-cover" />
+                  ) : (
+                    <Icon size={16} style={{ color: "var(--color-primary)" }} />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {/* LinkedIn guarda el nombre de la persona, no un handle */}
+                      {!c.account_name
+                        ? PLATFORM_LABELS[c.platform]
+                        : c.platform === "linkedin"
+                          ? c.account_name
+                          : `@${c.account_name.replace(/^@/, "")}`}
+                    </p>
+                    <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
+                      {PLATFORM_LABELS[c.platform]}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => disconnect(c.platform)}
+                    disabled={disconnecting === c.platform}
+                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-lg transition-colors hover:bg-[var(--color-muted)]"
+                    style={{ color: "var(--color-muted-foreground)" }}
+                  >
+                    {disconnecting === c.platform ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Unplug size={11} />
+                    )}{" "}
+                    Desconectar
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <AutomationsSection enabled={flags.automations} initialAutomations={initialAutomations} />
     </div>

@@ -4,9 +4,8 @@ import { parseDuration } from "@/lib/youtube";
 import {
   refreshAccessToken, queryAnalytics, num, str, getReachStatsByVideo,
   getAllUploadedVideoIds, fetchVideoDetailsBatched, AnalyticsRow,
+  LIFETIME_START_DATE, TREND_WINDOW_DAYS,
 } from "@/lib/youtube-analytics";
-
-const PERIOD_DAYS: Record<string, number> = { "7": 7, "28": 28, "90": 90, "365": 365 };
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,18 +24,17 @@ export async function GET(request: NextRequest) {
     try { token = await refreshAccessToken(conn, supabase); }
     catch { return NextResponse.json({ error: "TOKEN_ERROR" }, { status: 401 }); }
 
-    const periodParam = request.nextUrl.searchParams.get("period") ?? "28";
-    const days = PERIOD_DAYS[periodParam] ?? 28;
     const endDate = new Date().toISOString().split("T")[0];
-    const startDate = new Date(Date.now() - days * 86_400_000).toISOString().split("T")[0];
+    const startDate = LIFETIME_START_DATE;
+    const trendStartDate = new Date(Date.now() - TREND_WINDOW_DAYS * 86_400_000).toISOString().split("T")[0];
 
     const coreMetrics = ["views", "estimatedMinutesWatched", "averageViewDuration", "averageViewPercentage", "subscribersGained", "subscribersLost", "likes", "comments", "shares"];
 
     const [overview, uploadedVideoIds, viewsTrend, subscribersTrend] = await Promise.all([
       queryAnalytics({ token, startDate, endDate, metrics: coreMetrics }),
       getAllUploadedVideoIds(token),
-      queryAnalytics({ token, startDate, endDate, metrics: ["views", "estimatedMinutesWatched", "likes", "comments", "shares"], dimensions: ["day"], sort: "day" }),
-      queryAnalytics({ token, startDate, endDate, metrics: ["subscribersGained", "subscribersLost"], dimensions: ["day"], sort: "day" }),
+      queryAnalytics({ token, startDate: trendStartDate, endDate, metrics: ["views", "estimatedMinutesWatched", "likes", "comments", "shares"], dimensions: ["day"], sort: "day" }),
+      queryAnalytics({ token, startDate: trendStartDate, endDate, metrics: ["subscribersGained", "subscribersLost"], dimensions: ["day"], sort: "day" }),
     ]);
 
     const ovRow = overview.rows[0];
@@ -49,7 +47,7 @@ export async function GET(request: NextRequest) {
         videos: [],
         viewsTrend: [],
         subscribersTrend: [],
-        period: { startDate, endDate, days },
+        trendDays: TREND_WINDOW_DAYS,
         reachSyncedUntil: conn.reach_synced_until ?? null,
         ...(debug ? { debug } : {}),
       });
@@ -128,7 +126,7 @@ export async function GET(request: NextRequest) {
         likes: num(r, "likes"), comments: num(r, "comments"), shares: num(r, "shares"),
       })),
       subscribersTrend: subscribersTrend.rows.map(r => ({ date: str(r, "day"), gained: num(r, "subscribersGained"), lost: num(r, "subscribersLost") })),
-      period: { startDate, endDate, days },
+      trendDays: TREND_WINDOW_DAYS,
       reachSyncedUntil: conn.reach_synced_until ?? null,
     });
 

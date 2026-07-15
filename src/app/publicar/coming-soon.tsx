@@ -1,7 +1,7 @@
-import { Send, CalendarClock, Clock, MonitorPlay } from "lucide-react";
+import { Send, CalendarClock, Clock, Share2 } from "lucide-react";
 
 const FEATURES = [
-  { label: "Sube Shorts a YouTube", Icon: MonitorPlay },
+  { label: "Un vídeo, todas tus redes", Icon: Share2 },
   { label: "Programación automática", Icon: CalendarClock },
   { label: "Mejores horas con tus datos", Icon: Clock },
 ];
@@ -50,8 +50,9 @@ export function PublicarComingSoon() {
           </span>
         </h1>
         <p className="text-sm md:text-base text-[var(--color-muted-foreground)] max-w-md mx-auto mb-10">
-          Sube tus vídeos a YouTube y prográmalos para que se publiquen solos a la
-          mejor hora. Lo estamos preparando.
+          Publica el mismo vídeo en YouTube, Instagram, Facebook, TikTok, X, LinkedIn
+          y Threads con un texto adaptado a cada red, y prográmalo para que salga solo
+          a la mejor hora. Lo estamos preparando.
         </p>
 
         {/* Feature chips */}

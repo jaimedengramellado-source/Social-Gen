@@ -7,7 +7,7 @@ import {
   DEVICE_LABELS, GENDER_LABELS, SUB_STATUS_LABELS,
 } from "./shared";
 
-export function AudienceTab({ period }: { period: string }) {
+export function AudienceTab() {
   const [data, setData] = useState<AudienceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -15,11 +15,11 @@ export function AudienceTab({ period }: { period: string }) {
   useEffect(() => {
     setLoading(true);
     setError(false);
-    fetch(`/api/estadisticas/audience?period=${period}`)
+    fetch(`/api/estadisticas/audience`)
       .then(r => r.json())
       .then(d => { if (d.error) { setError(true); } else setData(d); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
-  }, [period]);
+  }, []);
 
   if (loading) {
     return (

@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
             heading: cancelledPlan
               ? `Tu plan ${PLAN_LABELS[cancelledPlan]} se ha cancelado`
               : "Tu plan se ha cancelado",
-            bodyHtml: `<p style="margin:0 0 8px">Tu suscripción ha terminado y no se te harán más cobros.</p><p style="margin:0">Sigues en el plan Free con <strong>10 créditos a la semana</strong>. Puedes reactivar tu plan cuando quieras.</p>`,
+            bodyHtml: `<p style="margin:0 0 8px">Tu suscripción ha terminado y no se te harán más cobros.</p><p style="margin:0">Sigues en el plan Free con <strong>5 créditos a la semana</strong>. Puedes reactivar tu plan cuando quieras.</p>`,
             ctaHref: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
             ctaLabel: "Reactivar mi plan →",
           })

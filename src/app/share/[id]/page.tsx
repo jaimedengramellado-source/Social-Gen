@@ -104,7 +104,7 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
             href="/signup"
             className="inline-flex items-center justify-center bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl font-medium hover:bg-[var(--color-primary-hover)] hover:-translate-y-px transition-all"
           >
-            Empieza gratis con 10 créditos →
+            Empieza gratis con 5 créditos →
           </Link>
         </div>
       </main>

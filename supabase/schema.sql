@@ -17,6 +17,7 @@ create table profiles (
   tone text,
   ai_instructions text,
   main_platform text,
+  platforms text[], -- todas las plataformas elegidas en onboarding; main_platform guarda la principal
   channel_name text,
   credits_refreshed_at timestamptz default now(),
   weekly_digest boolean not null default true -- opt-out del resumen semanal por email
@@ -138,12 +139,12 @@ create table youtube_connections (
 
 -- Cola de publicaciones en redes.
 -- YouTube: programación nativa (publishAt), el vídeo sube directo navegador→YouTube.
--- Instagram/TikTok: sin publishAt nativo — el vídeo espera en el bucket publish-videos
+-- Resto de redes: sin publishAt nativo — el vídeo espera en el bucket publish-videos
 -- y el cron /api/cron/publish-scheduled lo publica a su hora.
 create table scheduled_posts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles(id) on delete cascade,
-  platform text not null default 'youtube', -- youtube | instagram | tiktok
+  platform text not null default 'youtube', -- youtube | instagram | facebook | tiktok | x | linkedin | threads
   title text not null,
   description text,
   tags text[] not null default '{}',
@@ -151,8 +152,10 @@ create table scheduled_posts (
   scheduled_at timestamptz, -- null = publicar ya
   status text not null default 'uploading', -- uploading | scheduled | publishing | published | failed
   youtube_video_id text,
-  platform_post_id text, -- IG: container/media id · TikTok: publish_id (permite continuar en el siguiente cron)
-  storage_path text, -- vídeo en bucket publish-videos (solo IG/TikTok)
+  platform_post_id text, -- id intermedio por red (container IG/Threads, publish_id TikTok, media_id X, urn de vídeo LinkedIn); permite continuar en el siguiente cron
+  storage_path text, -- archivo en bucket publish-videos (todas las redes salvo YouTube); compartido dentro de un group_id
+  media_type text not null default 'video' check (media_type in ('video', 'image')), -- las fotos no aplican a YouTube ni a reglas de publicación cruzada
+  group_id uuid, -- publicación cruzada: las filas del mismo vídeo multi-red comparten group_id
   attempts integer not null default 0,
   settings jsonb not null default '{}'::jsonb, -- privacy_level TikTok, etc.
   error text,
@@ -164,12 +167,12 @@ create table scheduled_posts (
   updated_at timestamptz not null default now()
 );
 
--- Conexiones a redes sociales distintas de YouTube (Instagram vía Meta Graph, TikTok)
+-- Conexiones a redes sociales distintas de YouTube
 create table social_connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles(id) on delete cascade,
-  platform text not null, -- 'instagram' | 'tiktok'
-  account_id text not null, -- IG business account id / TikTok open_id
+  platform text not null, -- 'instagram' | 'facebook' | 'tiktok' | 'x' | 'linkedin' | 'threads'
+  account_id text not null, -- IG business id / FB page id / TikTok open_id / X user id / LinkedIn sub / Threads user id
   account_name text,
   account_avatar text,
   access_token text not null,
@@ -193,6 +196,32 @@ create table post_automations (
   action text not null default 'email',
   active boolean not null default true,
   created_at timestamptz not null default now()
+);
+
+-- Reglas condicionales de publicación cruzada: "si este vídeo supera N visitas
+-- en la red origen, publicarlo también en la red destino". El vídeo se retiene
+-- en el bucket publish-videos mientras la regla esté en espera (status=waiting).
+create table crosspost_rules (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  source_post_id uuid not null references scheduled_posts(id) on delete cascade,
+  source_platform text not null, -- youtube | instagram | facebook | tiktok | x | threads (LinkedIn no expone visitas)
+  target_platform text not null, -- instagram | facebook | tiktok | x | linkedin | threads (YouTube no publica por cron)
+  threshold integer not null,
+  window_days integer not null default 30,
+  rule_group_id uuid not null default gen_random_uuid(), -- reglas creadas juntas (multi origen/destino); al disparar hacia un destino, las hermanas hacia ese destino se dan por superadas
+  text text not null, -- texto del post destino, resuelto al crear la regla
+  settings jsonb not null default '{}'::jsonb, -- privacy_level si el destino es TikTok
+  storage_path text not null,
+  file_name text,
+  file_size bigint,
+  status text not null default 'waiting', -- waiting | fired | expired | failed
+  error text,
+  fired_post_id uuid references scheduled_posts(id) on delete set null,
+  last_views bigint,
+  checked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- Idempotencia: cada automatización dispara una sola vez por vídeo (escribe el cron/service role)
@@ -360,6 +389,8 @@ create policy "own automations" on post_automations
 create policy "own automation events" on automation_events
   for select to authenticated
   using (automation_id in (select id from post_automations where user_id = (select auth.uid())));
+create policy "Users manage own crosspost rules" on crosspost_rules
+  for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "Users can manage their own todos" on todos
   for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "own projects" on chat_projects for all using ((select auth.uid()) = user_id);
@@ -393,7 +424,12 @@ create index if not exists scheduled_posts_script_id_idx on scheduled_posts (scr
 create index if not exists scheduled_posts_calendar_event_id_idx on scheduled_posts (calendar_event_id);
 create index if not exists scheduled_posts_due_idx on scheduled_posts (status, scheduled_at)
   where status in ('scheduled', 'publishing');
+create index if not exists scheduled_posts_group_idx on scheduled_posts (group_id) where group_id is not null;
 create index if not exists post_automations_user_idx on post_automations (user_id);
+create index if not exists crosspost_rules_user_idx on crosspost_rules (user_id, created_at desc);
+create index if not exists crosspost_rules_waiting_idx on crosspost_rules (status) where status = 'waiting';
+create index if not exists crosspost_rules_storage_idx on crosspost_rules (storage_path) where status = 'waiting';
+create index if not exists crosspost_rules_group_idx on crosspost_rules (rule_group_id);
 create index if not exists todos_parent_id_idx on todos (parent_id);
 create index if not exists watchlist_channels_user_id_idx on watchlist_channels (user_id);
 

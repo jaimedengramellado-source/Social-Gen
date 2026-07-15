@@ -21,7 +21,38 @@ const PLATFORMS: { id: Platform; label: string; icon: string; desc: string }[] =
   { id: "reels", label: "Instagram Reels", icon: "⬡", desc: "Menos de 90 segundos" },
 ];
 
-const SUBSCRIBER_RANGES = ["0-1K", "1K-10K", "10K-100K", "100K-1M", "+1M"];
+const SUBSCRIBER_RANGES = ["Aún no he empezado", "0-1K", "1K-10K", "10K-100K", "100K-1M", "+1M"];
+
+const NICHE_PRESETS = [
+  "Marketing y negocios",
+  "Finanzas personales",
+  "Fitness y salud",
+  "Desarrollo personal",
+  "Tecnología e IA",
+  "Educación",
+  "Gaming",
+  "Belleza y moda",
+  "Humor y entretenimiento",
+  "Cocina",
+  "Viajes",
+  "Arte y música",
+];
+
+const GOAL_OPTIONS = [
+  "Monetizar con publicidad y patrocinios",
+  "Conseguir clientes para mi negocio",
+  "Vender mis productos o cursos",
+  "Hacer crecer mi comunidad",
+  "Construir mi marca personal",
+];
+
+const DIFFERENTIATOR_OPTIONS = [
+  "Mi experiencia y resultados propios",
+  "Mi forma de explicar las cosas",
+  "Mi personalidad y humor",
+  "Mi conocimiento técnico",
+  "Mi historia personal",
+];
 
 const TONE_PRESETS = [
   "Motivacional y cercano",
@@ -32,6 +63,25 @@ const TONE_PRESETS = [
 ];
 
 const TOTAL_STEPS = 6;
+
+function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-full text-sm border transition-all ${
+        selected
+          ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
+          : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function OptionalTag() {
+  return <span className="font-normal text-[var(--color-muted-foreground)]">(opcional)</span>;
+}
 
 export default function OnboardingPage() {
   return (
@@ -57,19 +107,29 @@ function OnboardingFlow() {
 
   const [form, setForm] = useState({
     channelName: "",
-    platform: "" as Platform | "",
+    platforms: [] as Platform[],
     subscribersRange: "",
     niche: "",
     nicheDescription: "",
-    mainGoal: "",
+    goals: [] as string[],
+    goalDetail: "",
     audiencePain: "",
-    differentiator: "",
+    differentiators: [] as string[],
+    differentiatorDetail: "",
     tone: "",
     aiInstructions: "",
   });
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function toggleIn(field: "platforms" | "goals" | "differentiators", value: string) {
+    setForm((prev) => {
+      const list = prev[field] as string[];
+      const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+      return { ...prev, [field]: next };
+    });
   }
 
   async function handleFinish() {
@@ -82,26 +142,33 @@ function OnboardingFlow() {
         return;
       }
 
+      const mainPlatform = form.platforms[0];
+      const mainGoal = [form.goals.join(", "), form.goalDetail.trim()].filter(Boolean).join(". ");
+      const differentiator = [form.differentiators.join(", "), form.differentiatorDetail.trim()]
+        .filter(Boolean)
+        .join(". ");
+
       await supabase.from("channels").insert({
         user_id: user.id,
-        platform: form.platform,
+        platform: mainPlatform,
         channel_name: form.channelName,
         subscribers_range: form.subscribersRange,
         niche: form.niche,
         niche_description: form.nicheDescription,
-        main_goal: form.mainGoal,
-        audience_pain: form.audiencePain,
-        differentiator: form.differentiator,
-        content_format: form.platform?.includes("short") || form.platform === "tiktok" || form.platform === "reels" ? "short" : "long",
+        main_goal: mainGoal || null,
+        audience_pain: form.audiencePain.trim() || null,
+        differentiator: differentiator || null,
+        content_format: mainPlatform === "youtube_long" ? "long" : "short",
       });
 
       const { error } = await supabase.from("profiles").update({
         onboarding_completed: true,
         channel_name: form.channelName || null,
-        main_platform: form.platform || null,
+        main_platform: mainPlatform || null,
+        platforms: form.platforms.length > 0 ? form.platforms : null,
         niche: form.niche || null,
-        tone: form.tone || null,
-        ai_instructions: form.aiInstructions || null,
+        tone: form.tone.trim() || null,
+        ai_instructions: form.aiInstructions.trim() || null,
       }).eq("id", user.id);
       if (error) throw error;
 
@@ -113,13 +180,18 @@ function OnboardingFlow() {
   }
 
   const canAdvance = [
-    step === 1 && form.channelName.length > 1 && !!form.platform,
-    step === 2 && !!form.subscribersRange && form.niche.length > 1,
-    step === 3 && form.mainGoal.length > 1,
-    step === 4 && form.audiencePain.length > 1,
-    step === 5 && form.tone.length > 1,
+    step === 1 && form.channelName.length > 1 && form.platforms.length > 0,
+    step === 2 && !!form.subscribersRange && form.niche.trim().length > 1,
+    true,
+    true,
+    true,
     true,
   ][step - 1];
+
+  const optionalUntouched =
+    (step === 3 && form.goals.length === 0 && !form.goalDetail.trim()) ||
+    (step === 4 && form.differentiators.length === 0 && !form.differentiatorDetail.trim() && !form.audiencePain.trim()) ||
+    (step === 5 && !form.tone.trim() && !form.aiInstructions.trim());
 
   return (
     <div
@@ -211,23 +283,35 @@ function OnboardingFlow() {
                   />
                 </div>
                 <div>
-                  <Label className="mb-3 block">Plataforma principal</Label>
+                  <Label className="mb-1 block">¿Dónde publicas?</Label>
+                  <p className="text-xs text-[var(--color-muted-foreground)] mb-3">
+                    Elige todas las que uses. La primera que marques será tu plataforma principal.
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
-                    {PLATFORMS.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => update("platform", p.id)}
-                        className={`p-4 rounded-xl border text-left transition-all ${
-                          form.platform === p.id
-                            ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
-                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50 bg-white"
-                        }`}
-                      >
-                        <span className="text-xl block mb-1">{p.icon}</span>
-                        <span className="font-medium text-sm block">{p.label}</span>
-                        <span className="text-xs text-[var(--color-muted-foreground)]">{p.desc}</span>
-                      </button>
-                    ))}
+                    {PLATFORMS.map((p) => {
+                      const selected = form.platforms.includes(p.id);
+                      const isPrimary = form.platforms[0] === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => toggleIn("platforms", p.id)}
+                          className={`relative p-4 rounded-xl border text-left transition-all ${
+                            selected
+                              ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
+                              : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50 bg-white"
+                          }`}
+                        >
+                          {isPrimary && (
+                            <span className="absolute top-2 right-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--color-primary)] text-white">
+                              Principal
+                            </span>
+                          )}
+                          <span className="text-xl block mb-1">{p.icon}</span>
+                          <span className="font-medium text-sm block">{p.label}</span>
+                          <span className="text-xs text-[var(--color-muted-foreground)]">{p.desc}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -243,30 +327,29 @@ function OnboardingFlow() {
                   <Label className="mb-3 block">Suscriptores/seguidores</Label>
                   <div className="flex flex-wrap gap-2">
                     {SUBSCRIBER_RANGES.map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => update("subscribersRange", r)}
-                        className={`px-4 py-2 rounded-full text-sm border transition-all ${
-                          form.subscribersRange === r
-                            ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
-                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
-                        }`}
-                      >
+                      <Chip key={r} selected={form.subscribersRange === r} onClick={() => update("subscribersRange", r)}>
                         {r}
-                      </button>
+                      </Chip>
                     ))}
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>¿Cuál es tu nicho?</Label>
+                <div>
+                  <Label className="mb-3 block">¿Cuál es tu nicho?</Label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {NICHE_PRESETS.map((n) => (
+                      <Chip key={n} selected={form.niche === n} onClick={() => update("niche", n)}>
+                        {n}
+                      </Chip>
+                    ))}
+                  </div>
                   <Input
-                    placeholder="ej. marketing digital, finanzas personales, fitness..."
-                    value={form.niche}
+                    placeholder="¿No lo ves? Escríbelo: ajedrez, crianza, coches clásicos..."
+                    value={NICHE_PRESETS.includes(form.niche) ? "" : form.niche}
                     onChange={(e) => update("niche", e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Describe tu canal en 1-2 frases</Label>
+                  <Label>Describe tu canal en 1-2 frases <OptionalTag /></Label>
                   <Textarea
                     placeholder="Ayudo a emprendedores a escalar su negocio online con estrategias de marketing probadas..."
                     value={form.nicheDescription}
@@ -281,15 +364,29 @@ function OnboardingFlow() {
               <div className="space-y-6">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 3 de {TOTAL_STEPS}</p>
-                  <h2 className="text-2xl font-semibold">Tu objetivo principal</h2>
+                  <h2 className="text-2xl font-semibold">Tu objetivo</h2>
+                  <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">
+                    Si aún no lo tienes claro, salta este paso — la IA irá aprendiendo de ti.
+                  </p>
+                </div>
+                <div>
+                  <Label className="mb-3 block">¿Qué quieres conseguir con tu canal? <OptionalTag /></Label>
+                  <div className="flex flex-wrap gap-2">
+                    {GOAL_OPTIONS.map((g) => (
+                      <Chip key={g} selected={form.goals.includes(g)} onClick={() => toggleIn("goals", g)}>
+                        {g}
+                      </Chip>
+                    ))}
+                  </div>
+                  <p className="text-xs text-[var(--color-muted-foreground)] mt-2">Puedes elegir varios.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>¿Qué quieres conseguir con tu canal?</Label>
+                  <Label>¿Quieres contarnos más? <OptionalTag /></Label>
                   <Textarea
-                    placeholder="ej. Conseguir clientes para mi agencia, monetizar con patrocinios, construir una comunidad..."
-                    value={form.mainGoal}
-                    onChange={(e) => update("mainGoal", e.target.value)}
-                    className="h-28"
+                    placeholder="ej. Quiero conseguir clientes para mi agencia de diseño web..."
+                    value={form.goalDetail}
+                    onChange={(e) => update("goalDetail", e.target.value)}
+                    className="h-20"
                   />
                 </div>
               </div>
@@ -300,22 +397,31 @@ function OnboardingFlow() {
                 <div>
                   <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 4 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Tu audiencia y diferenciación</h2>
+                  <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">
+                    Todo esto es opcional — cuanto más sepamos, mejores serán las ideas.
+                  </p>
+                </div>
+                <div>
+                  <Label className="mb-3 block">¿Qué te hace diferente? <OptionalTag /></Label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {DIFFERENTIATOR_OPTIONS.map((d) => (
+                      <Chip key={d} selected={form.differentiators.includes(d)} onClick={() => toggleIn("differentiators", d)}>
+                        {d}
+                      </Chip>
+                    ))}
+                  </div>
+                  <Input
+                    placeholder="¿Algo más? ej. He facturado 100K con mi método..."
+                    value={form.differentiatorDetail}
+                    onChange={(e) => update("differentiatorDetail", e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>¿Cuál es el mayor problema de tu audiencia?</Label>
+                  <Label>¿Cuál es el mayor problema de tu audiencia? <OptionalTag /></Label>
                   <Textarea
                     placeholder="ej. No saben cómo conseguir sus primeros clientes sin gastar en publicidad..."
                     value={form.audiencePain}
                     onChange={(e) => update("audiencePain", e.target.value)}
-                    className="h-24"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>¿Por qué deberían elegirte a ti?</Label>
-                  <Textarea
-                    placeholder="ej. Comparto estrategias que he aplicado yo mismo y que han generado resultados reales..."
-                    value={form.differentiator}
-                    onChange={(e) => update("differentiator", e.target.value)}
                     className="h-24"
                   />
                 </div>
@@ -332,30 +438,22 @@ function OnboardingFlow() {
                   </p>
                 </div>
                 <div>
-                  <Label className="mb-3 block">¿Qué tono usa tu contenido?</Label>
+                  <Label className="mb-3 block">¿Qué tono usa tu contenido? <OptionalTag /></Label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {TONE_PRESETS.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => update("tone", t)}
-                        className={`px-4 py-2 rounded-full text-sm border transition-all ${
-                          form.tone === t
-                            ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
-                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
-                        }`}
-                      >
+                      <Chip key={t} selected={form.tone === t} onClick={() => update("tone", t)}>
                         {t}
-                      </button>
+                      </Chip>
                     ))}
                   </div>
                   <Input
                     placeholder="O escríbelo con tus palabras: irónico y técnico, cercano pero exigente..."
-                    value={form.tone}
+                    value={TONE_PRESETS.includes(form.tone) ? "" : form.tone}
                     onChange={(e) => update("tone", e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Instrucciones para la IA <span className="font-normal text-[var(--color-muted-foreground)]">(opcional)</span></Label>
+                  <Label>Instrucciones para la IA <OptionalTag /></Label>
                   <Textarea
                     placeholder="Palabras que evitar, muletillas propias, estructura preferida, a quién le hablas..."
                     value={form.aiInstructions}
@@ -375,7 +473,7 @@ function OnboardingFlow() {
                     {isPlanFlow ? (
                       <>Tu plan está activo y tu perfil configurado. La IA ya conoce tu nicho, tono y audiencia.</>
                     ) : (
-                      <>Tu perfil está configurado. La IA ya conoce tu nicho y audiencia. Tienes <strong>10 créditos gratis</strong> para empezar.</>
+                      <>Tu perfil está configurado. La IA ya conoce tu nicho y audiencia. Tienes <strong>5 créditos gratis</strong> para empezar.</>
                     )}
                   </p>
                 </div>
@@ -400,7 +498,7 @@ function OnboardingFlow() {
           )}
           {step < TOTAL_STEPS ? (
             <Button onClick={() => setStep((s) => s + 1)} disabled={!canAdvance}>
-              Siguiente →
+              {optionalUntouched ? "Saltar →" : "Siguiente →"}
             </Button>
           ) : (
             <Button onClick={handleFinish} disabled={loading} size="lg">

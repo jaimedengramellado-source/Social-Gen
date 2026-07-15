@@ -29,7 +29,7 @@ export type AnalyticsData = {
   videos: VideoMetric[];
   viewsTrend: TrendPoint[];
   subscribersTrend: SubsTrendPoint[];
-  period: { startDate: string; endDate: string; days: number };
+  trendDays: number;
   reachSyncedUntil: string | null;
 };
 
@@ -39,7 +39,6 @@ export type AudienceData = {
   geography: (Breakdown & { country: string })[];
   devices: (Breakdown & { device: string })[];
   subscribedStatus: (Breakdown & { status: string })[];
-  period: { startDate: string; endDate: string; days: number };
 };
 
 export type RetentionPoint = { elapsed: number; audienceWatchRatio: number; relativeRetentionPerformance: number };
@@ -49,7 +48,7 @@ export type VideoDetail = {
   metrics: {
     views: number; watchTimeHours: number; avgViewDuration: number; avgViewPercentage: number;
     ctr: number; impressions: number; hasReachData: boolean; likes: number; comments: number;
-    shares: number; subscribersGained: number;
+    shares: number; subscribersGained: number; subscribersLost: number;
   };
   daily: { date: string; views: number; watchMinutes: number }[];
   reachDaily: { date: string; impressions: number; ctr: number }[];
@@ -57,7 +56,7 @@ export type VideoDetail = {
   playbackLocations: (Breakdown & { location: string })[];
   devices: (Breakdown & { device: string })[];
   retention: RetentionPoint[];
-  period: { startDate: string; endDate: string; days: number };
+  trendDays: number;
 };
 
 export type TrafficData = {
@@ -65,15 +64,7 @@ export type TrafficData = {
   playbackLocations: (Breakdown & { location: string })[];
   searchTerms: { term: string; views: number }[];
   sharingServices: (Breakdown & { service: string })[];
-  period: { startDate: string; endDate: string; days: number };
 };
-
-export const PERIODS = [
-  { label: "7 días", value: "7" },
-  { label: "28 días", value: "28" },
-  { label: "3 meses", value: "90" },
-  { label: "1 año", value: "365" },
-];
 
 export const SOURCE_LABELS: Record<string, string> = {
   YT_SEARCH: "Búsqueda YouTube",
@@ -221,7 +212,7 @@ export function BreakdownBars({ items, labelFor, unit = "vistas" }: {
   labelFor?: (label: string) => string;
   unit?: string;
 }) {
-  if (items.length === 0) return <p className="text-xs text-[var(--color-muted-foreground)] py-4 text-center">Sin datos en este período.</p>;
+  if (items.length === 0) return <p className="text-xs text-[var(--color-muted-foreground)] py-4 text-center">Sin datos suficientes todavía.</p>;
   return (
     <div className="space-y-3">
       {items.map(item => (

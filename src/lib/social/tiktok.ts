@@ -5,7 +5,8 @@
 
 const API = "https://open.tiktokapis.com/v2";
 
-export const TIKTOK_SCOPES = ["user.info.basic", "video.publish", "video.upload"];
+// video.list: leer visitas de los vídeos propios (reglas de publicación cruzada)
+export const TIKTOK_SCOPES = ["user.info.basic", "video.publish", "video.upload", "video.list"];
 
 // ≤64 MB cabe en un único chunk; por encima, chunks de 10 MB donde el último
 // absorbe el resto (TikTok exige floor, no ceil, en total_chunk_count).
@@ -165,6 +166,42 @@ export async function initTikTokVideoPost(opts: {
   return { publishId: data.data.publish_id, uploadUrl: data.data.upload_url };
 }
 
+// Fotos: la Content Posting API solo admite PULL_FROM_URL (no hay FILE_UPLOAD
+// de imágenes). TikTok exige que el prefijo de la URL esté verificado en el
+// developer portal → las servimos desde nuestro dominio vía el proxy de medios
+// (/api/publicaciones/media), no con la URL firmada de Supabase.
+export async function initTikTokPhotoPost(opts: {
+  accessToken: string;
+  title: string;
+  privacyLevel: string;
+  photoUrls: string[];
+}): Promise<{ publishId: string }> {
+  const data = await apiFetch<{ data: { publish_id: string } }>(
+    `/post/publish/content/init/`,
+    opts.accessToken,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        post_info: {
+          title: opts.title.slice(0, 90),
+          description: opts.title.slice(0, 4000),
+          privacy_level: opts.privacyLevel,
+          disable_comment: false,
+          auto_add_music: true,
+        },
+        source_info: {
+          source: "PULL_FROM_URL",
+          photo_cover_index: 0,
+          photo_images: opts.photoUrls,
+        },
+        post_mode: "DIRECT_POST",
+        media_type: "PHOTO",
+      }),
+    }
+  );
+  return { publishId: data.data.publish_id };
+}
+
 // Reenvía los bytes del bucket a TikTok por rangos, sin cargar el vídeo entero
 // en memoria. Los chunks intermedios responden 206, solo el último 200/201.
 export async function uploadTikTokVideoFromUrl(
@@ -228,6 +265,25 @@ export async function fetchPublishStatus(
     return { state: "failed", reason: data.data.fail_reason ?? "desconocido" };
   }
   return { state: "processing" };
+}
+
+// Visitas de un vídeo propio. Requiere scope video.list; null si no hay permiso.
+export async function getTikTokVideoViews(
+  accessToken: string,
+  videoId: string
+): Promise<number | null> {
+  try {
+    const data = await apiFetch<{
+      data?: { videos?: Array<{ id: string; view_count?: number }> };
+    }>(`/video/query/?fields=id,view_count`, accessToken, {
+      method: "POST",
+      body: JSON.stringify({ filters: { video_ids: [videoId] } }),
+    });
+    const views = data.data?.videos?.find((v) => v.id === videoId)?.view_count;
+    return typeof views === "number" ? views : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function revokeTikTokAccess(accessToken: string): Promise<void> {

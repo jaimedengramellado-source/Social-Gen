@@ -292,6 +292,8 @@ Responde ÚNICAMENTE con JSON válido:
 export function buildUserContext(profile: Partial<Profile>): string {
   const parts: string[] = [];
   if (profile.main_platform) parts.push(`- Plataforma principal: ${profile.main_platform}`);
+  const otherPlatforms = (profile.platforms ?? []).filter((p) => p !== profile.main_platform);
+  if (otherPlatforms.length > 0) parts.push(`- Otras plataformas donde publica: ${otherPlatforms.join(", ")}`);
   if (profile.channel_name) parts.push(`- Nombre del canal: ${profile.channel_name}`);
   if (profile.niche) parts.push(`- Nicho: ${profile.niche}`);
   if (profile.tone) parts.push(`- Tono y personalidad: ${profile.tone}`);
@@ -305,7 +307,7 @@ export async function fetchUserAIContext(supabase: any, userId: string): Promise
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("niche, tone, ai_instructions, main_platform, channel_name")
+      .select("niche, tone, ai_instructions, main_platform, platforms, channel_name")
       .eq("id", userId)
       .single();
     if (!data) return "";

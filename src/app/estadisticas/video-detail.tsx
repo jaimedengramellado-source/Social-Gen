@@ -48,7 +48,7 @@ export function VideoDetailView({
                 <h2 className="font-semibold text-sm leading-snug">{detail.video.title}</h2>
               </div>
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                Publicado el {fmtDate(detail.video.publishedAt)} · Período: {detail.period.startDate} → {detail.period.endDate}
+                Publicado el {fmtDate(detail.video.publishedAt)} · Estadísticas totales
               </p>
             </div>
           </Card>
@@ -59,10 +59,20 @@ export function VideoDetailView({
               icon={MousePointerClick}
               label="CTR miniatura"
               value={detail.metrics.hasReachData ? fmtPct(detail.metrics.ctr * 100) : "—"}
-              sub={<ReachBadge hasReachData={detail.metrics.hasReachData} />}
+              sub={
+                <span className="flex items-center gap-1 flex-wrap">
+                  {detail.metrics.hasReachData && <span>{fmtNum(detail.metrics.impressions)} impresiones ·</span>}
+                  <ReachBadge hasReachData={detail.metrics.hasReachData} />
+                </span>
+              }
             />
             <MetricCard icon={TrendingUp} label="Retención media" value={detail.metrics.avgViewPercentage > 0 ? fmtPct(detail.metrics.avgViewPercentage) : "—"} />
-            <MetricCard icon={Users} label="Suscriptores" value={`+${fmtNum(detail.metrics.subscribersGained)}`} />
+            <MetricCard
+              icon={Users}
+              label="Suscriptores"
+              value={`${detail.metrics.subscribersGained - detail.metrics.subscribersLost >= 0 ? "+" : ""}${fmtNum(detail.metrics.subscribersGained - detail.metrics.subscribersLost)}`}
+              sub={`+${fmtNum(detail.metrics.subscribersGained)} / -${fmtNum(detail.metrics.subscribersLost)}`}
+            />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <MetricCard icon={ThumbsUp} label="Me gusta" value={fmtNum(detail.metrics.likes)} color="#16a34a" />
@@ -72,7 +82,7 @@ export function VideoDetailView({
 
           {detail.daily.length > 0 && (
             <Card>
-              <p className="text-xs font-semibold mb-3">Vistas por día</p>
+              <p className="text-xs font-semibold mb-3">Vistas por día <span className="font-normal text-[var(--color-muted-foreground)]">· últimos {detail.trendDays} días</span></p>
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={detail.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>

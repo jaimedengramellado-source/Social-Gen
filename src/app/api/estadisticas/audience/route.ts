@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { refreshAccessToken, queryAnalytics, num, str } from "@/lib/youtube-analytics";
+import { refreshAccessToken, queryAnalytics, num, str, LIFETIME_START_DATE } from "@/lib/youtube-analytics";
 
-const PERIOD_DAYS: Record<string, number> = { "7": 7, "28": 28, "90": 90, "365": 365 };
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
@@ -16,10 +14,8 @@ export async function GET(request: NextRequest) {
   try { token = await refreshAccessToken(conn, supabase); }
   catch { return NextResponse.json({ error: "TOKEN_ERROR" }, { status: 401 }); }
 
-  const periodParam = request.nextUrl.searchParams.get("period") ?? "28";
-  const days = PERIOD_DAYS[periodParam] ?? 28;
   const endDate = new Date().toISOString().split("T")[0];
-  const startDate = new Date(Date.now() - days * 86_400_000).toISOString().split("T")[0];
+  const startDate = LIFETIME_START_DATE;
 
   const [demographics, geography, devices, subscribedStatus] = await Promise.all([
     queryAnalytics({ token, startDate, endDate, metrics: ["viewerPercentage"], dimensions: ["ageGroup", "gender"] }),
@@ -53,6 +49,5 @@ export async function GET(request: NextRequest) {
       views: num(r, "views"),
       pct: totalSubStatusViews > 0 ? Math.round(num(r, "views") / totalSubStatusViews * 100) : 0,
     })),
-    period: { startDate, endDate, days },
   });
 }

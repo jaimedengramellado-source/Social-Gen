@@ -151,7 +151,7 @@ function SignupForm() {
         <div className="bg-white rounded-2xl border border-[var(--color-border)] p-8 shadow-[var(--shadow-card)]">
           <h1 className="text-xl font-semibold mb-1">{nextPath ? "Crea tu cuenta" : "Crea tu cuenta gratis"}</h1>
           <p className="text-sm text-[var(--color-muted-foreground)] mb-6">
-            {nextPath ? "Paso 1 de 3 para empezar a crecer." : "10 créditos incluidos. Sin tarjeta de crédito."}
+            {nextPath ? "Paso 1 de 3 para empezar a crecer." : "5 créditos incluidos. Sin tarjeta de crédito."}
           </p>
 
           {planName && (

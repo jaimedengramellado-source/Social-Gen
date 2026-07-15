@@ -95,6 +95,39 @@ const markdownComponents: Components = {
         </div>
       );
     }
+    // "guion": bloque de guion completo (FORMATO GUION COMPLETO). Cada párrafo separado
+    // por línea en blanco es diálogo (se muestra entrecomillado en cursiva) salvo que esté
+    // envuelto en [corchetes], en cuyo caso es una indicación visual y se muestra en un
+    // recuadro aparte para que no se confunda con el texto hablado.
+    if (className?.includes("language-guion")) {
+      const raw = String(children).replace(/\n$/, "");
+      const blocks = raw.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+      return (
+        <div className="not-prose my-3 space-y-2.5">
+          {blocks.map((block, i) => {
+            const cue = block.match(/^\[([\s\S]+)\]$/);
+            if (cue) {
+              return (
+                <div
+                  key={i}
+                  className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs font-medium leading-relaxed"
+                  style={{ backgroundColor: "var(--bg-info)", color: "var(--text-info)" }}
+                >
+                  <Clapperboard size={13} className="mt-0.5 flex-shrink-0" />
+                  <span>{cue[1].trim()}</span>
+                </div>
+              );
+            }
+            const dialogue = block.replace(/^["“”']+|["“”']+$/g, "").trim();
+            return (
+              <p key={i} className="text-sm italic leading-relaxed text-[var(--color-foreground)]">
+                &ldquo;{dialogue}&rdquo;
+              </p>
+            );
+          })}
+        </div>
+      );
+    }
     if (className) {
       return (
         <pre className="not-prose rounded-lg bg-[var(--color-muted)] px-3 py-2 overflow-x-auto text-xs">

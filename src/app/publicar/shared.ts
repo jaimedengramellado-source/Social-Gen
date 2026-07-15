@@ -15,7 +15,22 @@ export const STATUS_META: Record<ScheduledPost["status"], { label: string; color
 export const PLATFORM_LABELS: Record<string, string> = {
   youtube: "YouTube",
   instagram: "Instagram",
+  facebook: "Facebook",
   tiktok: "TikTok",
+  x: "X",
+  linkedin: "LinkedIn",
+  threads: "Threads",
+};
+
+// Límite de caracteres del texto por red (YouTube: descripción; el título va aparte)
+export const PLATFORM_TEXT_LIMITS: Record<string, number> = {
+  youtube: 5000,
+  instagram: 2200,
+  facebook: 5000,
+  tiktok: 2200,
+  x: 280,
+  linkedin: 3000,
+  threads: 500,
 };
 
 export function formatBytes(n: number): string {

@@ -17,9 +17,9 @@ export function EngagementTab({ data }: { data: AnalyticsData }) {
       </div>
 
       <Card>
-        <p className="text-xs font-semibold mb-4">Interacción por día</p>
+        <p className="text-xs font-semibold mb-4">Interacción por día <span className="font-normal text-[var(--color-muted-foreground)]">· últimos {data.trendDays} días</span></p>
         {data.viewsTrend.length === 0 ? (
-          <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8">Sin datos en este período.</p>
+          <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8">Sin datos recientes.</p>
         ) : (
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={data.viewsTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

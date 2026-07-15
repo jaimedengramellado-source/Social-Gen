@@ -18,7 +18,7 @@ export function OverviewTab({ data }: { data: AnalyticsData }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard icon={Eye} label="Vistas" value={fmtNum(overview.views)} sub={`últimos ${data.period.days} días`} />
+        <MetricCard icon={Eye} label="Vistas" value={fmtNum(overview.views)} sub="totales" />
         <MetricCard icon={Clock} label="Horas vistas" value={fmtNum(overview.watchTimeHours)} sub="tiempo de visualización" />
         <MetricCard icon={TrendingUp} label="Retención media" value={overview.avgViewPercentage > 0 ? fmtPct(overview.avgViewPercentage) : "—"} />
         <MetricCard
@@ -35,11 +35,11 @@ export function OverviewTab({ data }: { data: AnalyticsData }) {
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-semibold">Vistas por día</p>
-          <span className="text-[10px] text-[var(--color-muted-foreground)]">{fmtNum(data.viewsTrend.reduce((s, d) => s + d.views, 0))} vistas totales</span>
+          <p className="text-xs font-semibold">Vistas por día <span className="font-normal text-[var(--color-muted-foreground)]">· últimos {data.trendDays} días</span></p>
+          <span className="text-[10px] text-[var(--color-muted-foreground)]">{fmtNum(data.viewsTrend.reduce((s, d) => s + d.views, 0))} vistas en el período</span>
         </div>
         {data.viewsTrend.length === 0 ? (
-          <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8">Sin datos en este período.</p>
+          <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8">Sin datos recientes.</p>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={data.viewsTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -69,9 +69,9 @@ export function OverviewTab({ data }: { data: AnalyticsData }) {
       </Card>
 
       <Card>
-        <p className="text-xs font-semibold mb-4">Suscriptores ganados y perdidos por día</p>
+        <p className="text-xs font-semibold mb-4">Suscriptores ganados y perdidos por día <span className="font-normal text-[var(--color-muted-foreground)]">· últimos {data.trendDays} días</span></p>
         {data.subscribersTrend.length === 0 ? (
-          <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8">Sin datos en este período.</p>
+          <p className="text-xs text-[var(--color-muted-foreground)] text-center py-8">Sin datos recientes.</p>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.subscribersTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { PlayCircle, RefreshCw, LogOut } from "lucide-react";
 import {
-  Connection, AnalyticsData, VideoDetail, StatsSection, PERIODS, YT_RED, PRIMARY, fmtNum,
+  Connection, AnalyticsData, VideoDetail, StatsSection, YT_RED, fmtNum,
   StatsSidebar, StatsMobileTabs,
 } from "./shared";
 import { OverviewTab } from "./overview-tab";
@@ -95,7 +95,6 @@ const OAUTH_ERRORS: Record<string, string> = {
 export function EstadisticasClient({ connection }: { connection: Connection | null }) {
   const searchParams = useSearchParams();
   const oauthError = searchParams.get("error");
-  const [period, setPeriod] = useState("28");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(!!connection);
   const [error, setError] = useState<string | null>(null);
@@ -105,11 +104,11 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
   const [videoDetail, setVideoDetail] = useState<VideoDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  const fetchData = useCallback((p: string) => {
+  const fetchData = useCallback(() => {
     if (!connection) return;
     setLoading(true);
     setError(null);
-    fetch(`/api/estadisticas/analytics?period=${p}`)
+    fetch(`/api/estadisticas/analytics`)
       .then(r => r.json())
       .then(d => {
         if (d.error) { setError(`Error de API: ${d.error}`); setLoading(false); return; }
@@ -119,13 +118,7 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
       .catch(() => { setError("No se pudieron cargar los datos."); setLoading(false); });
   }, [connection]);
 
-  useEffect(() => { fetchData(period); }, [fetchData, period]);
-
-  function handlePeriodChange(p: string) {
-    setPeriod(p);
-    setSelectedVideo(null);
-    setVideoDetail(null);
-  }
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   function handleSectionChange(s: StatsSection) {
     setSection(s);
@@ -138,7 +131,7 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
     setVideoDetail(null);
     setLoadingDetail(true);
     try {
-      const res = await fetch(`/api/estadisticas/video/${videoId}?period=${period}`);
+      const res = await fetch(`/api/estadisticas/video/${videoId}`);
       const d = await res.json();
       setVideoDetail(d);
     } catch { /* ignore */ }
@@ -249,7 +242,7 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
   if (error && !data) return (
     <div className="max-w-4xl mx-auto px-6 py-20 text-center">
       <p className="text-sm text-[var(--color-muted-foreground)] mb-4">{error}</p>
-      <button onClick={() => fetchData(period)}
+      <button onClick={() => fetchData()}
         className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl border border-[var(--color-border)] hover:border-[var(--color-foreground)] transition-colors">
         <RefreshCw size={13} /> Reintentar
       </button>
@@ -285,22 +278,9 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
         </button>
       </div>
 
-      {/* Period selector */}
-      <div className="flex items-center gap-2 mb-6">
-        {PERIODS.map(p => (
-          <button key={p.value} onClick={() => handlePeriodChange(p.value)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-            style={{
-              backgroundColor: period === p.value ? PRIMARY : "var(--color-muted)",
-              color: period === p.value ? "white" : "var(--color-muted-foreground)",
-            }}>
-            {p.label}
-          </button>
-        ))}
-        <span className="text-xs text-[var(--color-muted-foreground)] ml-auto">
-          {data.period.startDate} → {data.period.endDate}
-        </span>
-      </div>
+      <p className="text-xs text-[var(--color-muted-foreground)] mb-6">
+        Datos totales de tu canal · las tendencias diarias muestran los últimos {data.trendDays} días
+      </p>
 
       {/* Section nav — pills on mobile */}
       <div className="mb-4">
@@ -326,8 +306,8 @@ export function EstadisticasClient({ connection }: { connection: Connection | nu
             <>
               {section === "overview" && <OverviewTab data={data} />}
               {section === "content" && <ContentTab data={data} onSelectVideo={handleSelectVideo} />}
-              {section === "traffic" && <TrafficTab period={period} />}
-              {section === "audience" && <AudienceTab period={period} />}
+              {section === "traffic" && <TrafficTab />}
+              {section === "audience" && <AudienceTab />}
               {section === "engagement" && <EngagementTab data={data} />}
             </>
           )}

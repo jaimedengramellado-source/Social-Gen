@@ -18,12 +18,14 @@ export interface Profile {
   tone: string | null;
   ai_instructions: string | null;
   main_platform: string | null;
+  platforms: string[] | null;
   channel_name: string | null;
   weekly_digest: boolean;
 }
 
 export type ScheduledPostStatus = "uploading" | "scheduled" | "publishing" | "published" | "failed";
-export type PublishPlatform = "youtube" | "instagram" | "tiktok";
+export type PublishPlatform = "youtube" | "instagram" | "facebook" | "tiktok" | "x" | "linkedin" | "threads";
+export type SocialPlatform = Exclude<PublishPlatform, "youtube">;
 
 export interface ScheduledPost {
   id: string;
@@ -38,6 +40,8 @@ export interface ScheduledPost {
   youtube_video_id: string | null;
   platform_post_id: string | null;
   storage_path: string | null;
+  media_type: "video" | "image";
+  group_id: string | null;
   attempts: number;
   settings: Record<string, unknown>;
   error: string | null;
@@ -52,13 +56,38 @@ export interface ScheduledPost {
 export interface SocialConnection {
   id: string;
   user_id: string;
-  platform: "instagram" | "tiktok";
+  platform: SocialPlatform;
   account_id: string;
   account_name: string | null;
   account_avatar: string | null;
   page_id: string | null;
   scopes: string | null;
   metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CrosspostRuleStatus = "waiting" | "fired" | "expired" | "failed";
+
+export interface CrosspostRule {
+  id: string;
+  user_id: string;
+  rule_group_id: string;
+  source_post_id: string;
+  source_platform: PublishPlatform;
+  target_platform: PublishPlatform;
+  threshold: number;
+  window_days: number;
+  text: string;
+  settings: Record<string, unknown>;
+  storage_path: string;
+  file_name: string | null;
+  file_size: number | null;
+  status: CrosspostRuleStatus;
+  error: string | null;
+  fired_post_id: string | null;
+  last_views: number | null;
+  checked_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -216,7 +245,7 @@ export const CREDIT_COSTS = {
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
 export const PLAN_CREDITS: Record<Plan, number> = {
-  free: 10,
+  free: 5,
   starter: 100,
   pro: 300,
   agency: 1000,
@@ -257,12 +286,13 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: "100 seguidores",
     price_weekly: 0,
     price_annual_total: 0,
-    credits: 10,
+    credits: 5,
     features: [
-      "10 créditos/semana",
-      "Generador de ideas",
-      "Guiones básicos",
-      "1 canal guardado",
+      "5 créditos/semana",
+      "Generador de ideas y guiones completos",
+      "Hook Comparator y modo Sorpréndeme",
+      "Explorar competidores y puntúa tus guiones",
+      "Imágenes con IA, documentos y calendario",
     ],
   },
   {
@@ -273,10 +303,10 @@ export const PRICING_PLANS: PricingPlan[] = [
     credits: 100,
     features: [
       "100 créditos/semana",
-      "Hook Comparator",
-      "Documentos ilimitados",
-      "5 canales guardados",
-      "Modo Sorpréndeme",
+      "Generador de ideas y guiones completos",
+      "Hook Comparator y modo Sorpréndeme",
+      "Explorar competidores y puntúa tus guiones",
+      "Imágenes con IA, documentos y calendario",
     ],
   },
   {
@@ -288,10 +318,11 @@ export const PRICING_PLANS: PricingPlan[] = [
     highlighted: true,
     features: [
       "300 créditos/semana",
-      "Todo de Starter",
-      "Explorar competidores",
-      "Puntúa tus guiones",
-      "Canales ilimitados",
+      "Generador de ideas y guiones completos",
+      "Hook Comparator y modo Sorpréndeme",
+      "Explorar competidores y puntúa tus guiones",
+      "Imágenes con IA, documentos y calendario",
+      "Animaciones y vídeo (Próximamente)",
       "Soporte prioritario",
     ],
   },
@@ -303,9 +334,11 @@ export const PRICING_PLANS: PricingPlan[] = [
     credits: 1000,
     features: [
       "1000 créditos/semana",
-      "Todo de Pro",
-      "Multi-workspace",
-      "API access",
+      "Generador de ideas y guiones completos",
+      "Hook Comparator y modo Sorpréndeme",
+      "Explorar competidores y puntúa tus guiones",
+      "Imágenes con IA, documentos y calendario",
+      "Soporte prioritario",
       "Onboarding dedicado",
     ],
   },

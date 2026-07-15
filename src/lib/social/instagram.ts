@@ -8,6 +8,7 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 export const INSTAGRAM_SCOPES = [
   "instagram_basic",
   "instagram_content_publish",
+  "instagram_manage_insights", // visitas del media (reglas de publicación cruzada)
   "pages_show_list",
   "pages_read_engagement",
   "business_management",
@@ -115,6 +116,23 @@ export async function createReelContainer(opts: {
   return data.id;
 }
 
+// Foto al feed. OJO: image_url debe ser un JPEG (limitación de la Graph API);
+// el compositor re-codifica cualquier imagen a JPEG antes de subirla al bucket.
+export async function createImageContainer(opts: {
+  igId: string;
+  accessToken: string;
+  imageUrl: string;
+  caption: string;
+}): Promise<string> {
+  const params = new URLSearchParams({
+    image_url: opts.imageUrl,
+    caption: opts.caption,
+    access_token: opts.accessToken,
+  });
+  const data = await graphFetch<{ id: string }>(`/${opts.igId}/media?${params}`, { method: "POST" });
+  return data.id;
+}
+
 export type ContainerStatus = "FINISHED" | "IN_PROGRESS" | "ERROR" | "EXPIRED" | "PUBLISHED";
 
 export async function getContainerStatus(
@@ -138,6 +156,23 @@ export async function publishContainer(opts: {
     { method: "POST" }
   );
   return data.id;
+}
+
+// Visitas de un media publicado (Reel). Requiere instagram_manage_insights;
+// null si el permiso no está concedido o el media aún no tiene insights.
+export async function getInstagramMediaViews(
+  mediaId: string,
+  accessToken: string
+): Promise<number | null> {
+  try {
+    const data = await graphFetch<{
+      data?: Array<{ name: string; values?: Array<{ value?: number }> }>;
+    }>(`/${mediaId}/insights?metric=views&access_token=${encodeURIComponent(accessToken)}`);
+    const views = data.data?.find((m) => m.name === "views")?.values?.[0]?.value;
+    return typeof views === "number" ? views : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getMediaPermalink(mediaId: string, accessToken: string): Promise<string | null> {

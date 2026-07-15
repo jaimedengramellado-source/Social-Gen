@@ -36,6 +36,13 @@ export async function refreshAccessToken(
   return data.access_token;
 }
 
+// YouTube's launch date — used as the lower bound for "lifetime" stats queries.
+export const LIFETIME_START_DATE = "2005-04-23";
+// Daily-granularity trend charts (views/subscribers per day) are bounded to this
+// window so old channels don't return thousands of day rows; aggregate totals
+// (views, likes, CTR, retention, etc.) always use the full lifetime range instead.
+export const TREND_WINDOW_DAYS = 90;
+
 export type AnalyticsRow = Record<string, string | number>;
 
 export interface AnalyticsQueryParams {
