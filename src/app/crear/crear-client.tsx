@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChatInterface } from "./chat-interface";
 import { ChatSidebar } from "./chat-sidebar";
 import type { ChatSession, ChatProject } from "./chat-sidebar";
@@ -14,6 +15,7 @@ interface CrearClientProps {
 
 export function CrearClient({ profile }: CrearClientProps) {
   const { toast } = useToast();
+  const router = useRouter();
 
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [chatProjects, setChatProjects] = useState<ChatProject[]>([]);
@@ -23,6 +25,7 @@ export function CrearClient({ profile }: CrearClientProps) {
   const [pendingEditProjectId, setPendingEditProjectId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -39,6 +42,49 @@ export function CrearClient({ profile }: CrearClientProps) {
       .then(d => { if (d.projects) setChatProjects(d.projects); })
       .catch(() => {});
   }, []);
+
+  // Deep link desde el dashboard/biblioteca/documentos: /crear?idea=<id> o
+  // ?script=<id> arranca el chat desarrollando esa idea o guion en vez de
+  // dejarlo vacío. Limpiamos la URL enseguida para que un refresh no reenvíe.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ideaId = params.get("idea");
+    const scriptId = params.get("script");
+    if (!ideaId && !scriptId) return;
+    router.replace("/crear", { scroll: false });
+
+    if (ideaId) {
+      fetch(`/api/ideas/${ideaId}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          const idea = data?.idea;
+          if (!idea) return;
+          setInitialPrompt(
+            [
+              "Escribe un guion completo listo para grabar para este vídeo:",
+              "",
+              `**${idea.title}**`,
+              idea.description ?? "",
+              "",
+              "Propón antes las variantes de hook, y después el guion completo con desarrollo en 2-3 bloques de contenido con timestamps y CTA final potente.",
+            ].filter(Boolean).join("\n")
+          );
+        })
+        .catch(() => {});
+    } else if (scriptId) {
+      fetch(`/api/scripts/${scriptId}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          const script = data?.script;
+          if (!script) return;
+          const hookLine = script.hook ? `\n\nHook actual: "${script.hook}"` : "";
+          setInitialPrompt(
+            `Quiero seguir trabajando en este guion: **${script.title || "Sin título"}**${hookLine}\n\nAyúdame a mejorarlo, ampliarlo o proponer alternativas.`
+          );
+        })
+        .catch(() => {});
+    }
+  }, [router]);
 
   async function handleSelectSession(id: string) {
     setMobileHistoryOpen(false);
@@ -193,6 +239,7 @@ export function CrearClient({ profile }: CrearClientProps) {
             profile={profile}
             sessionId={activeSessionId}
             initialMessages={activeMessages}
+            initialPrompt={initialPrompt}
             projectId={activeProjectId}
             projectName={activeProjectId ? (chatProjects.find(p => p.id === activeProjectId)?.title ?? null) : null}
             onSessionCreated={handleSessionCreated}

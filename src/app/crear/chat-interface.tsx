@@ -892,6 +892,7 @@ interface ChatInterfaceProps {
   profile: Profile;
   sessionId: string | null;
   initialMessages?: Message[];
+  initialPrompt?: string | null;
   projectId?: string | null;
   projectName?: string | null;
   onSessionCreated: (id: string, title: string, messages: Message[], projectId: string | null) => void;
@@ -899,7 +900,7 @@ interface ChatInterfaceProps {
   onOpenHistory?: () => void;
 }
 
-export function ChatInterface({ profile, sessionId, initialMessages, projectId, projectName, onSessionCreated, onSessionUpdated, onOpenHistory }: ChatInterfaceProps) {
+export function ChatInterface({ profile, sessionId, initialMessages, initialPrompt, projectId, projectName, onSessionCreated, onSessionUpdated, onOpenHistory }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -942,6 +943,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
   const [replyQuote, setReplyQuote] = useState<{ text: string } | null>(null);
   const [pendingFlash, setPendingFlash] = useState<{ msgIndex: number; text: string } | null>(null);
   const modifyPopoverRef = useRef<HTMLDivElement | null>(null);
+  const sentInitialPromptRef = useRef<string | null>(null);
   const isFirstSessionChange = useRef(true);
   const isEmpty = messages.length === 0 && !loading;
   const currentSessionId = useRef<string | null>(sessionId);
@@ -1064,6 +1066,17 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
     }
     isFirstSessionChange.current = false;
   }, [sessionId, initialMessages]);
+
+  // Deep-link desde /crear?idea= o ?script=: envía el prompt inicial una sola vez
+  // (guardado en un ref porque `initialPrompt` no cambia entre renders, pero
+  // el efecto de arriba podría volver a montar el chat con la misma sesión null).
+  useEffect(() => {
+    if (!initialPrompt || sessionId || messages.length > 0) return;
+    if (sentInitialPromptRef.current === initialPrompt) return;
+    sentInitialPromptRef.current = initialPrompt;
+    send(initialPrompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt, sessionId, messages.length]);
 
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
     if (!pinnedToBottomRef.current) return;
