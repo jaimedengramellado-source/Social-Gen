@@ -8,9 +8,9 @@ import {
   Plus, ArrowUp, ImageIcon, FileText, Clapperboard,
   Lightbulb, Anchor, TrendingUp, Sparkles, Calendar, Hash,
   Users, X, Check, ExternalLink, Loader2,
-  Search, ChevronUp, ChevronDown, PanelRightOpen, PanelRightClose, History,
-  Reply, Wand2, MonitorPlay, Smartphone, Briefcase, AlertTriangle, Folder,
-  PenLine,
+  Search, ChevronUp, ChevronDown, ChevronRight, PanelRightOpen, PanelRightClose, History,
+  Reply, Wand2, Smartphone, AlertTriangle, Folder,
+  PenLine, UserPlus,
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -19,6 +19,10 @@ import { uploadChatImage, uploadChatFile } from "@/lib/upload";
 import { extractJSON } from "@/lib/utils";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
 import { PlatformPreviewModal } from "@/components/creator/platform-preview";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { YoutubeIcon, TiktokIcon, InstagramIcon, LinkedinIcon } from "@/components/shared/brand-icons";
 
 const CREATORS = [
   {
@@ -61,10 +65,23 @@ const CREATORS = [
 
 type Creator = typeof CREATORS[number];
 
+// Reels, TikTok y Shorts comparten el mismo formato corto vertical de cara a la IA,
+// así que van agrupados en una sola opción con los 3 logos en fila.
+function ShortFormIcons({ size = 14, className, style }: { size?: number; className?: string; style?: React.CSSProperties }) {
+  const iconSize = Math.round(size * 0.72);
+  return (
+    <span className={`inline-flex items-center gap-[3px] flex-shrink-0 ${className ?? ""}`} style={style}>
+      <InstagramIcon size={iconSize} colored />
+      <TiktokIcon size={iconSize} colored />
+      <YoutubeIcon size={iconSize} colored />
+    </span>
+  );
+}
+
 const CONTENT_FORMATS = [
-  { id: "youtube_long", label: "YouTube (vídeo largo)", short: "YouTube", icon: MonitorPlay },
-  { id: "shorts", label: "Reels, TikTok y Shorts", short: "Reels/TikTok/Short", icon: Smartphone },
-  { id: "linkedin", label: "Post de LinkedIn", short: "LinkedIn", icon: Briefcase },
+  { id: "shorts", label: "Reels, TikTok y Shorts", short: "Reels/TikTok/Short", icon: ShortFormIcons, accent: "var(--color-primary)" },
+  { id: "linkedin", label: "Post de LinkedIn", short: "LinkedIn", icon: LinkedinIcon, accent: "#0A66C2" },
+  { id: "youtube_long", label: "YouTube (vídeo largo)", short: "YouTube", icon: YoutubeIcon, accent: "#FF0000" },
 ] as const;
 
 type ContentFormat = typeof CONTENT_FORMATS[number]["id"];
@@ -894,8 +911,15 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
   const [attachment, setAttachment] = useState<{ url: string; mime_type: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showCreatorSubmenu, setShowCreatorSubmenu] = useState(false);
+  const [showSuggestCreator, setShowSuggestCreator] = useState(false);
+  const [suggestName, setSuggestName] = useState("");
+  const [suggestReason, setSuggestReason] = useState("");
+  const [suggestStatus, setSuggestStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [suggestError, setSuggestError] = useState<string | null>(null);
   const [snippets, setSnippets] = useState<Snippet[] | null>(null);
   const [contentFormat, setContentFormat] = useState<ContentFormat | null>(null);
+  const activeFormat = CONTENT_FORMATS.find(f => f.id === contentFormat) ?? null;
   const [showFormatMenu, setShowFormatMenu] = useState(false);
   const [activeCreator, setActiveCreator] = useState<Creator | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -975,9 +999,9 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
       "Escribe un guion completo listo para grabar para este vídeo:",
       "",
       `**${idea.title}**`,
-      ...(idea.hook ? [`Hook de apertura sugerido: "${idea.hook}"`] : []),
+      ...(idea.hook ? [`Hook de apertura sugerido (puedes partir de él o proponer alternativas mejores): "${idea.hook}"`] : []),
       "",
-      "Incluye: hook (0-3 segundos), intro que engancha, desarrollo con 2-3 bloques de contenido con timestamps, y CTA final potente.",
+      "Propón antes las variantes de hook, y después el guion completo con desarrollo con 2-3 bloques de contenido con timestamps y CTA final potente.",
     ];
     send(lines.join("\n"));
   }
@@ -1206,6 +1230,10 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
+  }, [showAttachMenu]);
+
+  useEffect(() => {
+    if (!showAttachMenu) setShowCreatorSubmenu(false);
   }, [showAttachMenu]);
 
   useEffect(() => {
@@ -1451,6 +1479,182 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
           ))
         )}
       </>
+    );
+  }
+
+  function openSuggestCreator() {
+    setSuggestName("");
+    setSuggestReason("");
+    setSuggestStatus("idle");
+    setSuggestError(null);
+    setShowSuggestCreator(true);
+  }
+
+  async function submitCreatorSuggestion() {
+    if (!suggestName.trim() || suggestStatus === "sending") return;
+    setSuggestStatus("sending");
+    setSuggestError(null);
+    try {
+      const res = await fetch("/api/creators/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: suggestName.trim(), reason: suggestReason.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(typeof data?.error === "string" ? data.error : "No se pudo enviar la sugerencia.");
+      }
+      setSuggestStatus("sent");
+    } catch (err) {
+      setSuggestStatus("idle");
+      setSuggestError(err instanceof Error ? err.message : "No se pudo enviar la sugerencia.");
+    }
+  }
+
+  function renderCreatorMenuSection() {
+    return (
+      <>
+        <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
+        <div
+          className="relative"
+          onMouseEnter={() => setShowCreatorSubmenu(true)}
+          onMouseLeave={() => setShowCreatorSubmenu(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setShowCreatorSubmenu(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+            style={{ color: "var(--color-foreground)" }}
+            aria-haspopup="menu"
+            aria-expanded={showCreatorSubmenu}
+          >
+            <Users size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+            <span className="flex-1">Crear con creador</span>
+            {activeCreator && (
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: activeCreator.color }} />
+            )}
+            <ChevronRight size={12} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+          </button>
+          {showCreatorSubmenu && (
+            // Contenedor con padding (no margin) para que el hover no se corte al cruzar el hueco.
+            <div className="absolute z-30 bottom-full left-0 pb-1 sm:bottom-0 sm:pb-0 sm:left-full sm:pl-1">
+              <div className="bg-white rounded-xl border border-[var(--color-border)] shadow-lg py-1 w-56">
+                <div className="max-h-52 overflow-y-auto">
+                  {CREATORS.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setActiveCreator(prev => prev?.id === c.id ? null : c); setShowAttachMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
+                      style={{ color: "var(--color-foreground)" }}
+                    >
+                      {c.photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.photo} alt={c.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
+                      )}
+                      <span className="flex-1">{c.name}</span>
+                      {activeCreator?.id === c.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
+                    </button>
+                  ))}
+                </div>
+                <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
+                <button
+                  onClick={() => { setShowAttachMenu(false); openSuggestCreator(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-primary-light)] transition-colors text-left font-semibold"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  <UserPlus size={13} className="flex-shrink-0" />
+                  Sugerir un creador
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  function renderSuggestCreatorDialog() {
+    return (
+      <Dialog open={showSuggestCreator} onOpenChange={open => { if (!open) setShowSuggestCreator(false); }}>
+        <DialogContent className="max-w-md">
+          {suggestStatus === "sent" ? (
+            <div className="flex flex-col items-center text-center gap-3 py-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--color-primary-light)" }}>
+                <Check size={22} style={{ color: "var(--color-primary)" }} />
+              </div>
+              <DialogTitle>¡Sugerencia enviada!</DialogTitle>
+              <DialogDescription>
+                Gracias por tu propuesta. La revisaremos y, si encaja, pronto verás a ese creador en la lista.
+              </DialogDescription>
+              <button
+                onClick={() => setShowSuggestCreator(false)}
+                className="mt-2 text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
+                Cerrar
+              </button>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Sugerir un creador</DialogTitle>
+                <DialogDescription>
+                  ¿Con qué creador te gustaría crear contenido? Cuéntanoslo y lo valoraremos para añadirlo.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={e => { e.preventDefault(); submitCreatorSuggestion(); }} className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="suggest-creator-name" className="text-xs font-medium">Nombre o @usuario del creador</label>
+                  <Input
+                    id="suggest-creator-name"
+                    value={suggestName}
+                    onChange={e => setSuggestName(e.target.value)}
+                    placeholder="P. ej. @charlidamelio"
+                    maxLength={120}
+                    autoFocus
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="suggest-creator-reason" className="text-xs font-medium">
+                    ¿Por qué te gustaría? <span className="font-normal text-[var(--color-muted-foreground)]">(opcional)</span>
+                  </label>
+                  <Textarea
+                    id="suggest-creator-reason"
+                    value={suggestReason}
+                    onChange={e => setSuggestReason(e.target.value)}
+                    placeholder="Cuéntanos qué te gusta de su estilo o formato..."
+                    rows={3}
+                    maxLength={1000}
+                  />
+                </div>
+                {suggestError && (
+                  <p className="text-xs" style={{ color: "var(--color-destructive)" }}>{suggestError}</p>
+                )}
+                <div className="flex justify-end gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestCreator(false)}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-[var(--color-muted)] transition-colors"
+                    style={{ color: "var(--color-muted-foreground)" }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!suggestName.trim() || suggestStatus === "sending"}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-60 transition-opacity"
+                    style={{ backgroundColor: "var(--color-primary)" }}
+                  >
+                    {suggestStatus === "sending" ? <><Loader2 size={12} className="animate-spin" /> Enviando...</> : "Enviar sugerencia"}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -1845,27 +2049,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                     Guiado
                   </button>
                   {renderSnippetsMenuSection()}
-                  <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
-                  <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
-                    <Users size={11} /> Crear con creador
-                  </p>
-                  {CREATORS.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => { setActiveCreator(prev => prev?.id === c.id ? null : c); setShowAttachMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
-                      style={{ color: "var(--color-foreground)" }}
-                    >
-                      {c.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={c.photo} alt={c.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
-                      )}
-                      <span className="flex-1">{c.name}</span>
-                      {activeCreator?.id === c.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
-                    </button>
-                  ))}
+                  {renderCreatorMenuSection()}
                 </div>
               )}
             </div>
@@ -1875,15 +2059,15 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                 onClick={() => setShowFormatMenu(v => !v)}
                 className="flex items-center gap-1 h-7 px-2 rounded-full border transition-colors text-[11px] font-medium"
                 style={{
-                  borderColor: contentFormat ? "var(--color-primary)" : "var(--color-border)",
-                  color: contentFormat ? "var(--color-primary)" : "var(--color-muted-foreground)",
-                  backgroundColor: contentFormat ? "var(--color-primary-light)" : "transparent",
+                  borderColor: activeFormat ? activeFormat.accent : "var(--color-border)",
+                  color: activeFormat ? activeFormat.accent : "var(--color-muted-foreground)",
+                  backgroundColor: activeFormat ? `color-mix(in srgb, ${activeFormat.accent} 14%, transparent)` : "transparent",
                 }}
                 aria-label="Formato de contenido"
               >
-                {(() => { const F = CONTENT_FORMATS.find(f => f.id === contentFormat)?.icon ?? Clapperboard; return <F size={12} />; })()}
+                {(() => { const F = activeFormat?.icon ?? Clapperboard; return <F size={12} />; })()}
                 <span className="hidden sm:inline">
-                  {contentFormat ? CONTENT_FORMATS.find(f => f.id === contentFormat)?.short : "Formato"}
+                  {activeFormat ? activeFormat.short : "Formato"}
                 </span>
                 <ChevronDown size={10} />
               </button>
@@ -1896,9 +2080,9 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
                       style={{ color: "var(--color-foreground)" }}
                     >
-                      <f.icon size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+                      <f.icon size={13} className="flex-shrink-0" style={{ color: f.accent }} />
                       <span className="flex-1">{f.label}</span>
-                      {contentFormat === f.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
+                      {contentFormat === f.id && <Check size={12} style={{ color: f.accent }} />}
                     </button>
                   ))}
                 </div>
@@ -1952,6 +2136,8 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
             ))}
           </div>
         )}
+
+        {renderSuggestCreatorDialog()}
       </div>
     );
   }
@@ -2305,27 +2491,7 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                     Guiado
                   </button>
                   {renderSnippetsMenuSection()}
-                  <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
-                  <p className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--color-muted-foreground)" }}>
-                    <Users size={11} /> Crear con creador
-                  </p>
-                  {CREATORS.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => { setActiveCreator(prev => prev?.id === c.id ? null : c); setShowAttachMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
-                      style={{ color: "var(--color-foreground)" }}
-                    >
-                      {c.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={c.photo} alt={c.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
-                      )}
-                      <span className="flex-1">{c.name}</span>
-                      {activeCreator?.id === c.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
-                    </button>
-                  ))}
+                  {renderCreatorMenuSection()}
                 </div>
               )}
             </div>
@@ -2335,15 +2501,15 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                 onClick={() => setShowFormatMenu(v => !v)}
                 className="flex items-center gap-1 h-7 px-2 rounded-full border transition-colors text-[11px] font-medium"
                 style={{
-                  borderColor: contentFormat ? "var(--color-primary)" : "var(--color-border)",
-                  color: contentFormat ? "var(--color-primary)" : "var(--color-muted-foreground)",
-                  backgroundColor: contentFormat ? "var(--color-primary-light)" : "transparent",
+                  borderColor: activeFormat ? activeFormat.accent : "var(--color-border)",
+                  color: activeFormat ? activeFormat.accent : "var(--color-muted-foreground)",
+                  backgroundColor: activeFormat ? `color-mix(in srgb, ${activeFormat.accent} 14%, transparent)` : "transparent",
                 }}
                 aria-label="Formato de contenido"
               >
-                {(() => { const F = CONTENT_FORMATS.find(f => f.id === contentFormat)?.icon ?? Clapperboard; return <F size={12} />; })()}
+                {(() => { const F = activeFormat?.icon ?? Clapperboard; return <F size={12} />; })()}
                 <span className="hidden sm:inline">
-                  {contentFormat ? CONTENT_FORMATS.find(f => f.id === contentFormat)?.short : "Formato"}
+                  {activeFormat ? activeFormat.short : "Formato"}
                 </span>
                 <ChevronDown size={10} />
               </button>
@@ -2356,9 +2522,9 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-[var(--color-muted)] transition-colors text-left"
                       style={{ color: "var(--color-foreground)" }}
                     >
-                      <f.icon size={13} className="flex-shrink-0 text-[var(--color-muted-foreground)]" />
+                      <f.icon size={13} className="flex-shrink-0" style={{ color: f.accent }} />
                       <span className="flex-1">{f.label}</span>
-                      {contentFormat === f.id && <Check size={12} style={{ color: "var(--color-primary)" }} />}
+                      {contentFormat === f.id && <Check size={12} style={{ color: f.accent }} />}
                     </button>
                   ))}
                 </div>
@@ -2517,6 +2683,8 @@ export function ChatInterface({ profile, sessionId, initialMessages, projectId, 
       creditsRemaining={profile.credits_remaining}
       plan={profile.plan}
     />
+
+    {renderSuggestCreatorDialog()}
     </div>
   );
 }

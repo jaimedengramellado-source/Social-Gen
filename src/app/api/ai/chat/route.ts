@@ -281,7 +281,7 @@ El usuario ha marcado explícitamente "${label}" como formato de destino, usando
   }
   return `═══ FORMATO SELECCIONADO ═══
 
-El usuario ha marcado explícitamente "${label}" como formato de destino para este contenido, usando el selector de la barra de chat. Adapta SIEMPRE la duración, el ritmo, la estructura del guion (número de bloques, timestamps) y el estilo del hook a este formato específico — tiene prioridad sobre la plataforma configurada en su canal si difieren.`;
+El usuario ha marcado explícitamente "${label}" como formato de destino para este contenido, usando el selector de la barra de chat. Esto tiene prioridad sobre la plataforma configurada en su canal si difieren. Si pide un guion, sigue SIEMPRE EXPERTISE FORMATO CORTO al pie de la letra: empieza por las 3 variantes de hook salvo que pida explícitamente saltárselas, y ofrece el guion completo después.`;
 }
 
 function buildChatContext(channel: { platform: string; niche: string; niche_description?: string | null } | null): string {
@@ -329,7 +329,7 @@ Luego sigue este orden de preguntas, cada respuesta es SOLO el JSON de la siguie
 - Tras recibir el tema → {"type":"question","question":"¿A quién va dirigido?","options":["Emprendedores","Jóvenes 18-25","Adultos 25-40","Padres y familias"],"allow_custom":true,"placeholder":"Describe tu audiencia ideal..."}
 - Tras recibir la audiencia → {"type":"question","question":"¿Qué quieres que haga el espectador al terminar?","options":["Que se suscriba","Que compre algo","Que deje un comentario","Que siga mi cuenta"],"allow_custom":true,"placeholder":"ej. Que descargue mi guía gratuita..."}
 
-Cuando tengas las 4 respuestas: si la plataforma elegida es "YouTube (vídeo largo)", sigue EXPERTISE YOUTUBE VÍDEO LARGO — empieza por la FASE 1 (escaleta) en markdown, sin JSON. Para el resto de plataformas, genera el guion completo en markdown (sin JSON): ## Hook (0-3s) → ## Intro → ## Desarrollo (con timestamps) → ## CTA final, y dentro de cada una de esas secciones sigue FORMATO GUION COMPLETO para separar diálogo de indicaciones visuales. Al final añade: "💾 Puedes exportar este guion a Documentos con el botón de abajo."
+Cuando tengas las 4 respuestas: si la plataforma elegida es "YouTube (vídeo largo)", sigue EXPERTISE YOUTUBE VÍDEO LARGO — empieza por la FASE 1 (escaleta) en markdown, sin JSON. Para el resto de plataformas (TikTok, Instagram Reels, YouTube Shorts), sigue EXPERTISE FORMATO CORTO en markdown sin JSON, empezando por las 3 variantes de hook. Al final del guion completo añade: "💾 Puedes exportar este guion a Documentos con el botón de abajo."
 
 ═══ FORMATO GUION COMPLETO (diálogo + indicaciones visuales) ═══
 
@@ -346,6 +346,22 @@ Esto que estás a punto de escuchar le pasó a mi vecino la semana pasada.
 
 Y todavía no me lo puedo creer.
 \`\`\`
+
+═══ EXPERTISE FORMATO CORTO (Reels/TikTok/Shorts) ═══
+
+Todo lo que sigue aplica siempre que el destino sea un guion de vídeo corto vertical — Reels, TikTok o YouTube Shorts — porque el usuario lo haya marcado en el selector de formato, porque su canal sea de este tipo y no haya seleccionado otro formato, o porque sea el caso por defecto (no ha marcado ningún formato y no pide explícitamente YouTube largo ni LinkedIn). No aplica a YouTube largo (ver EXPERTISE YOUTUBE VÍDEO LARGO) ni a LinkedIn (ver EXPERTISE LINKEDIN), que tienen sus propios flujos.
+
+FLUJO DE RESPUESTA (obligatorio al generar un guion nuevo desde cero, incluido cuando el usuario pulsa "Crear guion" sobre una idea — no lo repitas si el usuario solo pide ajustar, acortar, alargar o retocar un guion ya escrito en la conversación): la interfaz de chat renderiza el mismo recuadro rojo para los hooks que en LinkedIn SIEMPRE que uses exactamente esta sintaxis — no la cambies ni la adaptes:
+
+1. Antes de escribir el guion, propón EXACTAMENTE 3 variantes de hook (la frase o el plano exacto de los primeros 0-1.5s para parar el scroll) con ángulos o mecánicas psicológicas distintas entre sí (nunca 3 frases parecidas — agresivo/shock, curiosidad/intriga y emocional/conexión son ejemplos de ángulos distintos, pero no los repitas literalmente cada vez ni fuerces esas tres etiquetas si otro ángulo encaja mejor con la idea). Para cada una, en una frase corta, explica por qué funciona (qué mecánica de VIRAL_CORE o palanca psicológica activa). Mete las 3 variantes completas (incluida la explicación de cada una) dentro de un único blockquote de markdown: cada línea del bloque, incluidas las líneas en blanco entre hooks, debe empezar por "> ". Ejemplo exacto de sintaxis (adapta el contenido, no la estructura):
+> **Hook 1:** "texto del hook" — Por qué funciona: explicación de una frase.
+>
+> **Hook 2:** "texto del hook" — Por qué funciona: explicación de una frase.
+>
+> **Hook 3:** "texto del hook" — Por qué funciona: explicación de una frase.
+2. Justo después del blockquote, sin esperar a que el usuario elija, escribe una frase indicando cuál de los 3 hooks usas (ej. "Uso el hook 2 para el guion completo:") y a continuación el guion completo: ## Hook (0-3s) → ## Desarrollo (con timestamps) → ## Remate/CTA final, cada sección siguiendo FORMATO GUION COMPLETO para separar diálogo de indicaciones visuales.
+
+EXCEPCIÓN: si el usuario pide explícitamente saltarse las variantes ("dame directamente el guion", "sin variantes de hook", "ve directo al guion"), omite el paso 1 y escribe el guion completo directamente con un único hook, aplicando igualmente FORMATO GUION COMPLETO.
 
 ═══ EXPERTISE YOUTUBE VÍDEO LARGO ═══
 

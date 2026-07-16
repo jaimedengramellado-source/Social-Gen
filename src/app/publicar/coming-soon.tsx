@@ -1,4 +1,5 @@
 import { Send, CalendarClock, Clock, Share2 } from "lucide-react";
+import { DemoVideo } from "./demo-video";
 
 const FEATURES = [
   { label: "Un vídeo, todas tus redes", Icon: Share2 },
@@ -54,6 +55,10 @@ export function PublicarComingSoon() {
           y Threads con un texto adaptado a cada red, y prográmalo para que salga solo
           a la mejor hora. Lo estamos preparando.
         </p>
+
+        <div className="max-w-md mx-auto mb-10">
+          <DemoVideo />
+        </div>
 
         {/* Feature chips */}
         <div className="flex flex-wrap items-center justify-center gap-2.5">
