@@ -42,6 +42,8 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showSavedIdeas, setShowSavedIdeas] = useState(false);
   const [sorpresas, setSorpresas] = useState<Idea[]>([]);
+  const [sorprendeError, setSorprendeError] = useState<string | null>(null);
+  const [sorprendeSlow, setSorprendeSlow] = useState(false);
   const [feedbackCopied, setFeedbackCopied] = useState(false);
 
   async function copyFeedbackEmail() {
@@ -64,15 +66,31 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
 
   async function handleSorprendeme() {
     setSorprendiendome(true);
+    setSorprendeError(null);
+    setSorprendeSlow(false);
+    // Sin esto, una respuesta lenta (la IA con thinking puede tardar 30-45s) se ve
+    // idéntica a un cuelgue real — no hay forma de distinguirlos sin límite de tiempo ni feedback.
+    const slowTimer = setTimeout(() => setSorprendeSlow(true), 10000);
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 75000);
     try {
-      const res = await fetch("/api/ai/sorprendeme", { method: "POST" });
+      const res = await fetch("/api/ai/sorprendeme", { method: "POST", signal: controller.signal });
       const data = await res.json();
       if (res.status === 402) { setShowUpgrade(true); return; }
-      if (data.ideas) setSorpresas(data.ideas);
-    } catch {
-      // Fallo de red: el finally evita que el botón quede en "Generando…" para siempre.
+      if (res.status === 429) { setSorprendeError("Estás generando ideas muy rápido. Espera un momento y vuelve a intentarlo."); return; }
+      if (!res.ok || !data.ideas) { setSorprendeError("No se han podido generar ideas. Vuelve a intentarlo."); return; }
+      setSorpresas(data.ideas);
+    } catch (err) {
+      setSorprendeError(
+        err instanceof DOMException && err.name === "AbortError"
+          ? "La generación está tardando demasiado. Vuelve a intentarlo en unos minutos."
+          : "Fallo de conexión. Comprueba tu internet y vuelve a intentarlo."
+      );
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(abortTimer);
       setSorprendiendome(false);
+      setSorprendeSlow(false);
     }
   }
 
@@ -206,6 +224,27 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
             {sorprendiendome ? "Generando…" : "Sorpréndeme"}
           </button>
         </div>
+
+        {sorprendiendome && sorprendeSlow && (
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 text-xs text-[var(--color-muted-foreground)]"
+          >
+            La IA está pensando las ideas, puede tardar hasta un minuto…
+          </motion.p>
+        )}
+
+        {sorprendeError && (
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 text-xs font-medium"
+            style={{ color: "var(--color-destructive)" }}
+          >
+            {sorprendeError}
+          </motion.p>
+        )}
 
         {sorpresas.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-2">

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   const rl = await checkRateLimit(user.id);
   if (!rl.ok) {
-    return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
+    return NextResponse.json({ error: "RATE_LIMIT", retryAfter: rl.retryAfter }, { status: 429 });
   }
 
   const userContext = await fetchUserAIContext(supabase, user.id);
@@ -44,18 +44,21 @@ ${channel ? `- Descripción del canal: ${channel.niche_description || ""}` : ""}
 IMPORTANTE: Estas ideas deben ser INESPERADAS, ORIGINALES y muy distintas entre sí. Sorprende al creador con ideas que no hubiera pensado.`;
 
   try {
+    // Sin esto, el timeout por defecto del SDK es de 10 minutos y además reintenta
+    // internamente — un fallo real puede tardar varios minutos en manifestarse y la
+    // UI se percibe como colgada. Con maxRetries: 0 un fallo se resuelve en <60s: el
+    // usuario puede simplemente volver a pulsar el botón.
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
       max_tokens: 3500,
       thinking: THINKING_ADAPTIVE,
       system: cachedSystem(SYSTEM_PROMPTS.ideas, userContext),
       messages: [{ role: "user", content: userPrompt }],
-    });
+    }, { timeout: 60000, maxRetries: 0 });
 
     await recordTokenUsage(credit.logId, MODEL, message.usage);
 
-    const raw = extractText(message);
-    const ideas = JSON.parse(extractJSON(raw));
+    const ideas: Array<Record<string, unknown>> = JSON.parse(extractJSON(extractText(message)));
 
     const toInsert = ideas.slice(0, 5).map((idea: Record<string, unknown>) => ({
       user_id: user.id,

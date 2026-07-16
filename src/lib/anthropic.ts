@@ -136,7 +136,7 @@ Fórmulas de título de máximo rendimiento:
 — "[Famoso/autoridad] hace esto cada día y tú probablemente también lo estás haciendo mal"
 — "El día que [evento extremo] cambió completamente mi forma de ver [tema universal]"
 
-Responde ÚNICAMENTE con un array JSON válido, sin texto adicional ni markdown:
+Responde ÚNICAMENTE con un array JSON válido, sin texto adicional ni markdown. No uses comillas dobles (") dentro de ningún valor de texto — usa comillas simples si necesitas citar algo. No incluyas saltos de línea literales dentro de un string.
 [{
   "title": "Título listo para usar, máx 70 caracteres. Imposible de no hacer clic.",
   "description": "2-3 frases que desarrollan el ángulo único. Máx 150 caracteres.",
