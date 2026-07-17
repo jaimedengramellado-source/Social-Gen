@@ -7,6 +7,20 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const next = safeInternalPath(searchParams.get("next"));
 
+  // Si el OAuth falla aguas arriba (p. ej. Supabase no pudo canjear el code con
+  // Google), Supabase redirige aquí sin code y con el error en la query. Mostrarlo
+  // como "enlace caducado" despista; el detalle solo se ve en los logs.
+  const providerError = searchParams.get("error");
+  if (providerError) {
+    console.error(
+      "auth callback provider error:",
+      providerError,
+      searchParams.get("error_code"),
+      searchParams.get("error_description")
+    );
+    return NextResponse.redirect(`${origin}/login?error=oauth`);
+  }
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -38,6 +52,7 @@ export async function GET(request: NextRequest) {
     // solicitud (PKCE liga el intercambio al navegador de origen). Para
     // recuperación de contraseña mandamos a pedir un enlace nuevo en vez de
     // fallar en silencio hacia /login.
+    console.error("auth callback exchange error:", error.message);
     if (next === "/restablecer") {
       return NextResponse.redirect(`${origin}/recuperar?error=expired_link`);
     }

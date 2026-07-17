@@ -28,11 +28,16 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error") === "expired_link"
-      ? "Ese enlace ha caducado o ya se usó. Inicia sesión o solicita uno nuevo."
-      : null
-  );
+  const [error, setError] = useState<string | null>(() => {
+    switch (searchParams.get("error")) {
+      case "expired_link":
+        return "Ese enlace ha caducado o ya se usó. Inicia sesión o solicita uno nuevo.";
+      case "oauth":
+        return "No se ha podido completar el inicio de sesión con Google. Inténtalo de nuevo.";
+      default:
+        return null;
+    }
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
