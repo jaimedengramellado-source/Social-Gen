@@ -64,7 +64,14 @@ const PLATFORM_OPTIONS = [
   { value: "reels", label: "Instagram Reels" },
   { value: "youtube_shorts", label: "YouTube Shorts" },
   { value: "youtube_long", label: "YouTube (vídeo largo)" },
+  { value: "facebook", label: "Facebook" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "x", label: "X (Twitter)" },
+  { value: "threads", label: "Threads" },
 ];
+
+const POSTING_FREQUENCY_OPTIONS = ["Sin ritmo fijo", "1-2 por semana", "3-5 por semana", "Casi a diario"];
+const RECORDING_STYLE_OPTIONS = ["Hablo a cámara", "Voz en off + B-roll", "Pantalla / tutorial", "Sin cámara (texto e imágenes)"];
 
 const ACTION_LABELS: Record<string, string> = {
   generate_5_ideas: "Ideas (×5)",
@@ -124,6 +131,9 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   const [nicheDesc, setNicheDesc] = useState(channel?.niche_description || "");
   const [tone, setTone] = useState(profile.tone || "");
   const [aiInstructions, setAiInstructions] = useState(profile.ai_instructions || "");
+  const [postingFrequency, setPostingFrequency] = useState(profile.posting_frequency || "");
+  const [recordingStyle, setRecordingStyle] = useState(profile.recording_style || "");
+  const [referenceCreators, setReferenceCreators] = useState(profile.reference_creators || "");
   const [savingAI, setSavingAI] = useState(false);
   const [savedAI, setSavedAI] = useState(false);
 
@@ -249,6 +259,9 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
         niche: niche || null,
         tone: tone || null,
         ai_instructions: aiInstructions || null,
+        posting_frequency: postingFrequency || null,
+        recording_style: recordingStyle || null,
+        reference_creators: referenceCreators || null,
       }).eq("id", profile.id),
     ];
     if (channel) {
@@ -565,6 +578,42 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
                   value={tone}
                   onChange={(e) => setTone(e.target.value)}
                   placeholder="Ej: motivacional y cercano, divertido e informal..."
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ritmo de publicación</Label>
+                <select
+                  value={postingFrequency}
+                  onChange={(e) => setPostingFrequency(e.target.value)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm bg-white outline-none"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  <option value="">Sin especificar</option>
+                  {POSTING_FREQUENCY_OPTIONS.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cómo grabas normalmente</Label>
+                <select
+                  value={recordingStyle}
+                  onChange={(e) => setRecordingStyle(e.target.value)}
+                  className="w-full h-10 rounded-lg border px-3 text-sm bg-white outline-none"
+                  style={{ borderColor: "var(--color-border)" }}
+                >
+                  <option value="">Sin especificar</option>
+                  {RECORDING_STYLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Creadores de referencia</Label>
+                <Input
+                  value={referenceCreators}
+                  onChange={(e) => setReferenceCreators(e.target.value)}
+                  placeholder="Ej: @nombre1, Canal X..."
                 />
               </div>
               <div className="space-y-1.5">

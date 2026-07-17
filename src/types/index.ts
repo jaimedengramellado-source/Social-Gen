@@ -21,6 +21,9 @@ export interface Profile {
   platforms: string[] | null;
   channel_name: string | null;
   weekly_digest: boolean;
+  posting_frequency: string | null;
+  recording_style: string | null;
+  reference_creators: string | null;
 }
 
 export type ScheduledPostStatus = "uploading" | "scheduled" | "publishing" | "published" | "failed";

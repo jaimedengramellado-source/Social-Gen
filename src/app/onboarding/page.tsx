@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { safeInternalPath } from "@/lib/plan-intent";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,13 +12,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PlanSteps } from "@/components/shared/plan-steps";
+import {
+  YoutubeIcon, InstagramIcon, TiktokIcon, FacebookIcon, XIcon, LinkedinIcon, ThreadsIcon,
+} from "@/components/shared/brand-icons";
+import type { BrandIconProps } from "@/components/shared/brand-icons";
+import { CREAR_SEED_STORAGE_KEY, ONBOARDING_SEED_PROMPT } from "@/lib/utils";
 import type { Platform } from "@/types";
 
-const PLATFORMS: { id: Platform; label: string; icon: string; desc: string }[] = [
-  { id: "youtube_long", label: "YouTube", icon: "▶", desc: "Vídeos de 8-20 minutos" },
-  { id: "youtube_shorts", label: "YouTube Shorts", icon: "▶", desc: "Menos de 60 segundos" },
-  { id: "tiktok", label: "TikTok", icon: "♪", desc: "15-90 segundos" },
-  { id: "reels", label: "Instagram Reels", icon: "⬡", desc: "Menos de 90 segundos" },
+// Además de las 4 plataformas "de formato" (determinan duración/estilo del guion),
+// dejamos elegir redes donde solo se cross-postea: se guardan igual en profiles.platforms
+// pero no fuerzan un content_format distinto de "short".
+type OnboardingPlatformId = Platform | "linkedin" | "facebook" | "x" | "threads";
+
+const PLATFORMS: { id: OnboardingPlatformId; label: string; icon: ComponentType<BrandIconProps>; desc: string }[] = [
+  { id: "youtube_long", label: "YouTube", icon: YoutubeIcon, desc: "Vídeos de 8-20 minutos" },
+  { id: "youtube_shorts", label: "YouTube Shorts", icon: YoutubeIcon, desc: "Menos de 60 segundos" },
+  { id: "tiktok", label: "TikTok", icon: TiktokIcon, desc: "15-90 segundos" },
+  { id: "reels", label: "Instagram Reels", icon: InstagramIcon, desc: "Menos de 90 segundos" },
+  { id: "facebook", label: "Facebook", icon: FacebookIcon, desc: "Posts, Reels y vídeo" },
+  { id: "linkedin", label: "LinkedIn", icon: LinkedinIcon, desc: "Contenido profesional" },
+  { id: "x", label: "X (Twitter)", icon: XIcon, desc: "Hilos y vídeo corto" },
+  { id: "threads", label: "Threads", icon: ThreadsIcon, desc: "Texto e imágenes" },
 ];
 
 const SUBSCRIBER_RANGES = ["Aún no he empezado", "0-1K", "1K-10K", "10K-100K", "100K-1M", "+1M"];
@@ -33,6 +47,7 @@ const NICHE_PRESETS = [
   "Gaming",
   "Belleza y moda",
   "Humor y entretenimiento",
+  "Lifestyle",
   "Cocina",
   "Viajes",
   "Arte y música",
@@ -44,6 +59,8 @@ const GOAL_OPTIONS = [
   "Vender mis productos o cursos",
   "Hacer crecer mi comunidad",
   "Construir mi marca personal",
+  "Conseguir seguidores y visitas",
+  "Por diversión o como hobby",
 ];
 
 const DIFFERENTIATOR_OPTIONS = [
@@ -62,7 +79,21 @@ const TONE_PRESETS = [
   "Provocador y sin filtros",
 ];
 
-const TOTAL_STEPS = 6;
+const POSTING_FREQUENCY_OPTIONS = [
+  "Sin ritmo fijo",
+  "1-2 por semana",
+  "3-5 por semana",
+  "Casi a diario",
+];
+
+const RECORDING_STYLE_OPTIONS = [
+  "Hablo a cámara",
+  "Voz en off + B-roll",
+  "Pantalla / tutorial",
+  "Sin cámara (texto e imágenes)",
+];
+
+const TOTAL_STEPS = 7;
 
 function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -107,15 +138,19 @@ function OnboardingFlow() {
 
   const [form, setForm] = useState({
     channelName: "",
-    platforms: [] as Platform[],
+    platforms: [] as OnboardingPlatformId[],
     subscribersRange: "",
-    niche: "",
+    niches: [] as string[],
+    nicheCustom: "",
     nicheDescription: "",
     goals: [] as string[],
     goalDetail: "",
     audiencePain: "",
     differentiators: [] as string[],
     differentiatorDetail: "",
+    postingFrequency: "",
+    recordingStyle: "",
+    referenceCreators: "",
     tone: "",
     aiInstructions: "",
   });
@@ -124,7 +159,7 @@ function OnboardingFlow() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function toggleIn(field: "platforms" | "goals" | "differentiators", value: string) {
+  function toggleIn(field: "platforms" | "goals" | "differentiators" | "niches", value: string) {
     setForm((prev) => {
       const list = prev[field] as string[];
       const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -143,6 +178,7 @@ function OnboardingFlow() {
       }
 
       const mainPlatform = form.platforms[0];
+      const nicheValue = [...form.niches, form.nicheCustom.trim()].filter(Boolean).join(", ");
       const mainGoal = [form.goals.join(", "), form.goalDetail.trim()].filter(Boolean).join(". ");
       const differentiator = [form.differentiators.join(", "), form.differentiatorDetail.trim()]
         .filter(Boolean)
@@ -153,7 +189,7 @@ function OnboardingFlow() {
         platform: mainPlatform,
         channel_name: form.channelName,
         subscribers_range: form.subscribersRange,
-        niche: form.niche,
+        niche: nicheValue,
         niche_description: form.nicheDescription,
         main_goal: mainGoal || null,
         audience_pain: form.audiencePain.trim() || null,
@@ -166,11 +202,20 @@ function OnboardingFlow() {
         channel_name: form.channelName || null,
         main_platform: mainPlatform || null,
         platforms: form.platforms.length > 0 ? form.platforms : null,
-        niche: form.niche || null,
+        niche: nicheValue || null,
+        posting_frequency: form.postingFrequency || null,
+        recording_style: form.recordingStyle || null,
+        reference_creators: form.referenceCreators.trim() || null,
         tone: form.tone.trim() || null,
         ai_instructions: form.aiInstructions.trim() || null,
       }).eq("id", user.id);
       if (error) throw error;
+
+      // El contexto (nicho/plataforma/tono) ya está en el perfil recién guardado; el chat
+      // lo recoge server-side al montar, así que basta con dejar el prompt semilla.
+      try {
+        sessionStorage.setItem(CREAR_SEED_STORAGE_KEY, ONBOARDING_SEED_PROMPT);
+      } catch {}
 
       router.push(nextPath);
     } catch {
@@ -181,7 +226,8 @@ function OnboardingFlow() {
 
   const canAdvance = [
     step === 1 && form.channelName.length > 1 && form.platforms.length > 0,
-    step === 2 && !!form.subscribersRange && form.niche.trim().length > 1,
+    step === 2 && !!form.subscribersRange && (form.niches.length > 0 || form.nicheCustom.trim().length > 1),
+    true,
     true,
     true,
     true,
@@ -191,7 +237,8 @@ function OnboardingFlow() {
   const optionalUntouched =
     (step === 3 && form.goals.length === 0 && !form.goalDetail.trim()) ||
     (step === 4 && form.differentiators.length === 0 && !form.differentiatorDetail.trim() && !form.audiencePain.trim()) ||
-    (step === 5 && !form.tone.trim() && !form.aiInstructions.trim());
+    (step === 5 && !form.postingFrequency && !form.recordingStyle && !form.referenceCreators.trim()) ||
+    (step === 6 && !form.tone.trim() && !form.aiInstructions.trim());
 
   return (
     <div
@@ -306,7 +353,7 @@ function OnboardingFlow() {
                               Principal
                             </span>
                           )}
-                          <span className="text-xl block mb-1">{p.icon}</span>
+                          <p.icon size={22} className="block mb-1" />
                           <span className="font-medium text-sm block">{p.label}</span>
                           <span className="text-xs text-[var(--color-muted-foreground)]">{p.desc}</span>
                         </button>
@@ -334,18 +381,21 @@ function OnboardingFlow() {
                   </div>
                 </div>
                 <div>
-                  <Label className="mb-3 block">¿Cuál es tu nicho?</Label>
+                  <Label className="mb-1 block">¿Cuál es tu nicho?</Label>
+                  <p className="text-xs text-[var(--color-muted-foreground)] mb-3">
+                    Puedes elegir varios — humor, entretenimiento o lifestyle suelen combinar con cualquier otro.
+                  </p>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {NICHE_PRESETS.map((n) => (
-                      <Chip key={n} selected={form.niche === n} onClick={() => update("niche", n)}>
+                      <Chip key={n} selected={form.niches.includes(n)} onClick={() => toggleIn("niches", n)}>
                         {n}
                       </Chip>
                     ))}
                   </div>
                   <Input
                     placeholder="¿No lo ves? Escríbelo: ajedrez, crianza, coches clásicos..."
-                    value={NICHE_PRESETS.includes(form.niche) ? "" : form.niche}
-                    onChange={(e) => update("niche", e.target.value)}
+                    value={form.nicheCustom}
+                    onChange={(e) => update("nicheCustom", e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -432,6 +482,46 @@ function OnboardingFlow() {
               <div className="space-y-6">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 5 de {TOTAL_STEPS}</p>
+                  <h2 className="text-2xl font-semibold">Cómo trabajas</h2>
+                  <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">
+                    Todo esto es opcional — ayuda a la IA a proponer ideas y guiones que encajen con tu forma de grabar.
+                  </p>
+                </div>
+                <div>
+                  <Label className="mb-3 block">¿Con qué frecuencia publicas o quieres publicar? <OptionalTag /></Label>
+                  <div className="flex flex-wrap gap-2">
+                    {POSTING_FREQUENCY_OPTIONS.map((f) => (
+                      <Chip key={f} selected={form.postingFrequency === f} onClick={() => update("postingFrequency", f)}>
+                        {f}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-3 block">¿Cómo grabas normalmente? <OptionalTag /></Label>
+                  <div className="flex flex-wrap gap-2">
+                    {RECORDING_STYLE_OPTIONS.map((r) => (
+                      <Chip key={r} selected={form.recordingStyle === r} onClick={() => update("recordingStyle", r)}>
+                        {r}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>¿Qué creadores admiras o te gustaría parecerte? <OptionalTag /></Label>
+                  <Input
+                    placeholder="ej. @nombre1, Canal X..."
+                    value={form.referenceCreators}
+                    onChange={(e) => update("referenceCreators", e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 6 && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 6 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Tono e instrucciones para la IA</h2>
                   <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">
                     Se guardan en tu perfil y se aplican a todo lo que generes. Podrás cambiarlos en Ajustes.
@@ -464,7 +554,7 @@ function OnboardingFlow() {
               </div>
             )}
 
-            {step === 6 && (
+            {step === 7 && (
               <div className="space-y-6 text-center py-4">
                 <div className="text-5xl">🚀</div>
                 <div>
@@ -480,7 +570,7 @@ function OnboardingFlow() {
                 <div className="bg-[var(--color-primary-light)] rounded-xl p-4 text-left">
                   <p className="text-sm font-medium text-[var(--color-primary)] mb-1">Sugerencia para empezar:</p>
                   <p className="text-sm text-[var(--color-primary)]/80">
-                    Ve al dashboard y usa el botón ⚡ Sorpréndeme para recibir 5 ideas virales basadas en tu perfil, sin formulario.
+                    Te llevamos directo al chat con IA — ya le hemos pedido 5 ideas virales basadas en tu perfil para que no empieces desde cero.
                   </p>
                 </div>
               </div>
@@ -502,7 +592,7 @@ function OnboardingFlow() {
             </Button>
           ) : (
             <Button onClick={handleFinish} disabled={loading} size="lg">
-              {loading ? "Configurando..." : "Ir al dashboard →"}
+              {loading ? "Configurando..." : "Empezar a crear →"}
             </Button>
           )}
         </div>

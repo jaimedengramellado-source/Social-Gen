@@ -53,7 +53,7 @@ function LoginForm() {
       return;
     }
 
-    router.push(nextPath ?? "/dashboard");
+    router.push(nextPath ?? "/crear");
   }
 
   async function handleGoogle() {

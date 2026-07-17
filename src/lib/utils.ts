@@ -39,6 +39,12 @@ export function buildScriptSeedPrompt(title: string, description?: string | null
   ].filter(Boolean).join("\n");
 }
 
+// Semilla del primer mensaje al terminar el onboarding: el contexto de nicho/plataforma/
+// tono ya llega al chat vía fetchUserAIContext (perfil recién guardado), así que el
+// prompt en sí no necesita repetirlo.
+export const ONBOARDING_SEED_PROMPT =
+  "Dame 5 ideas de contenido con potencial viral para arrancar mi canal, adaptadas a mi nicho y mi objetivo. Para cada una, incluye un título con gancho y una frase explicando por qué funcionaría.";
+
 export function formatCredits(n: number): string {
   return n.toLocaleString("es-ES");
 }

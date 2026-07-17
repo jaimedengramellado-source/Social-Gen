@@ -20,7 +20,10 @@ create table profiles (
   platforms text[], -- todas las plataformas elegidas en onboarding; main_platform guarda la principal
   channel_name text,
   credits_refreshed_at timestamptz default now(),
-  weekly_digest boolean not null default true -- opt-out del resumen semanal por email
+  weekly_digest boolean not null default true, -- opt-out del resumen semanal por email
+  posting_frequency text, -- ritmo de publicación declarado en onboarding/ajustes
+  recording_style text, -- cómo graba (a cámara, voz en off, pantalla...); afina el guion generado
+  reference_creators text -- creadores que admira/quiere parecerse, para tono y ángulos de contenido
 );
 
 create table channels (

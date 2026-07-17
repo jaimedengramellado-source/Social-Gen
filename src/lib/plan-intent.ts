@@ -8,7 +8,7 @@ export function planCheckoutPath(plan?: string | null, billing?: string | null):
 }
 
 // Solo rutas internas: evita open redirects en el parámetro next
-export function safeInternalPath(path: string | null | undefined, fallback = "/dashboard"): string {
+export function safeInternalPath(path: string | null | undefined, fallback = "/crear"): string {
   if (path && path.startsWith("/") && !path.startsWith("//")) return path;
   return fallback;
 }
