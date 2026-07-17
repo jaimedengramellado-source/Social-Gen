@@ -8,6 +8,7 @@ import type { ChatSession, ChatProject } from "./chat-sidebar";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Profile } from "@/types";
 import { useToast } from "@/components/ui/toast";
+import { buildScriptSeedPrompt, CREAR_SEED_STORAGE_KEY } from "@/lib/utils";
 
 interface CrearClientProps {
   profile: Profile;
@@ -43,48 +44,63 @@ export function CrearClient({ profile }: CrearClientProps) {
       .catch(() => {});
   }, []);
 
-  // Deep link desde el dashboard/biblioteca/documentos: /crear?idea=<id> o
-  // ?script=<id> arranca el chat desarrollando esa idea o guion en vez de
-  // dejarlo vacío. Limpiamos la URL enseguida para que un refresh no reenvíe.
+  // Arranque del chat con contenido: (a) semilla directa en sessionStorage (dashboard —
+  // sin fetch intermedio, no puede fallar), o (b) deep link /crear?idea=<id> o
+  // ?script=<id> desde biblioteca/documentos. Limpiamos URL y storage enseguida para
+  // que un refresh no reenvíe. Si el deep link no carga, se avisa en vez de dejar el
+  // chat vacío en silencio.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ideaId = params.get("idea");
     const scriptId = params.get("script");
-    if (!ideaId && !scriptId) return;
+
+    if (!ideaId && !scriptId) {
+      try {
+        const seed = sessionStorage.getItem(CREAR_SEED_STORAGE_KEY);
+        if (seed) {
+          sessionStorage.removeItem(CREAR_SEED_STORAGE_KEY);
+          setInitialPrompt(seed);
+        }
+      } catch {}
+      return;
+    }
     router.replace("/crear", { scroll: false });
+
+    const notifyLoadError = () =>
+      toast({
+        title: "No se ha podido cargar el contenido",
+        description: "Vuelve a abrir la idea o el guion desde su lista e inténtalo de nuevo.",
+      });
 
     if (ideaId) {
       fetch(`/api/ideas/${ideaId}`)
         .then(r => (r.ok ? r.json() : null))
         .then(data => {
           const idea = data?.idea;
-          if (!idea) return;
-          setInitialPrompt(
-            [
-              "Escribe un guion completo listo para grabar para este vídeo:",
-              "",
-              `**${idea.title}**`,
-              idea.description ?? "",
-              "",
-              "Propón antes las variantes de hook, y después el guion completo con desarrollo en 2-3 bloques de contenido con timestamps y CTA final potente.",
-            ].filter(Boolean).join("\n")
-          );
+          if (!idea) {
+            notifyLoadError();
+            return;
+          }
+          setInitialPrompt(buildScriptSeedPrompt(idea.title, idea.description));
         })
-        .catch(() => {});
+        .catch(notifyLoadError);
     } else if (scriptId) {
       fetch(`/api/scripts/${scriptId}`)
         .then(r => (r.ok ? r.json() : null))
         .then(data => {
           const script = data?.script;
-          if (!script) return;
+          if (!script) {
+            notifyLoadError();
+            return;
+          }
           const hookLine = script.hook ? `\n\nHook actual: "${script.hook}"` : "";
           setInitialPrompt(
             `Quiero seguir trabajando en este guion: **${script.title || "Sin título"}**${hookLine}\n\nAyúdame a mejorarlo, ampliarlo o proponer alternativas.`
           );
         })
-        .catch(() => {});
+        .catch(notifyLoadError);
     }
-  }, [router]);
+  }, [router, toast]);
 
   async function handleSelectSession(id: string) {
     setMobileHistoryOpen(false);

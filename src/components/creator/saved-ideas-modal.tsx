@@ -5,7 +5,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
-import { Bookmark, Folder } from "lucide-react";
+import { Bookmark, Folder, Trash2 } from "lucide-react";
 
 interface SavedIdea {
   id: string;
@@ -22,9 +22,10 @@ interface SavedIdea {
 interface SavedIdeasModalProps {
   open: boolean;
   onClose: () => void;
+  onDeleted?: () => void;
 }
 
-export function SavedIdeasModal({ open, onClose }: SavedIdeasModalProps) {
+export function SavedIdeasModal({ open, onClose, onDeleted }: SavedIdeasModalProps) {
   const [ideas, setIdeas] = useState<SavedIdea[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +37,14 @@ export function SavedIdeasModal({ open, onClose }: SavedIdeasModalProps) {
       .then(d => { if (d.ideas) setIdeas(d.ideas); })
       .finally(() => setLoading(false));
   }, [open]);
+
+  async function handleDelete(id: string) {
+    const prev = ideas;
+    setIdeas(ideas.filter(i => i.id !== id));
+    const res = await fetch(`/api/ideas/${id}`, { method: "DELETE" });
+    if (!res.ok) { setIdeas(prev); return; }
+    onDeleted?.();
+  }
 
   const groups: { id: string; name: string; ideas: SavedIdea[] }[] = [];
   const groupIndex = new Map<string, number>();
@@ -86,7 +95,7 @@ export function SavedIdeasModal({ open, onClose }: SavedIdeasModalProps) {
                   <Folder size={11} /> {group.name}
                 </p>
                 <div className="space-y-2">
-                  {group.ideas.map(idea => <SavedIdeaRow key={idea.id} idea={idea} />)}
+                  {group.ideas.map(idea => <SavedIdeaRow key={idea.id} idea={idea} onDelete={handleDelete} />)}
                 </div>
               </div>
             ))}
@@ -98,7 +107,7 @@ export function SavedIdeasModal({ open, onClose }: SavedIdeasModalProps) {
                   </p>
                 )}
                 <div className="space-y-2">
-                  {unfiled.map(idea => <SavedIdeaRow key={idea.id} idea={idea} />)}
+                  {unfiled.map(idea => <SavedIdeaRow key={idea.id} idea={idea} onDelete={handleDelete} />)}
                 </div>
               </div>
             )}
@@ -109,7 +118,7 @@ export function SavedIdeasModal({ open, onClose }: SavedIdeasModalProps) {
   );
 }
 
-function SavedIdeaRow({ idea }: { idea: SavedIdea }) {
+function SavedIdeaRow({ idea, onDelete }: { idea: SavedIdea; onDelete: (id: string) => void }) {
   return (
     <div className="p-3 rounded-xl border border-[var(--color-border)] flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">
@@ -138,7 +147,16 @@ function SavedIdeaRow({ idea }: { idea: SavedIdea }) {
           )}
         </div>
       </div>
-      {idea.viral_score != null && <ViralScoreBadge score={idea.viral_score} size="sm" />}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {idea.viral_score != null && <ViralScoreBadge score={idea.viral_score} size="sm" />}
+        <button
+          onClick={() => onDelete(idea.id)}
+          className="p-1.5 rounded-lg hover:bg-red-50 text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors"
+          title="Eliminar idea"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     </div>
   );
 }

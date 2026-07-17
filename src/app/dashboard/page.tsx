@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     supabase.from("ideas").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
     supabase.from("scripts").select("id, title, platform, viral_score, created_at, status").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5),
     supabase.from("scripts").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("ideas").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("ideas").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("is_saved", true),
   ]);
 
   return (

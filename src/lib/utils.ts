@@ -23,6 +23,22 @@ export function extractJSON(text: string): string {
   return cleaned;
 }
 
+// Semilla del chat de /crear al abrir una idea. La clave de sessionStorage la usa el
+// dashboard (escritura) y crear-client (lectura); el builder también lo usa el flujo
+// /crear?idea= — mantener ambos caminos con el mismo prompt.
+export const CREAR_SEED_STORAGE_KEY = "crear-seed-prompt";
+
+export function buildScriptSeedPrompt(title: string, description?: string | null): string {
+  return [
+    "Escribe un guion completo listo para grabar para este vídeo:",
+    "",
+    `**${title}**`,
+    description ?? "",
+    "",
+    "Propón antes las variantes de hook, y después el guion completo con desarrollo en 2-3 bloques de contenido con timestamps y CTA final potente.",
+  ].filter(Boolean).join("\n");
+}
+
 export function formatCredits(n: number): string {
   return n.toLocaleString("es-ES");
 }

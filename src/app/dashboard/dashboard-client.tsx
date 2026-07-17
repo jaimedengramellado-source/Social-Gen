@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Zap, ArrowRight, TrendingUp, FileText, Plus, Bookmark, Lightbulb, Check } from "lucide-react";
 import Link from "next/link";
 import { UpgradeModal } from "@/components/shared/upgrade-modal";
 import { SavedIdeasModal } from "@/components/creator/saved-ideas-modal";
 import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
-import { timeAgo } from "@/lib/utils";
+import { timeAgo, buildScriptSeedPrompt, CREAR_SEED_STORAGE_KEY } from "@/lib/utils";
 import { PLATFORM_LABELS } from "@/types";
 import type { Profile, Idea } from "@/types";
+
+// Las ideas pueden llegar sin id si el insert en BD falló — el flujo de clic no lo necesita.
+type SurpriseIdea = Pick<Idea, "title" | "description" | "viral_score"> & { id?: string };
 
 const YT_RED = "var(--color-primary)";
 
@@ -36,12 +39,79 @@ function greeting() {
   return "Buenas noches";
 }
 
+const SORPRESA_LOADING_PHRASES = [
+  "Analizando tu nicho…",
+  "Descartando lo predecible…",
+  "Buscando ángulos que nadie ha tocado…",
+  "Puntuando el potencial viral…",
+  "Puliendo los títulos…",
+];
+
+// La generación tarda 20-45s: los esqueletos ocupan el hueco donde aparecerán las
+// ideas y las frases rotando transmiten avance real, no un spinner congelado.
+function SorpresaLoadingCards({ slow }: { slow: boolean }) {
+  const [phraseIdx, setPhraseIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setPhraseIdx(i => (i + 1) % SORPRESA_LOADING_PHRASES.length), 2400);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-2">
+      {[0, 1, 2].map(i => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.12 }}
+          className="flex items-center justify-between gap-4 p-3 rounded-xl border border-[var(--color-border)]"
+        >
+          <div className="flex-1 min-w-0 space-y-2 animate-pulse">
+            <div className="h-3.5 rounded-full bg-[var(--color-muted)]" style={{ width: `${72 - i * 14}%` }} />
+            <div className="h-3 rounded-full bg-[var(--color-muted)]" style={{ width: `${88 - i * 10}%` }} />
+          </div>
+          <div className="w-9 h-9 rounded-full flex-shrink-0 animate-pulse bg-[var(--color-muted)]" />
+        </motion.div>
+      ))}
+      <div className="flex items-center gap-2 pt-1">
+        <span className="relative flex w-2 h-2 flex-shrink-0">
+          <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-60" style={{ backgroundColor: YT_RED }} />
+          <span className="relative inline-flex w-2 h-2 rounded-full" style={{ backgroundColor: YT_RED }} />
+        </span>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={phraseIdx}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="text-xs text-[var(--color-muted-foreground)]"
+          >
+            {SORPRESA_LOADING_PHRASES[phraseIdx]}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+      {slow && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-[11px] text-[var(--color-muted-foreground)]"
+        >
+          La IA está afinando las ideas, puede tardar hasta un minuto…
+        </motion.p>
+      )}
+    </motion.div>
+  );
+}
+
 export function DashboardClient({ profile, recentIdeas, recentScripts, totalScripts, totalIdeas }: DashboardClientProps) {
   const router = useRouter();
   const [sorprendiendome, setSorprendiendome] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showSavedIdeas, setShowSavedIdeas] = useState(false);
-  const [sorpresas, setSorpresas] = useState<Idea[]>([]);
+  const [savedIdeasCount, setSavedIdeasCount] = useState(totalIdeas);
+  const [sorpresas, setSorpresas] = useState<SurpriseIdea[]>([]);
   const [sorprendeError, setSorprendeError] = useState<string | null>(null);
   const [sorprendeSlow, setSorprendeSlow] = useState(false);
   const [feedbackCopied, setFeedbackCopied] = useState(false);
@@ -53,6 +123,18 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
       setTimeout(() => setFeedbackCopied(false), 2000);
     } catch {
       // portapapeles no disponible (contexto no seguro); el enlace del texto sigue funcionando
+    }
+  }
+
+  function openIdeaInChat(idea: SurpriseIdea) {
+    // Siembra el chat vía sessionStorage en vez de /crear?idea=<id>: no depende de que
+    // el insert en BD funcionara ni de un fetch extra al montar /crear, así el clic
+    // nunca acaba en un chat vacío.
+    try {
+      sessionStorage.setItem(CREAR_SEED_STORAGE_KEY, buildScriptSeedPrompt(idea.title, idea.description));
+      router.push("/crear");
+    } catch {
+      router.push(idea.id ? `/crear?idea=${idea.id}` : "/crear");
     }
   }
 
@@ -97,7 +179,11 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} creditsRemaining={profile.credits_remaining} plan={profile.plan} />
-      <SavedIdeasModal open={showSavedIdeas} onClose={() => setShowSavedIdeas(false)} />
+      <SavedIdeasModal
+        open={showSavedIdeas}
+        onClose={() => setShowSavedIdeas(false)}
+        onDeleted={() => setSavedIdeasCount((c) => Math.max(0, c - 1))}
+      />
 
       {/* ── Feedback banner ── */}
       <div
@@ -186,7 +272,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
           style={{ borderColor: YT_RED, boxShadow: "var(--shadow-card)" }}
         >
           <Bookmark size={14} style={{ color: YT_RED }} className="mb-2" />
-          <p className="text-2xl font-black" style={{ color: YT_RED }}>{totalIdeas}</p>
+          <p className="text-2xl font-black" style={{ color: YT_RED }}>{savedIdeasCount}</p>
           <p className="text-xs font-semibold mt-0.5" style={{ color: YT_RED }}>Ideas guardadas →</p>
         </button>
         <div
@@ -225,15 +311,7 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
           </button>
         </div>
 
-        {sorprendiendome && sorprendeSlow && (
-          <motion.p
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 text-xs text-[var(--color-muted-foreground)]"
-          >
-            La IA está pensando las ideas, puede tardar hasta un minuto…
-          </motion.p>
-        )}
+        {sorprendiendome && <SorpresaLoadingCards slow={sorprendeSlow} />}
 
         {sorprendeError && (
           <motion.p
@@ -246,21 +324,29 @@ export function DashboardClient({ profile, recentIdeas, recentScripts, totalScri
           </motion.p>
         )}
 
-        {sorpresas.length > 0 && (
+        {!sorprendiendome && sorpresas.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-2">
-            {sorpresas.map((idea) => (
-              <div
-                key={idea.id}
-                onClick={() => router.push(`/crear?idea=${idea.id}`)}
-                className="flex items-center justify-between gap-4 p-3 rounded-xl border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-foreground)] transition-colors"
+            {sorpresas.map((idea, i) => (
+              <button
+                key={idea.id ?? `sorpresa-${i}`}
+                type="button"
+                onClick={() => openIdeaInChat(idea)}
+                className="group w-full text-left flex items-center justify-between gap-4 p-3 rounded-xl border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-foreground)] transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{idea.title}</p>
                   <p className="text-xs text-[var(--color-muted-foreground)] truncate">{idea.description}</p>
                 </div>
                 <ViralScoreBadge score={idea.viral_score} size="sm" />
-              </div>
+                <ArrowRight
+                  size={14}
+                  className="flex-shrink-0 text-[var(--color-muted-foreground)] transition-transform group-hover:translate-x-0.5"
+                />
+              </button>
             ))}
+            <p className="text-[11px] text-[var(--color-muted-foreground)] pt-1">
+              Toca una idea y la IA escribirá su guion completo en el chat.
+            </p>
           </motion.div>
         )}
       </div>

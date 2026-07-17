@@ -3,7 +3,33 @@ import { createClient } from "@/lib/supabase/server";
 import { getAnthropicClient, MODEL, SYSTEM_PROMPTS, fetchUserAIContext, THINKING_ADAPTIVE, extractText, cachedSystem } from "@/lib/anthropic";
 import { checkAndDeductCredits, refundCredits, recordTokenUsage } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { extractJSON } from "@/lib/utils";
+
+// Structured outputs: la API garantiza que la respuesta valida contra este schema, así
+// que el JSON.parse ya no puede reventar por una comilla sin escapar o texto extra
+// (causa real de AI_ERROR en producción, ver logs del 2026-07-16). Sin minItems ni
+// minimum/maximum — structured outputs no los soporta; los rangos se ajustan en código.
+const SURPRISE_IDEAS_SCHEMA = {
+  type: "object",
+  properties: {
+    ideas: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Título listo para usar, máx 70 caracteres. Imposible de no hacer clic." },
+          description: { type: "string", description: "2-3 frases que desarrollan el ángulo único. Máx 150 caracteres." },
+          viral_score: { type: "integer", description: "Puntuación de potencial viral entre 1 y 100." },
+          hook_type: { type: "string", enum: ["Curiosidad", "Shock", "Identidad", "Miedo", "Contrarian", "Revelación", "Transformación", "Morbo", "FOMO"] },
+          content_style: { type: "string", enum: ["Educativo", "Entretenimiento", "Motivacional", "Humor", "Polémico", "Tutorial", "Documental", "Experimento"] },
+        },
+        required: ["title", "description", "viral_score", "hook_type", "content_style"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["ideas"],
+  additionalProperties: false,
+};
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -50,34 +76,55 @@ IMPORTANTE: Estas ideas deben ser INESPERADAS, ORIGINALES y muy distintas entre 
     // usuario puede simplemente volver a pulsar el botón.
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
-      max_tokens: 3500,
+      // El thinking adaptativo consume del mismo tope que la respuesta: con 3500 el
+      // JSON llegaba truncado a veces. 8000 iguala al endpoint principal de ideas.
+      max_tokens: 8000,
       thinking: THINKING_ADAPTIVE,
       system: cachedSystem(SYSTEM_PROMPTS.ideas, userContext),
       messages: [{ role: "user", content: userPrompt }],
+      output_config: { format: { type: "json_schema", schema: SURPRISE_IDEAS_SCHEMA } },
     }, { timeout: 60000, maxRetries: 0 });
 
     await recordTokenUsage(credit.logId, MODEL, message.usage);
 
-    const ideas: Array<Record<string, unknown>> = JSON.parse(extractJSON(extractText(message)));
+    if (message.stop_reason === "max_tokens" || message.stop_reason === "refusal") {
+      throw new Error(`unexpected stop_reason: ${message.stop_reason}`);
+    }
 
-    const toInsert = ideas.slice(0, 5).map((idea: Record<string, unknown>) => ({
+    const parsed = JSON.parse(extractText(message)) as { ideas: Array<Record<string, unknown>> };
+
+    const ideas = (parsed.ideas ?? [])
+      .slice(0, 5)
+      .map((idea) => ({
+        title: String(idea.title ?? ""),
+        description: String(idea.description ?? ""),
+        viral_score: Math.min(100, Math.max(1, Math.round(Number(idea.viral_score) || 70))),
+        hook_type: String(idea.hook_type ?? ""),
+        content_style: String(idea.content_style ?? ""),
+      }))
+      .filter((idea) => idea.title);
+
+    if (ideas.length === 0) {
+      throw new Error("model returned no ideas");
+    }
+
+    const toInsert = ideas.map((idea) => ({
       user_id: user.id,
       channel_id: channel?.id || null,
-      title: idea.title,
-      description: idea.description,
+      ...idea,
       platform: platformHint,
       format: "surprise",
       niche: nicheHint,
-      viral_score: idea.viral_score,
-      hook_type: idea.hook_type,
-      content_style: idea.content_style,
       is_saved: false,
     }));
 
-    const { data: saved } = await supabase.from("ideas").insert(toInsert).select();
+    const { data: saved, error: insertError } = await supabase.from("ideas").insert(toInsert).select();
+    // Si el insert falla se devuelven las ideas sin id igualmente: el dashboard ya no
+    // depende del id para abrir el chat, solo se pierde el histórico en BD.
+    if (insertError) console.error("sorprendeme insert error:", insertError.message);
 
     return NextResponse.json({
-      ideas: saved || ideas,
+      ideas: saved ?? ideas,
       creditsRemaining: credit.creditsRemaining,
     });
   } catch (err) {
