@@ -73,6 +73,9 @@ interface PlatformEntry {
   platform: string;
   text: string;
   privacyLevel?: string;
+  // Variante de foto recortada para esta red; sin ella se usa el archivo base
+  storagePath?: string;
+  fileSize?: number;
 }
 
 // Crea las publicaciones de un mismo vídeo en una o varias redes (grupo con
@@ -119,19 +122,35 @@ export async function POST(request: NextRequest) {
       platform,
       text,
       privacyLevel: typeof raw?.privacyLevel === "string" ? raw.privacyLevel : undefined,
+      storagePath: typeof raw?.storagePath === "string" && raw.storagePath ? raw.storagePath : undefined,
+      fileSize: raw?.fileSize !== undefined ? Number(raw.fileSize) : undefined,
     });
   }
 
-  const storagePath = typeof body.storagePath === "string" ? body.storagePath : "";
+  // El base es opcional si todas las redes traen su propia variante recortada
+  const storagePath = typeof body.storagePath === "string" && body.storagePath ? body.storagePath : null;
   const fileName = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
   const fileSize = Number(body.fileSize);
   const mediaType = body.mediaType === "image" ? "image" : "video";
   const scheduledAt = typeof body.scheduledAt === "string" && body.scheduledAt ? body.scheduledAt : null;
 
-  // El path debe colgar de la carpeta del usuario: es lo que garantiza la policy
-  // de Storage, y evita publicar vídeos de otros
-  if (!storagePath.startsWith(`${user.id}/`)) {
+  // Todos los paths deben colgar de la carpeta del usuario: es lo que garantiza
+  // la policy de Storage, y evita publicar vídeos de otros
+  if (storagePath && !storagePath.startsWith(`${user.id}/`)) {
     return NextResponse.json({ error: "INVALID_STORAGE_PATH" }, { status: 400 });
+  }
+  for (const e of entries) {
+    if (e.storagePath !== undefined) {
+      // Solo las fotos tienen variantes por red (el vídeo no se recorta)
+      if (mediaType !== "image" || !e.storagePath.startsWith(`${user.id}/`)) {
+        return NextResponse.json({ error: "INVALID_STORAGE_PATH" }, { status: 400 });
+      }
+      if (!Number.isFinite(e.fileSize) || e.fileSize! <= 0 || e.fileSize! > MAX_IMAGE_BYTES) {
+        return NextResponse.json({ error: "Tamaño de archivo inválido (máximo 8 MB)." }, { status: 400 });
+      }
+    } else if (!storagePath) {
+      return NextResponse.json({ error: "INVALID_STORAGE_PATH" }, { status: 400 });
+    }
   }
   const maxBytes = mediaType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
   if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > maxBytes) {
@@ -162,13 +181,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Confirmar que el vídeo existe en el bucket antes de encolar
-  const lastSlash = storagePath.lastIndexOf("/");
-  const { data: files } = await supabase.storage
-    .from("publish-videos")
-    .list(storagePath.slice(0, lastSlash), { search: storagePath.slice(lastSlash + 1) });
-  if (!files?.some((f) => f.name === storagePath.slice(lastSlash + 1))) {
-    return NextResponse.json({ error: "VIDEO_NOT_UPLOADED" }, { status: 400 });
+  // Confirmar que base y variantes existen en el bucket antes de encolar
+  const uniquePaths = [
+    ...new Set([
+      ...(storagePath ? [storagePath] : []),
+      ...entries.flatMap((e) => (e.storagePath ? [e.storagePath] : [])),
+    ]),
+  ];
+  for (const path of uniquePaths) {
+    const lastSlash = path.lastIndexOf("/");
+    const { data: files } = await supabase.storage
+      .from("publish-videos")
+      .list(path.slice(0, lastSlash), { search: path.slice(lastSlash + 1) });
+    if (!files?.some((f) => f.name === path.slice(lastSlash + 1))) {
+      return NextResponse.json({ error: "VIDEO_NOT_UPLOADED" }, { status: 400 });
+    }
   }
 
   const groupId = crypto.randomUUID();
@@ -205,13 +232,13 @@ export async function POST(request: NextRequest) {
     privacy: "public",
     scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
     status: "scheduled",
-    storage_path: storagePath,
+    storage_path: e.storagePath ?? storagePath,
     media_type: mediaType,
     group_id: groupId,
     settings: e.platform === "tiktok" && e.privacyLevel ? { privacy_level: e.privacyLevel } : {},
     calendar_event_id: calendarEventId,
     file_name: fileName,
-    file_size: fileSize,
+    file_size: e.fileSize ?? fileSize,
   }));
 
   const { data: posts, error } = await supabase

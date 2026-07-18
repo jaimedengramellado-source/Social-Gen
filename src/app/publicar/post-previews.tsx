@@ -18,6 +18,24 @@ interface Props {
   text: string;
   title?: string;
   account?: PreviewAccount | null;
+  safeZones?: boolean;
+}
+
+// Marca la zona del vídeo que la UI de la red no tapa (rail de botones,
+// caption, barras superiores). Medidas aproximadas de las apps reales.
+function SafeZoneOverlay({ top, right, bottom, left }: { top: string; right: string; bottom: string; left: string }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none z-10">
+      <div
+        className="absolute rounded-md border border-dashed border-white/70"
+        style={{ top, right, bottom, left, boxShadow: "0 0 0 999px rgba(0,0,0,0.45)" }}
+      >
+        <span className="absolute top-1 left-1.5 text-[8px] font-semibold text-white/80 drop-shadow">
+          Zona segura
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function Avatar({ src, name, size }: { src: string | null | undefined; name: string; size: number }) {
@@ -89,11 +107,12 @@ function FullscreenRail({ items }: { items: Array<{ icon: React.ElementType; lab
   );
 }
 
-function TikTokPreview({ videoUrl, mediaType, text, account }: Props) {
+function TikTokPreview({ videoUrl, mediaType, text, account, safeZones }: Props) {
   const user = account?.name?.replace(/^@/, "") ?? "tucuenta";
   return (
     <div className="relative w-full h-full bg-black">
       <VideoFill url={videoUrl} mediaType={mediaType} />
+      {safeZones && <SafeZoneOverlay top="12%" right="18%" bottom="20%" left="3%" />}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/25 pointer-events-none" />
       <div className="absolute top-2.5 inset-x-0 flex justify-center gap-3 text-[10px] font-semibold">
         <span className="text-white/60">Siguiendo</span>
@@ -121,11 +140,12 @@ function TikTokPreview({ videoUrl, mediaType, text, account }: Props) {
   );
 }
 
-function ReelsPreview({ videoUrl, mediaType, text, account }: Props) {
+function ReelsPreview({ videoUrl, mediaType, text, account, safeZones }: Props) {
   const user = account?.name?.replace(/^@/, "") ?? "tucuenta";
   return (
     <div className="relative w-full h-full bg-black">
       <VideoFill url={videoUrl} mediaType={mediaType} />
+      {safeZones && <SafeZoneOverlay top="10%" right="18%" bottom="22%" left="3%" />}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
       <p className="absolute top-3 left-3 text-white text-[13px] font-bold drop-shadow">Reels</p>
       <FullscreenRail
@@ -154,11 +174,12 @@ function ReelsPreview({ videoUrl, mediaType, text, account }: Props) {
   );
 }
 
-function ShortsPreview({ videoUrl, text, title, account }: Props) {
+function ShortsPreview({ videoUrl, text, title, account, safeZones }: Props) {
   const channel = account?.name ?? "Tu canal";
   return (
     <div className="relative w-full h-full bg-black">
       <VideoFill url={videoUrl} />
+      {safeZones && <SafeZoneOverlay top="10%" right="16%" bottom="18%" left="3%" />}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
       <p className="absolute top-3 left-3 text-white text-[13px] font-bold drop-shadow">Shorts</p>
       <FullscreenRail

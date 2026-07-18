@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload, Loader2, Check, X, Film, CalendarDays, PenLine, ChevronDown, Sparkles,
-  AlertTriangle, Plus, Zap, Image as ImageIcon,
+  AlertTriangle, Plus, Zap, Image as ImageIcon, Crop, Scan,
 } from "lucide-react";
 import {
   YoutubeIcon, InstagramIcon, FacebookIcon, TiktokIcon, XIcon, LinkedinIcon, ThreadsIcon,
@@ -19,54 +19,14 @@ import {
 import type { BestSlot } from "./shared";
 import { PostPreview } from "./post-previews";
 import type { PreviewAccount } from "./post-previews";
+import { PhotoCrop } from "./photo-crop";
+import { IMAGE_INPUT_TYPES, MAX_IMAGE_INPUT_BYTES, prepareImageFile } from "./image-utils";
+import type { CropState } from "./image-utils";
 
 const MAX_FILE_BYTES = 400 * 1024 * 1024;
 // YouTube solo acepta Shorts de momento: vertical/cuadrado y ≤3 min (el largo
 // necesita miniaturas y más ajustes que aún no existen)
 const MAX_SHORT_SECONDS = 181;
-
-// Fotos: se re-codifican a JPEG en el navegador (Instagram solo acepta JPEG
-// por URL) y se comprimen hasta ≤5 MB, el tope de imagen de X — el más estricto
-const IMAGE_INPUT_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_IMAGE_INPUT_BYTES = 30 * 1024 * 1024;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_IMAGE_DIMENSION = 2048;
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("No se pudo leer la imagen. ¿Está dañado el archivo?"));
-    img.src = url;
-  });
-}
-
-async function prepareImageFile(f: File): Promise<File> {
-  if (f.type === "image/jpeg" && f.size <= MAX_IMAGE_BYTES) return f;
-  const url = URL.createObjectURL(f);
-  try {
-    const img = await loadImage(url);
-    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("No se pudo procesar la imagen en este navegador.");
-    // La transparencia de PNG/WebP se aplana sobre blanco al pasar a JPEG
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    for (const quality of [0.92, 0.85, 0.75, 0.6]) {
-      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", quality));
-      if (blob && blob.size <= MAX_IMAGE_BYTES) {
-        return new File([blob], f.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
-      }
-    }
-    throw new Error("La foto es demasiado grande incluso tras comprimirla. Prueba con una resolución menor.");
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 export const PLATFORM_ORDER: PublishPlatform[] = [
   "youtube", "instagram", "facebook", "tiktok", "x", "linkedin", "threads",
@@ -122,6 +82,10 @@ interface Props {
 
 type UploadPhase = null | "buffer" | "queue" | "youtube";
 
+// Variante de la foto recortada para una red concreta (fase 1 del editor de
+// medios; el vídeo no se recorta, solo se previsualiza el encuadre)
+type MediaOverride = { file: File; url: string; crop: CropState };
+
 export function Composer({
   flags, youtubeConnection, connections, bestSlots, snippets, onLoadSnippets, refreshPosts, refreshRules,
 }: Props) {
@@ -154,6 +118,11 @@ export function Composer({
   const [videoMeta, setVideoMeta] = useState<{ duration: number; width: number; height: number } | null>(null);
   const [showSnippets, setShowSnippets] = useState(false);
 
+  const [mediaOverrides, setMediaOverrides] = useState<Partial<Record<PublishPlatform, MediaOverride>>>({});
+  const mediaOverridesRef = useRef(mediaOverrides);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [showSafeZones, setShowSafeZones] = useState(false);
+
   const [phase, setPhase] = useState<UploadPhase>(null);
   const [ytProgress, setYtProgress] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -171,11 +140,35 @@ export function Composer({
     return map;
   }, [connections]);
 
-  // La object URL del vídeo se crea/revoca al elegir archivo (no en un efecto);
-  // aquí solo queda liberar la última al desmontar.
+  // Las object URLs (vídeo base y variantes por red) se crean/revocan al elegir
+  // archivo o aplicar recortes (no en efectos); aquí solo queda liberar las
+  // últimas al desmontar.
+  useEffect(() => { mediaOverridesRef.current = mediaOverrides; }, [mediaOverrides]);
   useEffect(() => () => {
     if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
+    for (const o of Object.values(mediaOverridesRef.current)) if (o) URL.revokeObjectURL(o.url);
   }, []);
+
+  function clearMediaOverrides() {
+    for (const o of Object.values(mediaOverridesRef.current)) if (o) URL.revokeObjectURL(o.url);
+    setMediaOverrides({});
+  }
+
+  function applyMediaOverride(platform: PublishPlatform, f: File, crop: CropState) {
+    const old = mediaOverridesRef.current[platform];
+    if (old) URL.revokeObjectURL(old.url);
+    setMediaOverrides((prev) => ({ ...prev, [platform]: { file: f, url: URL.createObjectURL(f), crop } }));
+  }
+
+  function removeMediaOverride(platform: PublishPlatform) {
+    const old = mediaOverridesRef.current[platform];
+    if (old) URL.revokeObjectURL(old.url);
+    setMediaOverrides((prev) => {
+      const next = { ...prev };
+      delete next[platform];
+      return next;
+    });
+  }
 
   function setVideoFile(f: File | null) {
     if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
@@ -183,6 +176,7 @@ export function Composer({
     setVideoUrl(videoUrlRef.current);
     setFile(f);
     setVideoMeta(null);
+    clearMediaOverrides();
     if (videoUrlRef.current && f?.type.startsWith("video/")) {
       const probe = document.createElement("video");
       probe.preload = "metadata";
@@ -451,30 +445,53 @@ export function Composer({
     const rule = ruleEnabled && mediaType === "video" && effRuleSources.length > 0 && effRuleTargets.length > 0
       ? { sources: effRuleSources, targets: effRuleTargets, threshold: ruleThreshold, text: ruleFinalText }
       : null;
+    // Variantes recortadas por red (solo fotos): cada una es un archivo propio
+    // en el bucket. El archivo base solo hace falta si alguna red seleccionada
+    // no tiene variante o si hay regla condicional (siempre usa el original).
+    const activeOverrides: Array<{ platform: PublishPlatform; override: MediaOverride }> = [];
+    if (mediaType === "image") {
+      for (const p of cronPlatforms) {
+        const o = mediaOverrides[p];
+        if (o) activeOverrides.push({ platform: p, override: o });
+      }
+    }
     // Con regla, el vídeo también tiene que quedar en el bucket aunque solo haya
     // YouTube (la subida directa navegador→YouTube no deja copia para el crosspost)
-    const needStorage = cronPlatforms.length > 0 || rule !== null;
+    const needBase =
+      rule !== null ||
+      cronPlatforms.some((p) => mediaType !== "image" || !mediaOverrides[p]);
     let storagePath: string | null = null;
+    const platformPaths: Partial<Record<PublishPlatform, { path: string; size: number }>> = {};
+    const uploadedPaths: string[] = [];
     let createdPosts: Array<{ id: string; platform: string }> = [];
     let ytPostId: string | null = null;
 
     try {
-      if (needStorage) {
-        // 1. Vídeo al bucket, una sola vez para todas las redes del grupo
+      if (needBase || activeOverrides.length > 0) {
+        // 1. Archivo(s) al bucket: el base compartido y las variantes por red
         setPhase("buffer");
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Sesión caducada. Recarga la página.");
 
-        const ext = file.name.split(".").pop()?.toLowerCase() ?? (mediaType === "image" ? "jpg" : "mp4");
-        storagePath = `${user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("publish-videos")
-          .upload(storagePath, file, {
-            contentType: file.type || (mediaType === "image" ? "image/jpeg" : "video/mp4"),
-          });
-        if (uploadError) {
-          throw new Error(`No se pudo subir ${mediaType === "image" ? "la foto" : "el vídeo"}: ${uploadError.message}`);
+        const uploadToBucket = async (f: File): Promise<string> => {
+          const ext = f.name.split(".").pop()?.toLowerCase() ?? (mediaType === "image" ? "jpg" : "mp4");
+          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("publish-videos")
+            .upload(path, f, {
+              contentType: f.type || (mediaType === "image" ? "image/jpeg" : "video/mp4"),
+            });
+          if (uploadError) {
+            throw new Error(`No se pudo subir ${mediaType === "image" ? "la foto" : "el vídeo"}: ${uploadError.message}`);
+          }
+          uploadedPaths.push(path);
+          return path;
+        };
+
+        if (needBase) storagePath = await uploadToBucket(file);
+        for (const { platform, override } of activeOverrides) {
+          platformPaths[platform] = { path: await uploadToBucket(override.file), size: override.file.size };
         }
       }
 
@@ -493,18 +510,13 @@ export function Composer({
             platforms: cronPlatforms.map((p) => ({
               platform: p,
               text: effectiveText(p).trim(),
+              ...(platformPaths[p] ? { storagePath: platformPaths[p].path, fileSize: platformPaths[p].size } : {}),
               ...(p === "tiktok" ? { privacyLevel: effectiveTiktokPrivacy } : {}),
             })),
           }),
         });
         const json = await res.json();
-        if (!res.ok) {
-          const supabase = createClient();
-          if (storagePath) {
-            await supabase.storage.from("publish-videos").remove([storagePath]).catch(() => {});
-          }
-          throw new Error(json.error ?? "No se pudo crear la publicación.");
-        }
+        if (!res.ok) throw new Error(json.error ?? "No se pudo crear la publicación.");
         createdPosts = Array.isArray(json) ? json : [];
         queuedOk = true;
         // Evita duplicados si la subida a YouTube falla y el usuario reintenta
@@ -634,6 +646,10 @@ export function Composer({
       }
       resetForm();
     } catch (err) {
+      // Sin publicaciones encoladas nadie referencia los archivos subidos: limpiarlos
+      if (!queuedOk && uploadedPaths.length > 0) {
+        await createClient().storage.from("publish-videos").remove(uploadedPaths).catch(() => {});
+      }
       const msg = err instanceof Error ? err.message : "Error desconocido";
       setFormError(
         queuedOk
@@ -649,6 +665,18 @@ export function Composer({
 
   const previewPlatform: PublishPlatform | null =
     tab !== "general" ? tab : selected[0] ?? null;
+  const previewOverride =
+    previewPlatform && mediaType === "image" ? mediaOverrides[previewPlatform] : undefined;
+  // Zonas seguras: solo redes de vídeo fullscreen, donde la UI tapa contenido
+  const safeZonesAvailable =
+    mediaType === "video" &&
+    Boolean(file) &&
+    (previewPlatform === "tiktok" || previewPlatform === "instagram" || previewPlatform === "youtube");
+  const horizontalVideoWarning =
+    mediaType === "video" &&
+    videoMeta !== null &&
+    videoMeta.width > videoMeta.height &&
+    (previewPlatform === "tiktok" || previewPlatform === "instagram");
 
   const activeLimit = tab === "general" ? null : PLATFORM_TEXT_LIMITS[tab];
   const activeCount = tab === "general" ? generalText.length : effectiveText(tab).length;
@@ -827,6 +855,7 @@ export function Composer({
               const count = effectiveText(p).length;
               const over = count > PLATFORM_TEXT_LIMITS[p];
               const customized = Boolean(overrides[p]?.trim());
+              const cropped = Boolean(mediaOverrides[p]);
               return (
                 <button
                   key={p}
@@ -843,6 +872,7 @@ export function Composer({
                   <Icon size={11} colored={tab !== p && !over} />
                   {PLATFORM_LABELS[p]}
                   {customized && <PenLine size={9} />}
+                  {cropped && <Crop size={9} />}
                   {over && <AlertTriangle size={10} />}
                 </button>
               );
@@ -963,6 +993,44 @@ export function Composer({
             )}
           </div>
 
+          {/* Recorte de la foto para esta red (las variantes de vídeo llegarán más adelante) */}
+          {tab !== "general" && tab !== "youtube" && file && mediaType === "image" && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {mediaOverrides[tab] ? (
+                <>
+                  <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                    <Crop size={12} /> Foto ajustada para {PLATFORM_LABELS[tab]}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCropOpen(true)}
+                    className="text-[11px] font-medium hover:underline"
+                    style={{ color: "var(--color-primary)" }}
+                  >
+                    Editar recorte
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeMediaOverride(tab)}
+                    className="text-[11px] font-medium hover:underline"
+                    style={{ color: "var(--color-muted-foreground)" }}
+                  >
+                    Usar la original
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCropOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+                >
+                  <Crop size={12} /> Ajustar la foto para {PLATFORM_LABELS[tab]}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Visibilidad TikTok */}
           {tab === "tiktok" && (
             <div>
@@ -1009,15 +1077,33 @@ export function Composer({
             <>
               <PostPreview
                 platform={previewPlatform}
-                videoUrl={videoUrl}
+                videoUrl={previewOverride?.url ?? videoUrl}
                 mediaType={mediaType}
                 text={effectiveText(previewPlatform)}
                 title={ytTitle}
                 account={previewAccount(previewPlatform)}
+                safeZones={showSafeZones && safeZonesAvailable}
               />
               <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
                 Así se verá en {PLATFORM_LABELS[previewPlatform]}
+                {previewOverride ? " (foto ajustada)" : ""}
               </p>
+              {safeZonesAvailable && (
+                <button
+                  type="button"
+                  onClick={() => setShowSafeZones((v) => !v)}
+                  className="flex items-center gap-1 text-[11px] font-medium transition-colors hover:opacity-70"
+                  style={{ color: showSafeZones ? "var(--color-primary)" : "var(--color-muted-foreground)" }}
+                >
+                  <Scan size={10} /> {showSafeZones ? "Ocultar zonas seguras" : "Ver zonas seguras"}
+                </button>
+              )}
+              {horizontalVideoWarning && (
+                <p className="flex items-start gap-1.5 text-[11px] text-center" style={{ color: "var(--color-warning)" }}>
+                  <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
+                  Vídeo horizontal: en {PLATFORM_LABELS[previewPlatform]} se verá con bandas o recortado.
+                </p>
+              )}
             </>
           ) : (
             <div
@@ -1336,6 +1422,17 @@ export function Composer({
           </button>
         )}
       </div>
+
+      {cropOpen && tab !== "general" && tab !== "youtube" && file && videoUrl && mediaType === "image" && (
+        <PhotoCrop
+          platform={tab}
+          imageUrl={videoUrl}
+          fileName={file.name}
+          initial={mediaOverrides[tab]?.crop ?? null}
+          onApply={(f, crop) => { applyMediaOverride(tab, f, crop); setCropOpen(false); }}
+          onClose={() => setCropOpen(false)}
+        />
+      )}
     </section>
   );
 }
