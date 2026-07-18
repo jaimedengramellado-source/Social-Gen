@@ -24,6 +24,7 @@ export interface Profile {
   posting_frequency: string | null;
   recording_style: string | null;
   reference_creators: string | null;
+  main_goal: string | null;
 }
 
 export type ScheduledPostStatus = "uploading" | "scheduled" | "publishing" | "published" | "failed";

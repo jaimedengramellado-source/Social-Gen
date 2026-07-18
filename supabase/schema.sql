@@ -23,7 +23,8 @@ create table profiles (
   weekly_digest boolean not null default true, -- opt-out del resumen semanal por email
   posting_frequency text, -- ritmo de publicación declarado en onboarding/ajustes
   recording_style text, -- cómo graba (a cámara, voz en off, pantalla...); afina el guion generado
-  reference_creators text -- creadores que admira/quiere parecerse, para tono y ángulos de contenido
+  reference_creators text, -- creadores que admira/quiere parecerse, para tono y ángulos de contenido
+  main_goal text -- objetivo del canal; espejo del de channels pero este SÍ llega al contexto de la IA
 );
 
 create table channels (

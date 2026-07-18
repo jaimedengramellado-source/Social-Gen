@@ -296,6 +296,7 @@ export function buildUserContext(profile: Partial<Profile>): string {
   if (otherPlatforms.length > 0) parts.push(`- Otras plataformas donde publica: ${otherPlatforms.join(", ")}`);
   if (profile.channel_name) parts.push(`- Nombre del canal: ${profile.channel_name}`);
   if (profile.niche) parts.push(`- Nicho: ${profile.niche}`);
+  if (profile.main_goal) parts.push(`- Objetivo del canal: ${profile.main_goal}`);
   if (profile.tone) parts.push(`- Tono y personalidad: ${profile.tone}`);
   if (profile.posting_frequency) parts.push(`- Ritmo de publicación: ${profile.posting_frequency}`);
   if (profile.recording_style) parts.push(`- Cómo graba: ${profile.recording_style}`);
@@ -310,7 +311,7 @@ export async function fetchUserAIContext(supabase: any, userId: string): Promise
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("niche, tone, ai_instructions, main_platform, platforms, channel_name, posting_frequency, recording_style, reference_creators")
+      .select("niche, tone, ai_instructions, main_platform, platforms, channel_name, posting_frequency, recording_style, reference_creators, main_goal")
       .eq("id", userId)
       .single();
     if (!data) return "";

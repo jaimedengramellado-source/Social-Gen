@@ -203,6 +203,7 @@ function OnboardingFlow() {
         main_platform: mainPlatform || null,
         platforms: form.platforms.length > 0 ? form.platforms : null,
         niche: nicheValue || null,
+        main_goal: mainGoal || null,
         posting_frequency: form.postingFrequency || null,
         recording_style: form.recordingStyle || null,
         reference_creators: form.referenceCreators.trim() || null,

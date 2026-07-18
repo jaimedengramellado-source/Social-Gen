@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ComponentType } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { LogoutOverlay } from "@/components/shared/logout-overlay";
+import {
+  YoutubeIcon, InstagramIcon, TiktokIcon, FacebookIcon, XIcon, LinkedinIcon, ThreadsIcon,
+} from "@/components/shared/brand-icons";
+import type { BrandIconProps } from "@/components/shared/brand-icons";
 import { SnippetsSection } from "./snippets-section";
 import { PRICING_PLANS, PLAN_CREDITS, CREDIT_COSTS } from "@/types";
 import type { Profile, Channel } from "@/types";
@@ -59,16 +63,81 @@ const PLAN_LABEL: Record<string, string> = {
 
 const PLAN_ORDER: Record<string, number> = { free: 0, starter: 1, pro: 2, agency: 3 };
 
-const PLATFORM_OPTIONS = [
-  { value: "tiktok", label: "TikTok" },
-  { value: "reels", label: "Instagram Reels" },
-  { value: "youtube_shorts", label: "YouTube Shorts" },
-  { value: "youtube_long", label: "YouTube (vídeo largo)" },
-  { value: "facebook", label: "Facebook" },
-  { value: "linkedin", label: "LinkedIn" },
-  { value: "x", label: "X (Twitter)" },
-  { value: "threads", label: "Threads" },
+const PLATFORM_CHOICES: { id: string; label: string; icon: ComponentType<BrandIconProps> }[] = [
+  { id: "youtube_long", label: "YouTube", icon: YoutubeIcon },
+  { id: "youtube_shorts", label: "YouTube Shorts", icon: YoutubeIcon },
+  { id: "tiktok", label: "TikTok", icon: TiktokIcon },
+  { id: "reels", label: "Instagram Reels", icon: InstagramIcon },
+  { id: "facebook", label: "Facebook", icon: FacebookIcon },
+  { id: "linkedin", label: "LinkedIn", icon: LinkedinIcon },
+  { id: "x", label: "X (Twitter)", icon: XIcon },
+  { id: "threads", label: "Threads", icon: ThreadsIcon },
 ];
+
+const NICHE_PRESETS = [
+  "Marketing y negocios",
+  "Finanzas personales",
+  "Fitness y salud",
+  "Desarrollo personal",
+  "Tecnología e IA",
+  "Educación",
+  "Gaming",
+  "Belleza y moda",
+  "Humor y entretenimiento",
+  "Lifestyle",
+  "Cocina",
+  "Viajes",
+  "Arte y música",
+];
+
+const GOAL_OPTIONS = [
+  "Monetizar con publicidad y patrocinios",
+  "Conseguir clientes para mi negocio",
+  "Vender mis productos o cursos",
+  "Hacer crecer mi comunidad",
+  "Construir mi marca personal",
+  "Conseguir seguidores y visitas",
+  "Por diversión o como hobby",
+];
+
+// Reversa exacta de cómo onboarding construye el string guardado (niches + custom
+// unidos por ", "): separa lo que coincide con un preset de lo que es texto libre.
+function parseNicheValue(raw: string): { niches: string[]; custom: string } {
+  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return {
+    niches: parts.filter((p) => NICHE_PRESETS.includes(p)),
+    custom: parts.filter((p) => !NICHE_PRESETS.includes(p)).join(", "),
+  };
+}
+
+// Reversa de "[chips.join(', '), detail].join('. ')": si el primer tramo antes del
+// primer ". " son todo presets conocidos, el resto es el detalle; si no, todo es texto
+// libre (así no se pierde nada aunque el dato no encaje con el formato esperado).
+function parseGoalValue(raw: string): { goals: string[]; detail: string } {
+  if (!raw) return { goals: [], detail: "" };
+  const sepIdx = raw.indexOf(". ");
+  const firstSegment = sepIdx === -1 ? raw : raw.slice(0, sepIdx);
+  const rest = sepIdx === -1 ? "" : raw.slice(sepIdx + 2);
+  const candidateParts = firstSegment.split(",").map((s) => s.trim()).filter(Boolean);
+  const allMatch = candidateParts.length > 0 && candidateParts.every((p) => GOAL_OPTIONS.includes(p));
+  return allMatch ? { goals: candidateParts, detail: rest } : { goals: [], detail: raw };
+}
+
+function ChipToggle({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+        selected
+          ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
+          : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 const POSTING_FREQUENCY_OPTIONS = ["Sin ritmo fijo", "1-2 por semana", "3-5 por semana", "Casi a diario"];
 const RECORDING_STYLE_OPTIONS = ["Hablo a cámara", "Voz en off + B-roll", "Pantalla / tutorial", "Sin cámara (texto e imágenes)"];
@@ -102,7 +171,7 @@ const CARD_BRAND_LABELS: Record<string, string> = {
 
 const TAB_VALUES = ["cuenta", "ia", "seguridad", "plan", "facturacion"];
 
-type ChannelSnippet = Pick<Channel, "id" | "platform" | "niche" | "niche_description">;
+type ChannelSnippet = Pick<Channel, "id" | "platform" | "niche" | "niche_description" | "main_goal">;
 type UsageEntry = { action: string; total: number };
 type SavedCard = { brand: string; last4: string; expMonth: number; expYear: number };
 
@@ -126,9 +195,18 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   const [savingProfile, setSavingProfile] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
 
-  const [mainPlatform, setMainPlatform] = useState(channel?.platform || profile.main_platform || "");
-  const [niche, setNiche] = useState(channel?.niche || profile.niche || "");
+  const [platforms, setPlatforms] = useState<string[]>(() => {
+    if (profile.platforms && profile.platforms.length > 0) return profile.platforms;
+    const single = channel?.platform || profile.main_platform;
+    return single ? [single] : [];
+  });
+  const initialNiche = parseNicheValue(channel?.niche || profile.niche || "");
+  const [niches, setNiches] = useState<string[]>(initialNiche.niches);
+  const [nicheCustom, setNicheCustom] = useState(initialNiche.custom);
   const [nicheDesc, setNicheDesc] = useState(channel?.niche_description || "");
+  const initialGoal = parseGoalValue(channel?.main_goal || profile.main_goal || "");
+  const [goals, setGoals] = useState<string[]>(initialGoal.goals);
+  const [goalDetail, setGoalDetail] = useState(initialGoal.detail);
   const [tone, setTone] = useState(profile.tone || "");
   const [aiInstructions, setAiInstructions] = useState(profile.ai_instructions || "");
   const [postingFrequency, setPostingFrequency] = useState(profile.posting_frequency || "");
@@ -136,6 +214,16 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   const [referenceCreators, setReferenceCreators] = useState(profile.reference_creators || "");
   const [savingAI, setSavingAI] = useState(false);
   const [savedAI, setSavedAI] = useState(false);
+
+  function togglePlatform(id: string) {
+    setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  }
+  function toggleNiche(n: string) {
+    setNiches((prev) => (prev.includes(n) ? prev.filter((v) => v !== n) : [...prev, n]));
+  }
+  function toggleGoal(g: string) {
+    setGoals((prev) => (prev.includes(g) ? prev.filter((v) => v !== g) : [...prev, g]));
+  }
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -253,10 +341,15 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
   async function handleSaveAI() {
     setSavingAI(true);
     const supabase = createClient();
+    const mainPlatform = platforms[0] || "";
+    const nicheValue = [...niches, nicheCustom.trim()].filter(Boolean).join(", ");
+    const goalValue = [goals.join(", "), goalDetail.trim()].filter(Boolean).join(". ");
     const saves: PromiseLike<unknown>[] = [
       supabase.from("profiles").update({
         main_platform: mainPlatform || null,
-        niche: niche || null,
+        platforms: platforms.length > 0 ? platforms : null,
+        niche: nicheValue || null,
+        main_goal: goalValue || null,
         tone: tone || null,
         ai_instructions: aiInstructions || null,
         posting_frequency: postingFrequency || null,
@@ -268,8 +361,9 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
       saves.push(
         supabase.from("channels").update({
           platform: (mainPlatform || channel.platform) as Channel["platform"],
-          niche,
+          niche: nicheValue,
           niche_description: nicheDesc,
+          main_goal: goalValue || null,
         }).eq("id", channel.id)
       );
     }
@@ -539,26 +633,54 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               La IA usará estas instrucciones automáticamente en todas tus creaciones.
             </p>
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Plataforma principal</Label>
-                <select
-                  value={mainPlatform}
-                  onChange={(e) => setMainPlatform(e.target.value)}
-                  className="w-full h-10 rounded-lg border px-3 text-sm bg-white outline-none"
-                  style={{ borderColor: "var(--color-border)" }}
-                >
-                  <option value="">Selecciona tu plataforma...</option>
-                  {PLATFORM_OPTIONS.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
+              <div>
+                <Label className="mb-1 block">¿Dónde publicas?</Label>
+                <p className="text-xs mb-2" style={{ color: "var(--color-muted-foreground)" }}>
+                  Elige todas las que uses. La primera que marques será tu plataforma principal.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PLATFORM_CHOICES.map((p) => {
+                    const selected = platforms.includes(p.id);
+                    const isPrimary = platforms[0] === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => togglePlatform(p.id)}
+                        className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all ${
+                          selected
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
+                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50 bg-white"
+                        }`}
+                      >
+                        {isPrimary && (
+                          <span className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--color-primary)] text-white">
+                            Principal
+                          </span>
+                        )}
+                        <p.icon size={18} />
+                        <span className="text-sm font-medium">{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Nicho</Label>
+              <div>
+                <Label className="mb-1 block">Nicho</Label>
+                <p className="text-xs mb-2" style={{ color: "var(--color-muted-foreground)" }}>
+                  Puedes elegir varios.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {NICHE_PRESETS.map((n) => (
+                    <ChipToggle key={n} selected={niches.includes(n)} onClick={() => toggleNiche(n)}>
+                      {n}
+                    </ChipToggle>
+                  ))}
+                </div>
                 <Input
-                  value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
-                  placeholder="Ej: fitness y nutrición, cocina vegana, finanzas personales..."
+                  value={nicheCustom}
+                  onChange={(e) => setNicheCustom(e.target.value)}
+                  placeholder="¿No lo ves? Escríbelo: ajedrez, crianza, coches clásicos..."
                 />
               </div>
               <div className="space-y-1.5">
@@ -570,6 +692,24 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
                   placeholder="Describe en más detalle tu contenido y audiencia objetivo..."
                   className="w-full rounded-lg border px-3 py-2 text-sm resize-none outline-none bg-white"
                   style={{ borderColor: "var(--color-border)" }}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block">¿Qué quieres conseguir con tu canal?</Label>
+                <p className="text-xs mb-2" style={{ color: "var(--color-muted-foreground)" }}>
+                  Puedes elegir varios.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {GOAL_OPTIONS.map((g) => (
+                    <ChipToggle key={g} selected={goals.includes(g)} onClick={() => toggleGoal(g)}>
+                      {g}
+                    </ChipToggle>
+                  ))}
+                </div>
+                <Input
+                  value={goalDetail}
+                  onChange={(e) => setGoalDetail(e.target.value)}
+                  placeholder="¿Algo más? ej. Quiero conseguir clientes para mi agencia de diseño web..."
                 />
               </div>
               <div className="space-y-1.5">

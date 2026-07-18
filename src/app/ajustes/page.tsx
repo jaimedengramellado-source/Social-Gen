@@ -22,7 +22,7 @@ export default async function AjustesPage() {
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
       .from("channels")
-      .select("id, platform, niche, niche_description")
+      .select("id, platform, niche, niche_description, main_goal")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -53,7 +53,7 @@ export default async function AjustesPage() {
   return (
     <AjustesClient
       profile={profile as Profile}
-      channel={channel as Pick<Channel, "id" | "platform" | "niche" | "niche_description"> | null}
+      channel={channel as Pick<Channel, "id" | "platform" | "niche" | "niche_description" | "main_goal"> | null}
       usageByAction={usageByAction}
       scriptsCount={scriptsCount ?? 0}
       ideasCount={ideasCount ?? 0}
