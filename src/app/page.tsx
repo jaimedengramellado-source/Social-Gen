@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 import { LandingHero } from "@/components/landing/hero";
+import { LandingHowItWorks } from "@/components/landing/how-it-works";
 import { LandingFeatures } from "@/components/landing/features";
+import { LandingGuarantees } from "@/components/landing/guarantees";
 import { LandingPricing } from "@/components/landing/pricing-section";
 import { LandingFaq } from "@/components/landing/faq";
 
@@ -39,6 +41,7 @@ export default function LandingPage() {
         <LandingHero />
         <LandingHowItWorks />
         <LandingFeatures />
+        <LandingGuarantees />
         <LandingPricing />
         <LandingFaq />
       </main>
@@ -58,41 +61,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-  );
-}
-
-function LandingHowItWorks() {
-  const steps = [
-    { num: "01", title: "Elige tu plataforma y nicho", desc: "Selecciona YouTube, TikTok o Reels. Describe tu canal en una frase." },
-    { num: "02", title: "Responde 3 preguntas rápidas", desc: "La IA personaliza las ideas a tu audiencia y estilo de contenido." },
-    { num: "03", title: "Obtén tu guion viral en 30 segundos", desc: "Recibe 10 ideas con viral score + guion completo listo para grabar." },
-  ];
-
-  return (
-    <section className="py-24 px-6 border-t border-[var(--color-border)]">
-      <div className="mx-auto max-w-6xl">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)] mb-6">Cómo funciona</p>
-        <h2
-          className="text-4xl md:text-5xl font-normal mb-16 leading-tight"
-          style={{ fontFamily: "var(--font-instrument-serif)", letterSpacing: "-0.02em" }}
-        >
-          Tu primer guion viral<br />en menos de 3 minutos.
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {steps.map((step) => (
-            <div key={step.num} className="flex flex-col gap-4">
-              <span
-                className="text-7xl font-normal text-[var(--color-border)]"
-                style={{ fontFamily: "var(--font-instrument-serif)", letterSpacing: "-0.04em" }}
-              >
-                {step.num}
-              </span>
-              <h3 className="text-lg font-semibold">{step.title}</h3>
-              <p className="text-[var(--color-muted-foreground)] leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }

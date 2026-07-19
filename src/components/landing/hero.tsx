@@ -4,6 +4,19 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ViralScoreBadge } from "@/components/creator/viral-score-badge";
 import { Badge } from "@/components/ui/badge";
+import {
+  YoutubeIcon, TiktokIcon, InstagramIcon, FacebookIcon, XIcon, LinkedinIcon, ThreadsIcon,
+} from "@/components/shared/brand-icons";
+
+const PLATFORMS = [
+  { label: "YouTube", Icon: YoutubeIcon },
+  { label: "TikTok", Icon: TiktokIcon },
+  { label: "Instagram", Icon: InstagramIcon },
+  { label: "Facebook", Icon: FacebookIcon },
+  { label: "X", Icon: XIcon },
+  { label: "LinkedIn", Icon: LinkedinIcon },
+  { label: "Threads", Icon: ThreadsIcon },
+];
 
 const LOADING_STAGES = [
   "Analizando tu nicho…",
@@ -204,7 +217,7 @@ export function LandingHero() {
           transition={{ duration: 0.4, delay: 0.55 }}
           className="text-lg md:text-xl text-[var(--color-muted-foreground)] max-w-2xl mx-auto mb-10 leading-relaxed"
         >
-          Tu primer vídeo viral en segundos. Guiones e ideas virales generados por IA, optimizados para YouTube, TikTok e Instagram.
+          Tu primer vídeo viral en segundos. La mejor IA para garantizar visitas.
         </motion.p>
 
         {/* Demo input */}
@@ -490,16 +503,13 @@ export function LandingHero() {
         transition={{ duration: 0.5, delay: 0.9 }}
         className="mt-16 flex flex-wrap items-center justify-center gap-3"
       >
-        {["YouTube", "YouTube Shorts", "TikTok", "Instagram Reels"].map((p) => (
+        {PLATFORMS.map(({ label, Icon }) => (
           <span
-            key={p}
+            key={label}
             className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-medium shadow-[var(--shadow-card)]"
           >
-            {p === "YouTube" && <span className="text-red-500">▶</span>}
-            {p === "YouTube Shorts" && <span className="text-red-500">▶</span>}
-            {p === "TikTok" && <span>♪</span>}
-            {p === "Instagram Reels" && <span className="text-pink-500">⬡</span>}
-            {p}
+            <Icon size={14} colored />
+            {label}
           </span>
         ))}
       </motion.div>
