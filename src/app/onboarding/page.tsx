@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, type ComponentType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { safeInternalPath } from "@/lib/plan-intent";
 import { motion, AnimatePresence } from "framer-motion";
-import { PartyPopper } from "lucide-react";
+import { PartyPopper, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CelebrationBurst } from "@/components/shared/celebration-burst";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   YoutubeIcon, InstagramIcon, TiktokIcon, FacebookIcon, XIcon, LinkedinIcon, ThreadsIcon,
 } from "@/components/shared/brand-icons";
 import type { BrandIconProps } from "@/components/shared/brand-icons";
+import { AI_INSTRUCTION_EXAMPLES, RotatingPlaceholder } from "@/components/shared/rotating-placeholder";
 import { CREAR_SEED_STORAGE_KEY, ONBOARDING_SEED_PROMPT } from "@/lib/utils";
 import type { Platform } from "@/types";
 
@@ -99,7 +100,7 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-sm border transition-all ${
+      className={`px-4 py-2 rounded-full text-sm border cursor-pointer transition-all ${
         selected
           ? "border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
           : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50"
@@ -297,7 +298,7 @@ function OnboardingFlow() {
         )}
 
         {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
+        <div className="flex gap-1.5 mb-4">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((n) => (
             <div
               key={n}
@@ -305,6 +306,16 @@ function OnboardingFlow() {
             />
           ))}
         </div>
+
+        {step < TOTAL_STEPS && (
+          <div className="mb-6 flex items-start gap-2 rounded-lg bg-[var(--color-primary-light)] px-3.5 py-2.5 text-sm text-[var(--color-primary)]">
+            <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>
+              Cuanto más contexto nos des, mejores y más personalizados serán los contenidos que la IA
+              genere para ti.
+            </p>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -323,7 +334,7 @@ function OnboardingFlow() {
                   <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">La IA se adaptará a tu contenido y audiencia.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Nombre de tu canal</Label>
+                  <Label>Nombre de tu perfil o canal</Label>
                   <Input
                     placeholder="ej. Marketing con Juan"
                     value={form.channelName}
@@ -343,7 +354,7 @@ function OnboardingFlow() {
                         <button
                           key={p.id}
                           onClick={() => toggleIn("platforms", p.id)}
-                          className={`relative p-4 rounded-xl border text-left transition-all ${
+                          className={`relative p-4 rounded-xl border text-left cursor-pointer transition-all duration-150 hover:scale-[1.04] hover:shadow-md active:scale-[0.98] ${
                             selected
                               ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
                               : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50 bg-white"
@@ -354,7 +365,7 @@ function OnboardingFlow() {
                               Principal
                             </span>
                           )}
-                          <p.icon size={22} className="block mb-1" />
+                          <p.icon size={24} colored className="block mb-1.5" />
                           <span className="font-medium text-sm block">{p.label}</span>
                           <span className="text-xs text-[var(--color-muted-foreground)]">{p.desc}</span>
                         </button>
@@ -449,7 +460,7 @@ function OnboardingFlow() {
                   <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Paso 4 de {TOTAL_STEPS}</p>
                   <h2 className="text-2xl font-semibold">Tu audiencia y diferenciación</h2>
                   <p className="text-[var(--color-muted-foreground)] mt-1 text-sm">
-                    Todo esto es opcional — cuanto más sepamos, mejores serán las ideas.
+                    Todo esto es opcional, pero es lo que más ayuda a que las ideas suenen a ti.
                   </p>
                 </div>
                 <div>
@@ -545,12 +556,17 @@ function OnboardingFlow() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Instrucciones para la IA <OptionalTag /></Label>
-                  <Textarea
-                    placeholder="Palabras que evitar, muletillas propias, estructura preferida, a quién le hablas..."
-                    value={form.aiInstructions}
-                    onChange={(e) => update("aiInstructions", e.target.value)}
-                    className="h-28"
-                  />
+                  <p className="text-xs text-[var(--color-muted-foreground)]">
+                    Restricciones, muletillas, estructura preferida, a quién le hablas... Se aplican a todo lo que generes.
+                  </p>
+                  <div className="relative">
+                    <Textarea
+                      value={form.aiInstructions}
+                      onChange={(e) => update("aiInstructions", e.target.value)}
+                      className="h-28"
+                    />
+                    <RotatingPlaceholder examples={AI_INSTRUCTION_EXAMPLES} active={!form.aiInstructions} />
+                  </div>
                 </div>
               </div>
             )}

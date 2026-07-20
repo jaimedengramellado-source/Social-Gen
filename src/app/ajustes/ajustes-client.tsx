@@ -22,6 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { LogoutOverlay } from "@/components/shared/logout-overlay";
+import { AI_INSTRUCTION_EXAMPLES, RotatingPlaceholder } from "@/components/shared/rotating-placeholder";
 import {
   YoutubeIcon, InstagramIcon, TiktokIcon, FacebookIcon, XIcon, LinkedinIcon, ThreadsIcon,
 } from "@/components/shared/brand-icons";
@@ -647,7 +648,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
                         key={p.id}
                         type="button"
                         onClick={() => togglePlatform(p.id)}
-                        className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all ${
+                        className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border text-left cursor-pointer transition-all duration-150 hover:scale-[1.04] hover:shadow-md active:scale-[0.98] ${
                           selected
                             ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
                             : "border-[var(--color-border)] hover:border-[var(--color-primary)]/50 bg-white"
@@ -658,7 +659,7 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
                             Principal
                           </span>
                         )}
-                        <p.icon size={18} />
+                        <p.icon size={20} colored />
                         <span className="text-sm font-medium">{p.label}</span>
                       </button>
                     );
@@ -758,14 +759,16 @@ export function AjustesClient({ profile, channel, usageByAction, scriptsCount, i
               </div>
               <div className="space-y-1.5">
                 <Label>Instrucciones adicionales</Label>
-                <textarea
-                  value={aiInstructions}
-                  onChange={(e) => setAiInstructions(e.target.value)}
-                  rows={6}
-                  placeholder="Palabras que evitar, estructura preferida, audiencia objetivo..."
-                  className="w-full rounded-lg border px-3 py-2 text-sm resize-none outline-none bg-white"
-                  style={{ borderColor: "var(--color-border)" }}
-                />
+                <div className="relative">
+                  <textarea
+                    value={aiInstructions}
+                    onChange={(e) => setAiInstructions(e.target.value)}
+                    rows={6}
+                    className="w-full rounded-lg border px-3 py-2 text-sm resize-none outline-none bg-white"
+                    style={{ borderColor: "var(--color-border)" }}
+                  />
+                  <RotatingPlaceholder examples={AI_INSTRUCTION_EXAMPLES} active={!aiInstructions} />
+                </div>
               </div>
               <Button onClick={handleSaveAI} disabled={savingAI || savedAI} size="sm">
                 {savedAI ? (
