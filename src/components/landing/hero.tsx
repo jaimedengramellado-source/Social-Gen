@@ -238,13 +238,13 @@ export function LandingHero() {
               onKeyDown={handleKeyDown}
               placeholder={HERO_PLACEHOLDERS[placeholderIdx]}
               rows={2}
-              className="flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-[var(--color-muted-foreground)]"
+              className="flex-1 resize-none bg-transparent text-base md:text-sm leading-relaxed outline-none placeholder:text-[var(--color-muted-foreground)]"
               style={{ fontFamily: "var(--font-sans)" }}
             />
             <button
               onClick={handleSubmit}
-              disabled={!prompt.trim() || loading}
-              className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150 disabled:opacity-40"
+              disabled={loading}
+              className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-150"
               style={{ backgroundColor: "var(--color-primary)" }}
               aria-label="Generar"
             >
@@ -258,9 +258,6 @@ export function LandingHero() {
             </button>
           </div>
 
-          <p className="mt-2.5 text-xs text-[var(--color-muted-foreground)] text-center">
-            Sin tarjeta de crédito · Pulsa Enter para generar
-          </p>
 
           {/* Panel de pensamiento en vivo */}
           <AnimatePresence>

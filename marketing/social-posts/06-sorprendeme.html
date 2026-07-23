@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="post.css">
+<style>
+  body { background: #0D0D0D; color: #F0EFE9; }
+  .glow { background: radial-gradient(circle, rgba(215,117,130,0.14), transparent 62%); }
+  .logo span:first-child { color: #fff; }
+  .logo .fl { color: #D77582; }
+  .kicker { color: #D77582; }
+  h1 { color: #fff; }
+  h1 em { color: #D77582; }
+  .sub { color: rgba(240,239,233,0.55); }
+
+  .scores {
+    display: flex;
+    gap: 28px;
+    margin-top: 80px;
+  }
+  .circle {
+    width: 128px; height: 128px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,255,255,0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .circle b { font-size: 40px; font-weight: 800; color: #fff; }
+  .circle span { font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+  .circle.hot {
+    background: rgba(140,34,48,0.55);
+    border-color: #D77582;
+    box-shadow: 0 0 60px rgba(215,117,130,0.35);
+  }
+  .note {
+    margin-top: 56px;
+    font-size: 25px;
+    color: rgba(240,239,233,0.5);
+  }
+  .cta { background: #fff; color: #0D0D0D; }
+  .footer small { color: rgba(240,239,233,0.45); }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="logo"><span>Social</span><span class="fl">Flamingo</span></div>
+
+  <p class="kicker">Modo Sorpréndeme</p>
+  <h1>5 ideas virales.<br><em>Un clic.</em></h1>
+  <p class="sub">Sin formularios, sin escribir prompts.<br>Basadas en tu perfil y tu nicho.</p>
+
+  <div class="stage">
+    <div class="scores">
+      <div class="circle"><b>88</b><span>score</span></div>
+      <div class="circle hot"><b>95</b><span>score</span></div>
+      <div class="circle"><b>79</b><span>score</span></div>
+      <div class="circle"><b>91</b><span>score</span></div>
+      <div class="circle"><b>84</b><span>score</span></div>
+    </div>
+    <p class="note">Cada idea llega con su hook y su viral score.</p>
+  </div>
+
+  <div class="footer">
+    <span class="cta">Sorpréndeme →</span>
+    <small>Gratis · Link en la bio</small>
+  </div>
+</body>
+</html>

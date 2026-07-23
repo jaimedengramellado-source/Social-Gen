@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="post.css">
+<style>
+  .chat {
+    width: 860px;
+    margin-top: 60px;
+    overflow: hidden;
+  }
+  .chat .input-row {
+    padding: 30px 36px;
+    border-bottom: 1px solid var(--border);
+    font-size: 29px;
+  }
+  .chat .input-row .mention { color: var(--primary); font-weight: 700; }
+  .chat .input-row .caret {
+    display: inline-block;
+    width: 3px; height: 32px;
+    background: var(--primary);
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  .chat .dd-heading {
+    padding: 26px 36px 10px;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .creator {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 22px 36px;
+  }
+  .creator.selected { background: var(--primary-light); }
+  .creator .avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+  .creator .info .handle { font-size: 26px; font-weight: 700; }
+  .creator .info .handle span { font-weight: 400; font-size: 22px; color: var(--muted); margin-left: 10px; }
+  .creator .info .desc { font-size: 21px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="logo"><span>Social</span><span class="fl">Flamingo</span></div>
+
+  <p class="kicker">Estilo de creador</p>
+  <h1>Escribe como<br>tus <em>ídolos</em>.</h1>
+  <p class="sub">Menciona con @ a quien admiras y la IA adapta<br>tu guion a su tono, ritmo y estructura.</p>
+
+  <div class="stage">
+    <div class="card chat">
+      <div class="input-row">Hazme un guion como <span class="mention">@mr</span><span class="caret"></span></div>
+      <p class="dd-heading">Estilo de creador</p>
+      <div style="padding-bottom: 18px;">
+        <div class="creator selected">
+          <span class="avatar" style="background:#8C2230;">MB</span>
+          <span class="info">
+            <span class="handle" style="display:block;">@mrbeast<span>MrBeast</span></span>
+            <span class="desc" style="display:block;">Retos extremos · Stakes altos · Producción masiva</span>
+          </span>
+        </div>
+        <div class="creator">
+          <span class="avatar" style="background:#3D3D3D;">SJ</span>
+          <span class="info">
+            <span class="handle" style="display:block;">@stevejobs<span>Steve Jobs</span></span>
+            <span class="desc" style="display:block;">Minimalismo · El porqué antes que el cómo</span>
+          </span>
+        </div>
+        <div class="creator">
+          <span class="avatar" style="background:#B45309;">CK</span>
+          <span class="info">
+            <span class="handle" style="display:block;">@collinskey<span>Collins Key</span></span>
+            <span class="desc" style="display:block;">Formato corto viral · Trend-jacking en TikTok/Reels</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="cta">Pruébalo con tu creador favorito →</span>
+    <small>Link en la bio</small>
+  </div>
+</body>
+</html>

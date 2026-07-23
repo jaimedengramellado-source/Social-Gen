@@ -77,6 +77,7 @@ function SignupForm() {
 
     setSuccess(true);
     setLoading(false);
+    window.fbq?.("track", "Lead");
   }
 
   async function handleGoogle() {
@@ -85,6 +86,7 @@ function SignupForm() {
       return;
     }
     setError(null);
+    window.fbq?.("track", "Lead");
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",

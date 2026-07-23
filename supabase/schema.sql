@@ -326,6 +326,26 @@ create table generated_images (
   created_at timestamptz not null default now()
 );
 
+-- Jobs asíncronos de generación de vídeo (plantillas Remotion). El render tarda
+-- demasiado para una request síncrona: la app encola (queued), un worker externo
+-- con service role reclama (rendering) y sube el MP4 al bucket videos (done).
+create table video_renders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  instructions text not null,
+  template text not null,
+  props jsonb not null default '{}'::jsonb,
+  duration_seconds integer not null default 6,
+  status text not null default 'queued' check (status in ('queued','rendering','done','error')),
+  storage_path text,
+  video_url text,
+  error text,
+  credits_spent integer not null default 0,
+  claimed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- Caché de búsquedas de ideas en YouTube (compartida entre usuarios)
 create table ideas_cache (
   query text primary key,
@@ -361,6 +381,7 @@ alter table todos enable row level security;
 alter table chat_projects enable row level security;
 alter table chat_sessions enable row level security;
 alter table generated_images enable row level security;
+alter table video_renders enable row level security;
 alter table ideas_cache enable row level security;
 alter table stripe_events enable row level security; -- sin policies: solo service role
 
@@ -401,6 +422,11 @@ create policy "own projects" on chat_projects for all using ((select auth.uid())
 create policy "Users can manage their own chat sessions" on chat_sessions
   for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "Users own their generated images" on generated_images for all using ((select auth.uid()) = user_id);
+-- Renders de vídeo: el usuario lee y crea; solo el worker (service role) actualiza estado/URL.
+create policy "Users read their video renders" on video_renders
+  for select using ((select auth.uid()) = user_id);
+create policy "Users create their video renders" on video_renders
+  for insert with check ((select auth.uid()) = user_id);
 -- Cache compartida entre usuarios: solo se lee desde el rol authenticated.
 -- Los INSERT/UPDATE los hace el admin client (service role) desde el servidor —
 -- si se deja escritura abierta a authenticated cualquier usuario puede envenenar
@@ -436,6 +462,8 @@ create index if not exists crosspost_rules_storage_idx on crosspost_rules (stora
 create index if not exists crosspost_rules_group_idx on crosspost_rules (rule_group_id);
 create index if not exists todos_parent_id_idx on todos (parent_id);
 create index if not exists watchlist_channels_user_id_idx on watchlist_channels (user_id);
+create index if not exists video_renders_user_id_idx on video_renders (user_id, created_at desc);
+create index if not exists video_renders_queue_idx on video_renders (status, created_at) where status in ('queued','rendering');
 
 -- ============================================================
 -- Funciones y triggers
@@ -561,3 +589,8 @@ grant execute on function add_credits(uuid, integer) to service_role;
 -- CREATE POLICY "Users upload own publish videos" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'publish-videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);
 -- CREATE POLICY "Users read own publish videos" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'publish-videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);
 -- CREATE POLICY "Users delete own publish videos" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'publish-videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- Bucket de vídeos generados con Remotion ({user_id}/{render_id}.mp4).
+-- Solo escribe el worker con service role; el usuario solo lee su carpeta.
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('videos', 'videos', false);
+-- CREATE POLICY "Users read own videos" ON storage.objects FOR SELECT USING (bucket_id = 'videos' AND (storage.foldername(name))[1] = (select auth.uid())::text);

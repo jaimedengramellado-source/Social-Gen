@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="linkedin.css">
+<style>
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .cols .panel { padding: 26px 28px; }
+  .cols ul { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+  .cols li { display: flex; gap: 14px; font-size: 23px; line-height: 1.4; }
+  .cols li .mark { font-weight: 800; flex-shrink: 0; }
+  .col-good li .mark { color: #047857; }
+  .col-bad li .mark { color: #B91C1C; }
+  .cols li b { font-weight: 700; }
+  .cols li span.sub { display: block; font-size: 20px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="logo"><span>Social</span><span class="fl">Flamingo</span></div>
+    <span class="series">Notas para creadores · 03</span>
+  </div>
+
+  <h1>Copia la <em>estructura</em>.<br>Nunca el contenido.</h1>
+  <p class="lead">Un trend es una plantilla vacía. De un vídeo que funciona, esto es lo que puedes llevarte — y lo que no:</p>
+
+  <div class="content">
+    <div class="cols">
+      <div class="panel col-good">
+        <span class="label good">✓ &nbsp;Llévatelo</span>
+        <ul>
+          <li><span class="mark">→</span><span><b>La estructura narrativa</b><span class="sub">problema → giro → prueba</span></span></li>
+          <li><span class="mark">→</span><span><b>El ritmo de corte</b><span class="sub">cada cuántos segundos pasa algo</span></span></li>
+          <li><span class="mark">→</span><span><b>La fórmula del título</b><span class="sub">"Probé X durante 7 días..."</span></span></li>
+          <li><span class="mark">→</span><span><b>Duración y encuadre</b><span class="sub">por qué dura lo que dura</span></span></li>
+        </ul>
+      </div>
+      <div class="panel col-bad">
+        <span class="label bad">✕ &nbsp;Déjalo</span>
+        <ul>
+          <li><span class="mark">→</span><span><b>El chiste literal</b><span class="sub">ya lo contó otro. Llegas tarde</span></span></li>
+          <li><span class="mark">→</span><span><b>Su personalidad</b><span class="sub">la copia se nota en 2 segundos</span></span></li>
+          <li><span class="mark">→</span><span><b>Su nicho</b><span class="sub">funciona por SU audiencia, no la tuya</span></span></li>
+          <li><span class="mark">→</span><span><b>El guion palabra a palabra</b><span class="sub">el algoritmo detecta duplicados</span></span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rule">
+      <span class="star">✦</span>
+      <p><b>El test:</b> ¿funcionaría este vídeo contado por otra persona, con otro tema? Si sí, eso es estructura. Llévatela sin remordimientos.</p>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span class="line"><b>Guárdatelo</b> para el próximo trend</span>
+    <span class="line">socialflamingo</span>
+  </div>
+</body>
+</html>

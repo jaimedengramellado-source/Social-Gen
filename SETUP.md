@@ -260,10 +260,12 @@ Cuando los pasos 1–2 de arriba estén hechos: añadir `ENABLE_YOUTUBE_PUBLISHI
 Flag: **`ENABLE_INSTAGRAM_PUBLISHING=true`** + env vars **`META_APP_ID`** y **`META_APP_SECRET`**.
 
 Pasos manuales en [developers.facebook.com](https://developers.facebook.com):
-1. Crear una **app de tipo Business** y añadir el producto **Facebook Login for Business**.
+1. Crear una **app de tipo Business**, vincularla a un Business Manager, y en "Casos de uso" marcar **"Administra todo en tu página"** + **"Administrar mensajes y contenido en Instagram"** (el catálogo de casos de uso reemplazó al antiguo selector de productos "Facebook Login for Business").
 2. Registrar el redirect URI: `https://socialflamingo.app/api/auth/instagram/callback` (y localhost para dev).
-3. Pasar **App Review** con estos permisos (requiere vídeo demo de cada uno): `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights` (visitas, para reglas condicionales), `pages_show_list`, `pages_read_engagement`, `business_management`. En modo Development funciona sin review para usuarios con rol en la app.
+3. Pasar **App Review** con estos permisos (requiere vídeo demo de cada uno + descripción de "caso de uso" por permiso): `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights` (visitas, para reglas condicionales), `pages_show_list`, `pages_read_engagement`, `business_management`. En modo Development funciona sin review para usuarios con rol en la app (admin/developer/tester) — se puede probar todo el flujo antes de pasar Review.
 4. La cuenta de Instagram del usuario debe ser **business o creator y estar vinculada a una página de Facebook** — avisarlo en el onboarding de la conexión.
+5. Antes de poder enviar a App Review / pasar a Live: rellenar en el dashboard (Facebook Login for Business → Settings) el **Data Deletion Instructions URL** (apunta a `https://socialflamingo.app/privacidad`, que ya cubre el borrado de datos) y, en Additional Details, Privacy Policy URL, Terms of Service URL, icono y categoría de la app.
+6. La **Business Verification** (documentos legales de la empresa) es el paso que más tarda — requiere estar dado de alta como autónomo o SL antes de tener los documentos que Meta pide (modelo 036/037, etc.). Empezarla en cuanto haya alta.
 
 Funcionamiento: publicación de Reels por contenedores (`/{ig-user-id}/media` con la URL firmada del vídeo → poll de `status_code` → `media_publish`). No hay programación nativa: publica el cron `publish-scheduled` (cada 5 min). Límite de la API: 100 posts por cuenta/24h (de sobra).
 
@@ -345,3 +347,44 @@ Sin flag ni env vars propios: se crean desde el compositor de /publicar ("si est
 - Redes origen (donde se miden visitas): YouTube, Instagram, Facebook, TikTok, X y Threads. LinkedIn no expone visitas de posts personales. Redes destino: todas menos YouTube (que no publica por cron).
 - Leer visitas requiere los scopes de insights indicados en §11, §12, §16 y §17 (`instagram_manage_insights`, `video.list`, `threads_manage_insights`, `read_insights`) — ya añadidos al código de OAuth; inclúyelos en los App Review. Las conexiones hechas ANTES de este cambio no los tienen: reconectar la cuenta.
 - Al dispararse una regla el usuario recibe un email y la publicación destino sale en ≤5 min (cron publish-scheduled).
+
+## 19. Generador de animaciones (/video)
+
+La página /video muestra "Próximamente" hasta activar el flag. Toda la cadena (tabla, bucket, endpoint con IA y worker de render) ya está construida.
+
+**Flag** (en `.env.local` y en Vercel cuando se lance):
+
+```
+ENABLE_VIDEO_GENERATION=true
+```
+
+**Base de datos** — ya aplicada en el proyecto de Supabase (migración `video_renders_and_videos_bucket`): tabla `video_renders` + bucket privado `videos` con lectura por carpeta de usuario. El SQL de referencia está en `supabase/schema.sql`.
+
+**Worker de render** — el render usa Chrome headless y tarda decenas de segundos, así que corre fuera de Vercel (máquina local o VPS), dentro del proyecto `demo-video/`:
+
+1. Crear `demo-video/.env` con:
+   ```
+   SUPABASE_URL=https://<project>.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=<service role key>
+   ```
+2. `cd demo-video && pnpm install --ignore-workspace`
+3. `pnpm worker` — hace poll de `video_renders` (status=queued), renderiza la composición Remotion y sube el MP4 al bucket `videos`. Reintenta jobs colgados (>10 min en rendering) y devuelve créditos si un render falla.
+
+Flujo completo: la app cobra 5 créditos, Claude convierte las instrucciones del usuario en plantilla+props (structured outputs), inserta el job `queued`, y el worker lo convierte en MP4 con URL firmada de 1 año.
+
+**Escalar más adelante**: sustituir el worker por Remotion Lambda (AWS) manteniendo la misma tabla — solo cambia quién ejecuta el render. Plantillas nuevas: añadir entrada en `src/lib/video/templates.ts`, composición en `demo-video/src/Root.tsx` y mapeo en `demo-video/worker.ts`.
+
+## 20. Meta Pixel + Conversions API (tracking de conversión de Meta Ads)
+
+Sin esto, Meta Ads no tiene ninguna señal de quién se registra realmente — solo optimiza para clics baratos.
+
+```
+NEXT_PUBLIC_META_PIXEL_ID=2925143021170405
+META_CAPI_ACCESS_TOKEN=       # Events Manager → conjunto de datos → Configuración → Conversions API → Generar token
+```
+
+- Pixel base (`fbq('track', 'PageView')`) se inyecta en `layout.tsx` solo si `NEXT_PUBLIC_META_PIXEL_ID` está definida.
+- Evento `Lead` (navegador, vía `window.fbq`): se dispara en `/signup` al enviar el formulario de email o al pulsar "Registrarse con Google" — señal temprana de intención, antes de confirmar el email.
+- Evento `CompleteRegistration` (servidor, vía Conversions API en `src/lib/meta-capi.ts`): se dispara en `/auth/callback` la primera vez que un usuario nuevo llega a onboarding — cubre por igual el alta por email (tras confirmar) y por Google, y no depende de que el navegador tenga el pixel bloqueado.
+- Verificar en Events Manager → pestaña "Eventos de prueba" con el código que aparece ahí (pégalo temporalmente en la URL de prueba de la pestaña, no hace falta tocar código).
+- Cuando haya volumen suficiente de eventos `CompleteRegistration`, cambiar el objetivo de la campaña de "Tráfico" a "Conversiones" en Ads Manager para que Meta optimice hacia gente que se registra, no solo hacia clics.

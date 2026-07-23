@@ -47,7 +47,7 @@ supabase/schema.sql      # esquema completo (ejecutar en SQL Editor)
 SETUP.md                 # pasos manuales de Supabase + Stripe + .env.local
 ```
 
-**No es git**. No intentes `git commit` ni leas `git log`.
+**Sí es git**: remoto en GitHub (`origin/main`), rama única (los commits van directos a `main`, no hay ramas de feature). `git log`/`git status`/`git diff` funcionan con normalidad. Cada push a `main` dispara un deploy de producción automático vía la integración Git de Vercel — trátalo como una acción que afecta al sitio en vivo.
 <!-- END:repo-layout -->
 
 <!-- BEGIN:conventions -->
@@ -128,7 +128,7 @@ const stream = await getAnthropicClient().messages.stream({
 - **No crees archivos de documentación** (`*.md`) salvo que el usuario lo pida, excepto `SETUP.md` si añades pasos manuales de infraestructura (bucket nuevo, env var nueva, etc.).
 - **No añadas comentarios explicando qué hace el código** — solo el porqué cuando sea no-obvio.
 - **Verificación**: tras cambios significativos, corre `pnpm build` y arregla errores de TS antes de cerrar. `pnpm lint` solo si tocas mucho.
-- **Sin git**: no hagas commits.
+- **Git**: haz commit y push solo cuando el usuario lo pida explícitamente (no por iniciativa propia). Un push a `main` publica en producción de inmediato — no hay preview ni rama intermedia.
 - **Datos sensibles**: nunca leas ni commitees `.env.local`, claves de Stripe ni service role keys.
 - **Autonomía**: una vez acordado un objetivo, ejecútalo entero sin pedir permiso paso a paso. No preguntes "¿procedo?", "¿paso al siguiente?" ni "¿quieres que haga X?" para cosas ya implícitas en la tarea acordada. Ante ambigüedades pequeñas, toma la decisión más conservadora y documéntala al final. Pregunta solo cuando: (a) la decisión cambia sustancialmente el alcance, (b) requiere una acción destructiva o irreversible, o (c) hay un trade-off real que el usuario debe elegir.
 <!-- END:guardrails -->

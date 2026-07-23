@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeInternalPath } from "@/lib/plan-intent";
+import { sendMetaCapiEvent } from "@/lib/meta-capi";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -40,6 +41,18 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (!profile?.onboarding_completed) {
+          // Único punto común a signup por email (tras confirmar) y por Google:
+          // registro "real" verificado, en vez de un simple envío de formulario.
+          await sendMetaCapiEvent({
+            eventName: "CompleteRegistration",
+            eventSourceUrl: `${origin}/auth/callback`,
+            email: user.email,
+            ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+            userAgent: request.headers.get("user-agent"),
+            fbp: request.cookies.get("_fbp")?.value,
+            fbc: request.cookies.get("_fbc")?.value,
+          });
+
           const url = new URL("/onboarding", origin);
           if (next !== "/dashboard") url.searchParams.set("next", next);
           return NextResponse.redirect(url.toString());

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="post.css">
+<style>
+  .cal {
+    width: 880px;
+    padding: 44px;
+    margin-top: 60px;
+  }
+  .cal .week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 16px;
+  }
+  .cal .day-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .cal .col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .slot {
+    height: 54px;
+    border-radius: 14px;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+  }
+  .slot.post {
+    border: none;
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .slot.best {
+    border: none;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(140,34,48,0.35);
+  }
+  .legend {
+    display: flex;
+    gap: 30px;
+    margin-top: 36px;
+    justify-content: center;
+  }
+  .legend span {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 21px;
+    color: var(--muted);
+  }
+  .legend .sw { width: 22px; height: 22px; border-radius: 7px; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="logo"><span>Social</span><span class="fl">Flamingo</span></div>
+
+  <p class="kicker">Planifica y publica</p>
+  <h1>Publica cuando tu<br>audiencia está <em>despierta</em>.</h1>
+  <p class="sub">Mejores horas por plataforma, calendario<br>y programación en un solo sitio.</p>
+
+  <div class="stage">
+    <div class="card cal">
+      <div class="week">
+        <div><p class="day-name">Lun</p><div class="col"><div class="slot"></div><div class="slot post">Reel</div><div class="slot"></div></div></div>
+        <div><p class="day-name">Mar</p><div class="col"><div class="slot"></div><div class="slot"></div><div class="slot post">TikTok</div></div></div>
+        <div><p class="day-name">Mié</p><div class="col"><div class="slot post">Post</div><div class="slot"></div><div class="slot"></div></div></div>
+        <div><p class="day-name">Jue</p><div class="col"><div class="slot"></div><div class="slot best">18:30 ✦</div><div class="slot"></div></div></div>
+        <div><p class="day-name">Vie</p><div class="col"><div class="slot"></div><div class="slot"></div><div class="slot post">Reel</div></div></div>
+        <div><p class="day-name">Sáb</p><div class="col"><div class="slot post">Short</div><div class="slot"></div><div class="slot"></div></div></div>
+        <div><p class="day-name">Dom</p><div class="col"><div class="slot"></div><div class="slot"></div><div class="slot"></div></div></div>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background: var(--primary);"></span>Tu mejor hora</span>
+        <span><span class="sw" style="background: var(--primary-light);"></span>Contenido programado</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="cta">Organiza tu semana gratis →</span>
+    <small>Link en la bio</small>
+  </div>
+</body>
+</html>

@@ -45,6 +45,12 @@ export function buildScriptSeedPrompt(title: string, description?: string | null
 export const ONBOARDING_SEED_PROMPT =
   "Dame 5 ideas de contenido con potencial viral para arrancar mi canal, adaptadas a mi nicho y mi objetivo. Para cada una, incluye un título con gancho y una frase explicando por qué funcionaría.";
 
+// Marca que el usuario acaba de terminar el onboarding y va a abrir su primer chat;
+// crear-client la lee una vez para mostrar el popup de feedback y la borra al momento.
+export const ONBOARDING_JUST_COMPLETED_KEY = "sf-onboarding-just-completed";
+
+export const FEEDBACK_EMAIL = "service@socialflamingo.app";
+
 export function formatCredits(n: number): string {
   return n.toLocaleString("es-ES");
 }

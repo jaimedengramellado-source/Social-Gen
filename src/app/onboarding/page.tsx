@@ -17,7 +17,7 @@ import {
 } from "@/components/shared/brand-icons";
 import type { BrandIconProps } from "@/components/shared/brand-icons";
 import { AI_INSTRUCTION_EXAMPLES, RotatingPlaceholder } from "@/components/shared/rotating-placeholder";
-import { CREAR_SEED_STORAGE_KEY, ONBOARDING_SEED_PROMPT } from "@/lib/utils";
+import { CREAR_SEED_STORAGE_KEY, ONBOARDING_JUST_COMPLETED_KEY, ONBOARDING_SEED_PROMPT } from "@/lib/utils";
 import type { Platform } from "@/types";
 
 // Además de las 4 plataformas "de formato" (determinan duración/estilo del guion),
@@ -217,6 +217,7 @@ function OnboardingFlow() {
       // lo recoge server-side al montar, así que basta con dejar el prompt semilla.
       try {
         sessionStorage.setItem(CREAR_SEED_STORAGE_KEY, ONBOARDING_SEED_PROMPT);
+        sessionStorage.setItem(ONBOARDING_JUST_COMPLETED_KEY, "1");
       } catch {}
 
       router.push(nextPath);

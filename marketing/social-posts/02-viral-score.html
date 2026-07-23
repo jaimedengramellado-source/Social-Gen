@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="post.css">
+<style>
+  .kicker { margin-top: 56px; }
+  .ideas {
+    width: 880px;
+    padding: 36px 36px 32px;
+    margin-top: 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ideas .heading {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .idea {
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 22px 28px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .idea .txt { flex: 1; min-width: 0; }
+  .idea .txt .top { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .idea h3 { font-size: 26px; font-weight: 600; line-height: 1.3; }
+  .best {
+    font-size: 17px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--primary);
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="logo"><span>Social</span><span class="fl">Flamingo</span></div>
+
+  <p class="kicker">Motor de ideas</p>
+  <h1>Deja de adivinar<br>qué <em>funciona</em>.</h1>
+  <p class="sub">10 ideas para tu nicho con puntuación 0-100<br>basada en patrones virales reales.</p>
+
+  <div class="stage">
+    <div class="card ideas">
+      <p class="heading">Ideas con potencial viral · Tu nicho</p>
+
+      <div class="idea">
+        <div class="txt">
+          <div class="top">
+            <span class="tag" style="background:#F3E8FF; color:#7E22CE;">Curiosidad</span>
+            <span class="best">Mejor idea</span>
+          </div>
+          <h3>Probé la rutina de las 5AM durante 7 días y esto pasó</h3>
+        </div>
+        <span class="score s90">96</span>
+      </div>
+
+      <div class="idea">
+        <div class="txt">
+          <div class="top"><span class="tag" style="background:#FEE2E2; color:#B91C1C;">Shock</span></div>
+          <h3>El error que comete el 90% el primer mes (y cómo evitarlo)</h3>
+        </div>
+        <span class="score s70">84</span>
+      </div>
+
+      <div class="idea">
+        <div class="txt">
+          <div class="top"><span class="tag" style="background:#F3E8FF; color:#7E22CE;">Emocional</span></div>
+          <h3>Lo que nadie te cuenta de vivir de crear contenido</h3>
+        </div>
+        <span class="score s40">68</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="cta">Genera tus 10 ideas gratis →</span>
+    <small>Link en la bio</small>
+  </div>
+</body>
+</html>

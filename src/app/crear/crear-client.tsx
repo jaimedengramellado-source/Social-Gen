@@ -8,7 +8,8 @@ import type { ChatSession, ChatProject } from "./chat-sidebar";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Profile } from "@/types";
 import { useToast } from "@/components/ui/toast";
-import { buildScriptSeedPrompt, CREAR_SEED_STORAGE_KEY } from "@/lib/utils";
+import { buildScriptSeedPrompt, CREAR_SEED_STORAGE_KEY, ONBOARDING_JUST_COMPLETED_KEY } from "@/lib/utils";
+import { FirstChatFeedbackModal } from "@/components/shared/first-chat-feedback-modal";
 
 interface CrearClientProps {
   profile: Profile;
@@ -27,10 +28,20 @@ export function CrearClient({ profile }: CrearClientProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
+  const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(ONBOARDING_JUST_COMPLETED_KEY)) {
+        sessionStorage.removeItem(ONBOARDING_JUST_COMPLETED_KEY);
+        setShowFeedbackPopup(true);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -199,6 +210,7 @@ export function CrearClient({ profile }: CrearClientProps) {
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 53px)" }}>
+      <FirstChatFeedbackModal open={showFeedbackPopup} onClose={() => setShowFeedbackPopup(false)} />
       <div className="flex flex-1 min-h-0">
         <div className="hidden md:flex p-2 pr-0 relative">
           {!sidebarCollapsed && (

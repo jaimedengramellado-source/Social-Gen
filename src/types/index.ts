@@ -244,6 +244,7 @@ export const CREDIT_COSTS = {
   generate_image: 2,
   edit_image: 2,
   image_variation: 1,
+  generate_video: 5,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
@@ -282,6 +283,24 @@ export interface GeneratedImage {
   parent_image_id: string | null;
   aspect_ratio: string;
   created_at: string;
+}
+
+export type VideoRenderStatus = "queued" | "rendering" | "done" | "error";
+
+export interface VideoRender {
+  id: string;
+  user_id: string;
+  instructions: string;
+  template: string;
+  props: Record<string, unknown>;
+  duration_seconds: number;
+  status: VideoRenderStatus;
+  storage_path: string | null;
+  video_url: string | null;
+  error: string | null;
+  credits_spent: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export const PRICING_PLANS: PricingPlan[] = [

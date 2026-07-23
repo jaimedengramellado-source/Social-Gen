@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #F8F7F4;
+  --fg: #0D0D0D;
+  --primary: #8C2230;
+  --primary-light: #EFE1CB;
+  --muted: #6B6B6B;
+}
+
+html, body { width: 1080px; height: 1350px; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  padding: 76px 84px 68px;
+}
+
+.logo {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 40px;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 0.08em;
+}
+.logo .fl { color: var(--primary); font-style: italic; }
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.statement {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: 124px;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+}
+.statement em { font-style: italic; color: var(--primary); }
+
+.footnote {
+  margin-top: 56px;
+  font-size: 26px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 700px;
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bottom .line {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.bottom .line b { color: var(--fg); font-weight: 700; }
+
+/* ── Variante burdeos ── */
+body.wine { background: var(--primary); color: var(--bg); }
+body.wine .logo span:first-child { color: var(--bg); }
+body.wine .logo .fl { color: var(--primary-light); }
+body.wine .statement em { color: var(--primary-light); }
+body.wine .footnote { color: rgba(248,247,244,0.65); }
+body.wine .bottom .line { color: rgba(248,247,244,0.65); }
+body.wine .bottom .line b { color: var(--bg); }
+
+/* ── Variante negra ── */
+body.night { background: #0D0D0D; color: #F0EFE9; }
+body.night .logo span:first-child { color: #fff; }
+body.night .logo .fl { color: #D77582; }
+body.night .statement em { color: #D77582; }
+body.night .footnote { color: rgba(240,239,233,0.55); }
+body.night .bottom .line { color: rgba(240,239,233,0.55); }
+body.night .bottom .line b { color: #fff; }

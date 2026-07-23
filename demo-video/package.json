@@ -1,0 +1,32 @@
+{
+  "name": "demo-video",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "remotion studio src/index.ts",
+    "render:vertical": "remotion render src/index.ts Vertical out/vertical.mp4",
+    "render:horizontal": "remotion render src/index.ts Horizontal out/horizontal.mp4",
+    "render:ideas": "remotion render src/index.ts IdeasVertical out/ideas-vertical.mp4",
+    "worker": "tsx worker.ts"
+  },
+  "dependencies": {
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "remotion": "4.0.490",
+    "@remotion/cli": "4.0.490",
+    "@remotion/bundler": "4.0.490",
+    "@remotion/renderer": "4.0.490",
+    "@remotion/tailwind-v4": "4.0.490",
+    "@remotion/google-fonts": "4.0.490",
+    "@supabase/supabase-js": "^2.49.0",
+    "lucide-react": "^1.14.0",
+    "tailwindcss": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}

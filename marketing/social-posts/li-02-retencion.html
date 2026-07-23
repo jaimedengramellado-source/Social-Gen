@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="linkedin.css">
+<style>
+  h1 { font-size: 66px; margin-top: 40px; }
+  .chart-panel { padding: 30px 32px 22px; }
+  .chart-panel svg { display: block; width: 100%; height: auto; }
+  .notes { display: flex; flex-direction: column; gap: 14px; }
+  .noterow { display: flex; gap: 18px; align-items: flex-start; }
+  .noterow .num { width: 42px; height: 42px; font-size: 21px; }
+  .noterow p { font-size: 22.5px; line-height: 1.42; color: var(--fg); padding-top: 6px; }
+  .noterow p b { font-weight: 700; }
+  .noterow p span { color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="logo"><span>Social</span><span class="fl">Flamingo</span></div>
+    <span class="series">Notas para creadores · 02</span>
+  </div>
+
+  <h1>Aprende a leer tu<br><em>curva de retención</em>.</h1>
+  <p class="lead">No es un adorno de la app de estadísticas. Cada tramo te dice exactamente qué arreglar:</p>
+
+  <div class="content">
+    <div class="panel chart-panel">
+      <svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curva de retención típica de un vídeo de 60 segundos">
+        <!-- grid -->
+        <g stroke="#E9E7E2" stroke-width="1.5">
+          <line x1="70" y1="20" x2="880" y2="20"/>
+          <line x1="70" y1="107.5" x2="880" y2="107.5"/>
+          <line x1="70" y1="195" x2="880" y2="195"/>
+          <line x1="70" y1="282.5" x2="880" y2="282.5"/>
+        </g>
+        <line x1="70" y1="370" x2="880" y2="370" stroke="#C4C4C4" stroke-width="2"/>
+        <!-- y labels -->
+        <g font-family="Inter, sans-serif" font-size="19" fill="#6B6B6B" text-anchor="end">
+          <text x="58" y="27">100%</text>
+          <text x="58" y="114">75%</text>
+          <text x="58" y="202">50%</text>
+          <text x="58" y="289">25%</text>
+          <text x="58" y="377">0%</text>
+        </g>
+        <!-- x labels -->
+        <g font-family="Inter, sans-serif" font-size="19" fill="#6B6B6B" text-anchor="middle">
+          <text x="70" y="398">0s</text>
+          <text x="272" y="398">15s</text>
+          <text x="475" y="398">30s</text>
+          <text x="677" y="398">45s</text>
+          <text x="872" y="398">60s</text>
+        </g>
+        <!-- area -->
+        <path d="M70,20 C85,60 95,105 110,132 C130,165 150,172 175,178 C215,188 230,191 268,195 C320,203 350,210 399,216 C450,222 480,224 531,227 C580,230 615,233 663,237 C700,240 730,245 755,255 C785,266 800,278 821,293 C838,305 850,318 860,328 L860,370 L70,370 Z"
+              fill="rgba(140,34,48,0.07)"/>
+        <!-- line -->
+        <path d="M70,20 C85,60 95,105 110,132 C130,165 150,172 175,178 C215,188 230,191 268,195 C320,203 350,210 399,216 C450,222 480,224 531,227 C580,230 615,233 663,237 C700,240 730,245 755,255 C785,266 800,278 821,293 C838,305 850,318 860,328"
+              fill="none" stroke="#8C2230" stroke-width="4.5" stroke-linecap="round"/>
+        <!-- markers -->
+        <g font-family="Inter, sans-serif" font-size="21" font-weight="800" text-anchor="middle">
+          <circle cx="110" cy="132" r="21" fill="#8C2230" stroke="#FFFFFF" stroke-width="3"/>
+          <text x="110" y="140" fill="#fff">1</text>
+          <circle cx="475" cy="222" r="21" fill="#8C2230" stroke="#FFFFFF" stroke-width="3"/>
+          <text x="475" y="230" fill="#fff">2</text>
+          <circle cx="821" cy="293" r="21" fill="#8C2230" stroke="#FFFFFF" stroke-width="3"/>
+          <text x="821" y="301" fill="#fff">3</text>
+        </g>
+        <text x="880" y="20" font-family="Inter, sans-serif" font-size="19" fill="#6B6B6B" text-anchor="end" dy="-6" opacity="0">.</text>
+      </svg>
+    </div>
+
+    <div class="notes">
+      <div class="noterow">
+        <span class="num">1</span>
+        <p><b>La caída inicial (0-3 s).</b> <span>Perder hasta un 30% aquí es normal. ¿Pierdes más? Tu hook (o tu portada) promete algo que el vídeo no da.</span></p>
+      </div>
+      <div class="noterow">
+        <span class="num">2</span>
+        <p><b>La pendiente (3-45 s).</b> <span>Debe bajar suave. Si baja a escalones, cada escalón es un momento aburrido: cambia de plano o de idea cada 5-7 segundos.</span></p>
+      </div>
+      <div class="noterow">
+        <span class="num">3</span>
+        <p><b>El desplome final.</b> <span>Casi nadie llega al último segundo. Por eso el CTA va en el 70% del vídeo, no al final.</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <span class="line"><b>Guárdatelo</b> para tu próximo análisis</span>
+    <span class="line">socialflamingo</span>
+  </div>
+</body>
+</html>
