@@ -2,6 +2,10 @@ import { createHash } from "crypto";
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const ACCESS_TOKEN = process.env.META_CAPI_ACCESS_TOKEN;
+// Solo para verificar en Events Manager → Eventos de prueba; quitar la env var
+// una vez confirmado (el código de prueba de Meta caduca solo, pero mejor no
+// dejarlo puesto indefinidamente).
+const TEST_EVENT_CODE = process.env.META_CAPI_TEST_EVENT_CODE;
 
 function hashField(value: string) {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
@@ -26,7 +30,7 @@ export async function sendMetaCapiEvent(params: {
   if (params.fbc) userData.fbc = params.fbc;
 
   try {
-    await fetch(`https://graph.facebook.com/v21.0/${PIXEL_ID}/events?access_token=${ACCESS_TOKEN}`, {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${PIXEL_ID}/events?access_token=${ACCESS_TOKEN}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -39,9 +43,14 @@ export async function sendMetaCapiEvent(params: {
             user_data: userData,
           },
         ],
+        ...(TEST_EVENT_CODE ? { test_event_code: TEST_EVENT_CODE } : {}),
       }),
     });
-  } catch {
+    if (!res.ok) {
+      console.error("Meta CAPI event rejected:", params.eventName, await res.text());
+    }
+  } catch (err) {
     // El tracking de Meta no debe romper el login si la API de conversiones falla.
+    console.error("Meta CAPI event failed:", params.eventName, err);
   }
 }
